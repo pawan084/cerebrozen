@@ -485,16 +485,23 @@ internal fun ContentList(
     fallback: (@Composable () -> Unit)? = null,
     metaColor: Color = Periwinkle,
     glyphFor: ((String) -> ImageVector?)? = null,
+    /** Where the guest-gate state's "Sign in / Sign up" goes; null renders the
+     * gate without a button (the copy still names the account requirement). */
+    onSignIn: (() -> Unit)? = null,
 ) {
     var items by remember(kind) { mutableStateOf<JSONArray?>(null) }
     var error by remember(kind) { mutableStateOf<String?>(null) }   // B35: keyed like the fetch
+    // Audit K (Sounds): a guest's 401 rendered as the generic error with a
+    // "Try again" that could never work. The gate is its own state — sign-in
+    // door, no retry.
+    var guestGated by remember(kind) { mutableStateOf(false) }
     var reloadKey by remember(kind) { mutableStateOf(0) }
     val loadFailed = stringResource(R.string.content_error_fallback)
     LaunchedEffect(kind, reloadKey) {
         error = null
         runCatching { Api.content(kind) }
-            .onSuccess { items = it }
-            .onFailure { error = it.userMessage(loadFailed) }
+            .onSuccess { items = it; guestGated = false }
+            .onFailure { guestGated = it.isGuestGate(); error = it.userMessage(loadFailed) }
     }
     // Register narration URLs as a side effect of loading, not during render — the
     // registry is shared mutable state and must not be written on every recomposition.
@@ -508,10 +515,33 @@ internal fun ContentList(
     when (contentListState(error, items, hasFallback = fallback != null)) {
         ContentListState.Fallback -> fallback!!.invoke()
         ContentListState.Error -> Column {
-            Text(error!!, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-            // Every catalogue section was a dead end on failure (audit B26).
-            TextButton(onClick = { reloadKey++ }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
-                Text(stringResource(R.string.common_try_again), color = Periwinkle)
+            if (guestGated) {
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        Modifier.size(44.dp).clip(CircleShape).background(Periwinkle.copy(alpha = 0.14f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Outlined.PersonAddAlt, contentDescription = null,
+                            tint = Periwinkle, modifier = Modifier.size(22.dp))
+                    }
+                    Text(stringResource(R.string.guest_gate_content),
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                }
+                onSignIn?.let { signIn ->
+                    TextButton(onClick = signIn, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                        Text(stringResource(R.string.guest_sign_in_action), color = Periwinkle)
+                    }
+                }
+            } else {
+                Text(error!!, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                // Every catalogue section was a dead end on failure (audit B26).
+                TextButton(onClick = { reloadKey++ }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                    Text(stringResource(R.string.common_try_again), color = Periwinkle)
+                }
             }
         }
         ContentListState.Loading -> repeat(3) { ShimmerBox(Modifier.fillMaxWidth().height(72.dp)) }
@@ -560,6 +590,7 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
     var metrics by remember { mutableStateOf<JSONArray?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var guestGated by remember { mutableStateOf(false) }
     var reloadKey by remember { mutableStateOf(0) }
     LaunchedEffect(reloadKey) {
         loading = true; error = null
@@ -569,7 +600,7 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
                 summary = it.optString("summary")
                 metrics = it.optJSONArray("metrics")
             }
-            .onFailure { error = it.userMessage(loadFailed) }
+            .onFailure { guestGated = it.isGuestGate(); error = it.userMessage(loadFailed) }
         loading = false
     }
     SubPage(stringResource(R.string.insights_eyebrow), headline, onBack) {
@@ -578,6 +609,12 @@ fun InsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
             return@SubPage
         }
         error?.let {
+            if (guestGated) {
+                // Insights are computed from an account's check-ins; the guest
+                // gate is a sign-in door, not a retryable failure (audit K).
+                GuestSignInCard(onOpen = onOpen)
+                return@SubPage
+            }
             InsightsMessageCard(
                 icon = Icons.Outlined.ErrorOutline,
                 title = stringResource(R.string.insights_error_title),
@@ -1145,10 +1182,12 @@ fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}, startInMixer
         // The first list gets its header like the two sections after it.
         Text(stringResource(R.string.sounds_soundscapes_header), style = MaterialTheme.typography.titleMedium, color = TextSoft)
         ContentList("soundscape", { d -> if (d > 0) minutesTemplate.format(d) else ambientMeta },
-            onItemTap = { playAs(it, "soundscape") }, favs = favs, onFav = toggleFav)
+            onItemTap = { playAs(it, "soundscape") }, favs = favs, onFav = toggleFav,
+            onSignIn = { onOpen("auth") })
         Text(stringResource(R.string.sounds_sleep_stories_header), style = MaterialTheme.typography.titleMedium, color = TextSoft)
         ContentList("sleep", { d -> if (d > 0) minutesTemplate.format(d) else storyMeta },
-            onItemTap = { playAs(it, "sleep") }, favs = favs, onFav = toggleFav)
+            onItemTap = { playAs(it, "sleep") }, favs = favs, onFav = toggleFav,
+            onSignIn = { onOpen("auth") })
         // Only promise narration where the deployment can actually speak.
         if (!ttsAvailable) {
             Text(stringResource(R.string.sounds_narration_note),
@@ -2085,7 +2124,6 @@ private fun ToolkitHeader(label: String) {
  * a stale pref can't crash the hub). Pure + unit-tested. */
 internal fun toolkitRecentLabelRes(route: String): Int? = when (route) {
     "ground" -> R.string.toolkit_ground_title
-    "zenripples" -> R.string.toolkit_zen_title
     "games" -> R.string.mg_title
     "bubblepop" -> R.string.toolkit_bubble_title
     "breathe/box" -> R.string.toolkit_box_title
@@ -2095,7 +2133,6 @@ internal fun toolkitRecentLabelRes(route: String): Int? = when (route) {
     "imagery" -> R.string.toolkit_imagery_title
     "ritual" -> R.string.toolkit_ritual_title
     "gratitude" -> R.string.toolkit_gratitude_title
-    "patternglow" -> R.string.toolkit_pattern_title
     "sounds" -> R.string.toolkit_sounds_title
     else -> null
 }
@@ -2147,11 +2184,6 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
                 stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_guided),
                 Icons.Outlined.Grain, Ok, 0,
             ) { openTool("ground") }
-            ToolkitExerciseCard(
-                stringResource(R.string.toolkit_zen_title), stringResource(R.string.toolkit_zen_subtitle),
-                stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_gentle),
-                Icons.Outlined.Waves, Cyan, 1,
-            ) { openTool("zenripples") }
             FeaturedGameCard(stringResource(R.string.toolkit_bubble_title), stringResource(R.string.toolkit_bubble_subtitle)) { openTool("bubblepop") }
             // The door to the twelve offline games. It was orphaned for a day:
             // the only onOpen("games") lived in the retired legacy Toolkit, so
@@ -2168,19 +2200,14 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
             ) { openTool("games") }
 
             ToolkitSectionHeader(stringResource(R.string.toolkit_header_breathe), stringResource(R.string.toolkit_breathe_description), Icons.Outlined.Air, Cyan)
+            // V2-e part 2: ONE breathing card — breathe/box with no start pattern
+            // IS the pattern picker, so Box/Reset/paced all live behind one door
+            // (the old two cards were two presets of the same engine).
             ToolkitExerciseCard(
-                stringResource(R.string.toolkit_box_title), stringResource(R.string.toolkit_box_subtitle),
-                stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_guided),
+                stringResource(R.string.breath_loops_title), stringResource(R.string.toolkit_box_subtitle),
+                stringResource(R.string.toolkit_duration_2), stringResource(R.string.toolkit_level_guided),
                 Icons.Outlined.Air, Cyan, 3,
             ) { openTool("breathe/box") }
-            ToolkitExerciseCard(
-                stringResource(R.string.toolkit_reset_title), stringResource(R.string.toolkit_reset_subtitle),
-                stringResource(R.string.toolkit_duration_2), stringResource(R.string.toolkit_level_easy),
-                Icons.Outlined.SelfImprovement,
-                // B60: this was 0xFF7A5CFF — a NEAR-BrandPrimary purple subtly
-                // disagreeing with the brand purple on the same screen.
-                com.cerebrozen.app.ui.theme.BrandPrimary, 4,
-            ) { openTool("breathe/reset") }
 
             ToolkitSectionHeader(stringResource(R.string.toolkit_header_reframe), stringResource(R.string.toolkit_reframe_description), Icons.Outlined.Psychology, Periwinkle)
             ToolkitExerciseCard(
@@ -2200,13 +2227,9 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
                 stringResource(R.string.toolkit_duration_2), stringResource(R.string.toolkit_level_guided),
                 Icons.Outlined.Bedtime, Accent2, 7,
             ) { openTool("imagery") }
-            // The standalone body scan shipped route-registered but door-less
-            // (audit A7) — only the wind-down ritual's embedded step existed.
-            ToolkitExerciseCard(
-                stringResource(R.string.obs_title), stringResource(R.string.toolkit_bodyscan_subtitle),
-                stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_gentle),
-                Icons.Outlined.Spa, Cyan, 7,
-            ) { openTool("bodyscan") }
+            // V2-e part 2: the bodyscan, gratitude, patternglow and sounds cards
+            // left this hub — Calm-now (practice-library) doors bodyscan and
+            // gratitude, Sleep owns sounds, and the registry owns the games.
             // The builder is a door, not a section of its own: it only
             // sequences the tools above, and putting it first would suggest
             // setup comes before use.
@@ -2215,21 +2238,6 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_guided),
                 Icons.Outlined.AutoAwesome, Accent2, 7,
             ) { openTool("ritual") }
-            ToolkitExerciseCard(
-                stringResource(R.string.toolkit_gratitude_title), stringResource(R.string.toolkit_gratitude_subtitle),
-                stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_gentle),
-                Icons.Outlined.LocalFlorist, Ok, 7,
-            ) { openTool("gratitude") }
-            ToolkitExerciseCard(
-                stringResource(R.string.toolkit_pattern_title), stringResource(R.string.toolkit_pattern_subtitle),
-                stringResource(R.string.toolkit_duration_2), stringResource(R.string.toolkit_level_easy),
-                Icons.Outlined.AutoAwesome, Periwinkle, 8,
-            ) { openTool("patternglow") }
-            ToolkitExerciseCard(
-                stringResource(R.string.toolkit_sounds_title), stringResource(R.string.toolkit_sounds_subtitle),
-                stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_gentle),
-                Icons.Outlined.GraphicEq, Cyan, 9,
-            ) { openTool("sounds") }
             // Region-aware subtitle: the card names the user's actual crisis
             // line (CrisisDirectory), not a hardcoded India number.
             val toolkitSupportLine = primaryCrisisLine(rememberCrisisRegion().value)
@@ -2739,91 +2747,6 @@ private fun CrisisSupportRow(title: String, detail: String, target: String, prim
     }
 }
 
-@Composable
-fun CrisisScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
-    var contact by remember { mutableStateOf<String?>(null) }
-    // A failed read must not render as "add one" — on this surface a false
-    // empty state tells someone their person isn't there. Unknown says unknown.
-    var contactUnknown by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        runCatching { Api.trustedContact() }
-            .onSuccess { tc ->
-                contactUnknown = false
-                contact = tc?.let { "${it.optString("name")} · ${it.optString("value")}" }
-            }
-            .onFailure { contactUnknown = true }
-    }
-    // Region-aware (offline-safe) directory — CrisisDirectory mirrors backend
-    // crisis.py; the You → Crisis region setting finally governs the numbers
-    // this surface shows. Tele-MANAS leads in India (REDESIGN §2.3); elsewhere
-    // the backend's emergency-first order holds. Targets are dial/URL contracts
-    // and stay literal. The findahelpline finder is appended for every region
-    // as the universal escape hatch (the default region already carries it).
-    // W25 (CTA audit): no WhatsApp row — no official Tele-MANAS WhatsApp exists.
-    val region by rememberCrisisRegion()
-    val regional = crisisLinesFor(region)
-    val lines = (
-        if (regional.any { isSupportUrl(it.target) }) regional
-        else regional + CrisisLine(R.string.crisis_line_find_helpline, "findahelpline.com")
-    ).map { stringResource(it.nameRes) to it.target }
-    SubPage(stringResource(R.string.crisis_eyebrow), stringResource(R.string.crisis_title), onBack) {
-        val heroShape = RoundedCornerShape(24.dp)
-        Column(
-            Modifier.fillMaxWidth().clip(heroShape)
-                .background(Brush.verticalGradient(
-                    listOf(Warm.copy(alpha = 0.16f), Danger.copy(alpha = 0.09f)),
-                ))
-                .border(1.dp, Warm.copy(alpha = 0.32f), heroShape)
-                .padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                stringResource(R.string.crisis_hero_eyebrow).uppercase(),
-                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.3.sp),
-                color = Warm,
-            )
-            Text(
-                stringResource(R.string.crisis_hero_title),
-                style = MaterialTheme.typography.headlineSmall,
-                color = TextPrimary,
-            )
-        }
-        lines.forEachIndexed { index, (name, number) ->
-            CrisisSupportRow(name, number, number, primary = index == 0)
-        }
-        // The region setting, visible where it acts — a wrong-country list is
-        // one tap from correct instead of buried under You → Settings.
-        NavRow(
-            stringResource(R.string.crisis_region_showing, stringResource(regionLabelRes(region))),
-            stringResource(R.string.crisis_region_change),
-            icon = Icons.Outlined.Public,
-        ) { onOpen("crisisregion") }
-        // For the person who cannot make a call right now: the crisis-specific
-        // grounding practice (offline), built for exactly this screen.
-        NavRow(
-            stringResource(R.string.crisis_ground_title),
-            stringResource(R.string.crisis_ground_sub),
-            icon = Icons.Outlined.SelfImprovement,
-        ) { onOpen("crisisgrounding") }
-        // A door, not a notice. It used to be an inert card telling the user to
-        // "add one in Settings" — where no such setting existed on Android.
-        NavRow(
-            stringResource(R.string.crisis_trusted_contact_title),
-            contact ?: stringResource(
-                if (contactUnknown) R.string.crisis_trusted_contact_unknown
-                else R.string.crisis_trusted_contact_empty,
-            ),
-            icon = Icons.Outlined.PersonAddAlt,
-        ) { onOpen("trustedcontact") }
-        // The plan written for this moment, reachable in this moment — not only
-        // via the calm-state path through You.
-        NavRow(
-            stringResource(R.string.crisis_safety_plan_title),
-            stringResource(R.string.crisis_safety_plan_sub),
-            icon = Icons.Outlined.FactCheck,
-        ) { onOpen("safetyplan") }
-        Text(stringResource(R.string.common_wellness_footer),
-            style = MaterialTheme.typography.bodySmall, color = TextMuted,
-            textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-    }
-}
+// V2-d: CrisisScreen (the onboarding-only crisis twin) was deleted here —
+// UrgentSupportScreen(inFunnel = true) is the one crisis surface now, and the
+// 18 dead urgent_* strings that duplicated crisis_* left with it.

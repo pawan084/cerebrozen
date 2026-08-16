@@ -1,6 +1,16 @@
 package com.cerebrozen.app.ui.games
 
 import androidx.annotation.StringRes
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Adjust
+import androidx.compose.material.icons.outlined.CenterFocusStrong
+import androidx.compose.material.icons.outlined.Extension
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.PanTool
+import androidx.compose.material.icons.outlined.RadioButtonUnchecked
+import androidx.compose.material.icons.outlined.Shuffle
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.cerebrozen.app.R
 
 enum class GameCategory(@StringRes val titleRes: Int) {
@@ -51,7 +61,7 @@ data class MindfulGame(
      * the old vocabulary so it cannot come back through a third door. */
     @StringRes val practiceRes: Int,
     val category: GameCategory,
-    val glyph: String,
+    val glyph: ImageVector,
     val mechanic: GameMechanic,
 )
 
@@ -68,15 +78,18 @@ object MindfulGameRegistry {
      * remapped in [find], so an old deeplink or a saved shortcut lands on the
      * game that absorbed them instead of a blank screen.
      */
+    // Outlined Material icons, not emoji (audit K wave 2): the tiles wore a
+    // third icon language (🎯 🛑 🔢 and a bare letter "S") that clashed with the
+    // app's line-icon system and rendered platform-dependent.
     val games = listOf(
-        game("color-tap", R.string.mg_color_tap, R.string.mg_color_tap_desc, R.string.mg_selective_attention, GameCategory.Focus, "🎯", GameMechanic.ColorTap),
-        game("stroop-flow", R.string.mg_stroop_flow, R.string.mg_stroop_flow_desc, R.string.mg_inhibitory_control, GameCategory.Focus, "S", GameMechanic.Stroop),
-        game("freeze-switch", R.string.mg_freeze_switch, R.string.mg_freeze_switch_desc, R.string.mg_reaction_control, GameCategory.Focus, "🛑", GameMechanic.GoNoGo),
-        game("pattern-recall", R.string.mg_pattern_recall, R.string.mg_pattern_recall_desc, R.string.mg_working_memory, GameCategory.Memory, "🔢", GameMechanic.SequenceRecall),
-        game("thought-sort", R.string.mg_thought_sort, R.string.mg_thought_sort_desc, R.string.mg_cognitive_reframing, GameCategory.Resilience, "🧩", GameMechanic.ThoughtSort),
-        game("rule-switch", R.string.mg_rule_switch, R.string.mg_rule_switch_desc, R.string.mg_mental_flexibility, GameCategory.Flexibility, "🔀", GameMechanic.RuleSwitch),
-        game("breathing-rhythm", R.string.mg_breathing_rhythm, R.string.mg_breathing_rhythm_desc, R.string.mg_calm_focus, GameCategory.Calm, "◯", GameMechanic.BreathPace),
-        game("still-point", R.string.mg_still_point, R.string.mg_still_point_desc, R.string.mg_relaxation, GameCategory.Calm, "•", GameMechanic.StillPoint),
+        game("color-tap", R.string.mg_color_tap, R.string.mg_color_tap_desc, R.string.mg_selective_attention, GameCategory.Focus, Icons.Outlined.Adjust, GameMechanic.ColorTap),
+        game("stroop-flow", R.string.mg_stroop_flow, R.string.mg_stroop_flow_desc, R.string.mg_inhibitory_control, GameCategory.Focus, Icons.Outlined.Palette, GameMechanic.Stroop),
+        game("freeze-switch", R.string.mg_freeze_switch, R.string.mg_freeze_switch_desc, R.string.mg_reaction_control, GameCategory.Focus, Icons.Outlined.PanTool, GameMechanic.GoNoGo),
+        game("pattern-recall", R.string.mg_pattern_recall, R.string.mg_pattern_recall_desc, R.string.mg_working_memory, GameCategory.Memory, Icons.Outlined.GridView, GameMechanic.SequenceRecall),
+        game("thought-sort", R.string.mg_thought_sort, R.string.mg_thought_sort_desc, R.string.mg_cognitive_reframing, GameCategory.Resilience, Icons.Outlined.Extension, GameMechanic.ThoughtSort),
+        game("rule-switch", R.string.mg_rule_switch, R.string.mg_rule_switch_desc, R.string.mg_mental_flexibility, GameCategory.Flexibility, Icons.Outlined.Shuffle, GameMechanic.RuleSwitch),
+        game("breathing-rhythm", R.string.mg_breathing_rhythm, R.string.mg_breathing_rhythm_desc, R.string.mg_calm_focus, GameCategory.Calm, Icons.Outlined.RadioButtonUnchecked, GameMechanic.BreathPace),
+        game("still-point", R.string.mg_still_point, R.string.mg_still_point_desc, R.string.mg_relaxation, GameCategory.Calm, Icons.Outlined.CenterFocusStrong, GameMechanic.StillPoint),
     )
 
     /** Retired ids -> the game that absorbed them. Tidying the catalogue must
@@ -103,6 +116,6 @@ object MindfulGameRegistry {
         games.firstOrNull { it.id == id }
             ?: retired[id]?.let { successor -> games.firstOrNull { it.id == successor } }
 
-    private fun game(id: String, name: Int, description: Int, practice: Int, category: GameCategory, glyph: String, mechanic: GameMechanic) =
+    private fun game(id: String, name: Int, description: Int, practice: Int, category: GameCategory, glyph: androidx.compose.ui.graphics.vector.ImageVector, mechanic: GameMechanic) =
         MindfulGame(id, name, description, practice, category, glyph, mechanic)
 }

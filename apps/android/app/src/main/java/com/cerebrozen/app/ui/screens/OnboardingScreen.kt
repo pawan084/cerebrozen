@@ -51,7 +51,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Air
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.MoreHoriz
+import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.NotificationsOff
+import androidx.compose.material.icons.automirrored.outlined.TrendingDown
+import androidx.compose.material.icons.automirrored.outlined.TrendingFlat
+import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.ui.semantics.contentDescription
@@ -162,8 +171,11 @@ import com.cerebrozen.app.ui.theme.FieldFill
 import com.cerebrozen.app.ui.theme.Ok
 import com.cerebrozen.app.ui.theme.OkSoft
 
+// V2-e: the six retired steps (Language/Intro/Reset/Reflection/Notify/Ready)
+// left the enum with their branches — entries are in FUNNEL order because
+// AnimatedContent derives slide direction from ordinal.
 internal enum class OStep {
-    Welcome, Language, Intro, Disclosure, State, Reset, Reflection, Consent, Notify, Guest, SignUp, Ready, Under18
+    Welcome, Disclosure, Consent, State, Guest, SignUp, Under18
 }
 
 private val OnboardingSerif = FontFamily(Font(R.font.newsreader))
@@ -172,32 +184,27 @@ private val OnboardingSerif = FontFamily(Font(R.font.newsreader))
  * ONB-xx numbering is the contract; [funnelStepIndex] maps this client's steps
  * onto it, so a step this app has not built yet leaves a gap in the count
  * rather than renumbering the ones around it. */
-internal const val ONBOARDING_STEPS = 10
+internal const val ONBOARDING_STEPS = 4
 
 /**
- * Which of the prototype's ten onboarding steps this one is (1-based).
+ * Which of the V2 funnel's four steps this one is (1-based).
  *
- * Deliberately NOT `OStep.ordinal + 1`. The ref/mobile.html numbering is a
- * fixed contract shared with iOS and `apps/app` — ONB-01 is the language pick,
- * ONB-04 is the first check-in — and this client does not yet ship ONB-06
- * (post-reset reflection) or ONB-10 (the ready screen). Deriving from the enum
- * would silently renumber every later step the day one of those lands, and the
- * user-visible "N of 10" would disagree with the spec, the other clients and
- * the analytics funnel all at once.
+ * V2-c (REDESIGN_V2 §3.2) cut the ten-step ONB contract to four counted steps:
+ * Disclosure → Consent → State → Guest. Welcome and Under18 stay outside the
+ * count; the retired steps (Language/Intro/Reset/Reflection/Notify/Ready) keep
+ * a nearest-live index so an off-path composition can never crash the stepper —
+ * they are unreachable from `order` and leave entirely in the V2-e sweep.
+ * Deliberately NOT `OStep.ordinal + 1`, for the same reason as ever: the
+ * user-visible "N of 4" and the analytics funnel must not renumber themselves
+ * the day the enum changes shape.
  */
 internal fun funnelStepIndex(step: OStep): Int = when (step) {
-    OStep.Welcome -> 0        // SPL-01: the launch screen, outside the count
-    OStep.Language -> 1       // ONB-01
-    OStep.Intro -> 2          // ONB-02
-    OStep.Disclosure -> 3     // ONB-03
-    OStep.State -> 4          // ONB-04
-    OStep.Reset -> 5          // ONB-05
-    OStep.Reflection -> 6     // ONB-06
-    OStep.Consent -> 7        // ONB-07
-    OStep.Notify -> 8         // ONB-08
-    OStep.Guest, OStep.SignUp -> 9 // ONB-09 / account branch
-    OStep.Ready -> 10         // ONB-10
-    OStep.Under18 -> 0        // ONB-11: branch, outside the ten-step count
+    OStep.Welcome -> 0        // the launch screen, outside the count
+    OStep.Disclosure -> 1
+    OStep.Consent -> 2
+    OStep.State -> 3
+    OStep.Guest, OStep.SignUp -> 4
+    OStep.Under18 -> 0        // branch, outside the count
 }
 
 /** How far along the funnel a step sits. Keyed off the step itself — never off
@@ -205,16 +212,10 @@ internal fun funnelStepIndex(step: OStep): Int = when (step) {
  * 1f and snap the bar to full from the Language step on). Pure + unit-tested. */
 internal fun funnelProgress(step: OStep): Float = when (step) {
     OStep.Welcome -> 0f
-    OStep.Language -> 0.1f
-    OStep.Intro -> 0.2f
-    OStep.Disclosure -> 0.3f
-    OStep.State -> 0.4f
-    OStep.Reset -> 0.5f
-    OStep.Reflection -> 0.6f
-    OStep.Consent -> 0.75f
-    OStep.Notify -> 0.88f
+    OStep.Disclosure -> 0.25f
+    OStep.Consent -> 0.5f
+    OStep.State -> 0.75f
     OStep.Guest, OStep.SignUp -> 0.9f
-    OStep.Ready -> 1f
     OStep.Under18 -> 0f
 }
 
@@ -235,6 +236,7 @@ internal fun onboardingMoodNote(mood: String): String = when (mood) {
     "Anxious" -> "Loud thoughts"
     "Low" -> "Heavy"
     "Tired" -> "Need rest"
+    "Overwhelmed" -> "Too much at once"
     "Not sure" -> "Closest fit right now"
     // Retained for rows written before the taxonomy converged on six states:
     // old check-ins still hold "Okay" and must still render a note.
@@ -250,12 +252,17 @@ internal data class StateOption(
     val mood: String,
 )
 
+// V2-c / Audit L defect 3: the tiles' LABELS converged on the six-mood display
+// vocabulary ("Clear", "Overwhelmed", …) while the wire moods kept the old
+// situation mapping — so tapping "Clear · I feel steady" wrote mood "Anxious"
+// as a brand-new profile's very first data. The wire mood now matches what the
+// tile says; the ids/goals/motivations stay (they seed the plan, not a claim).
 internal val STATE_OPTIONS = listOf(
-    StateOption("stressed", R.string.ob_state_opt_stressed, "Calm", "Reduce stress", "Anxious"),
+    StateOption("stressed", R.string.ob_state_opt_stressed, "Calm", "Reduce stress", "Good"),
     StateOption("night", R.string.ob_state_opt_night, "Calm", "Sleep better", "Tired"),
     StateOption("overthinking", R.string.ob_state_opt_overthinking, "Focus", "Stop overthinking", "Anxious"),
     StateOption("doubt", R.string.ob_state_opt_doubt, "Confidence", "Build confidence", "Low"),
-    StateOption("distant", R.string.ob_state_opt_distant, "Connection", "Feel less alone", "Low"),
+    StateOption("distant", R.string.ob_state_opt_distant, "Connection", "Feel less alone", "Overwhelmed"),
     // "Okay" was outside the six-state taxonomy every check-in screen offers
     // (TodayScreen.MOODS / backend services/moods.py), so this seeded a first
     // mood no picker could show back. "Not sure" is the honest in-taxonomy
@@ -283,36 +290,18 @@ internal val LANGUAGES = listOf(
  * (You → Settings renders the saved value, which is the English wire string.) */
 internal fun languageLabelRes(value: String): Int? =
     LANGUAGES.firstOrNull { it.id == value }?.labelRes
-/** When the daily reminder fires. Single-select, so every option here must be a
- * TIME — anything else silently means "none" once [applyReminderChoice] falls
- * through its `when`.
- *
- * A "Private previews" chip used to sit in this group. Nothing read the value: it
- * was never persisted, no preview setting exists anywhere in the app, and the
- * reminder it would have hidden says only "A moment for you". What it actually
- * did was turn reminders off — so a user who tapped it, wanting a *discreet*
- * daily nudge, got no nudge at all and was told nothing. */
-internal val NOTIFY = listOf(
-    PickOption("morning", R.string.ob_notify_morning),
-    PickOption("evening", R.string.ob_notify_evening),
-    PickOption("custom", R.string.ob_notify_custom),
-    PickOption("none", R.string.ob_notify_none),
-)
-
-/** The hour a reminder option schedules, or null for "no reminder".
- *
- * Pure and internal so the invariant is a TEST rather than a comment: every id
- * in [NOTIFY] must resolve here. When it was an inline `when` with a silent
- * `else`, an option was added to the chip group that this mapping had never
- * heard of, and choosing it quietly meant "off". */
-internal fun reminderHourFor(option: String): Int? = when (option) {
-    "morning" -> 8
-    "evening" -> 21
-    "custom" -> 21
-    "none" -> null
-    else -> null
-}
+// V2-e: the Notify step's machinery (NOTIFY options + reminderHourFor +
+// applyReminderChoice) left with the step. Reminders are asked in context on
+// Today after the first check-in, and Settings → Reminders owns scheduling.
 // Consent rows render from the localized notice (DPDP s.5(3) — ConsentNotice.kt).
+
+/** The onboarding consent state: all six DPDP categories, every one OFF.
+ * Factored out (V2-c) so a unit test can pin "nothing pre-ticked" — the
+ * all-false default has been silently reverted twice in this file's history. */
+internal fun defaultConsent() = mutableStateMapOf(
+    "mood_history" to false, "ai_memory" to false, "journal_memory" to false,
+    "sleep_history" to false, "voice_storage" to false, "model_training" to false,
+)
 
 /** Set when the post-sign-up consent write never reached the server, so Privacy
  * can say so instead of letting a failed write pass silently. */
@@ -361,7 +350,10 @@ fun Onboarding() {
     var step by rememberSaveable { mutableStateOf(OStep.Welcome) }
     if (urgentSupport) {
         androidx.activity.compose.BackHandler { urgentSupport = false }
-        CrisisScreen(onBack = { urgentSupport = false })
+        // V2-d: the one crisis surface, everywhere — the onboarding-only
+        // CrisisScreen twin is deleted; inFunnel hides the doors that need a
+        // NavHost, and the dial actions (intents) work here as anywhere.
+        UrgentSupportScreen(onBack = { urgentSupport = false }, onOpen = {}, inFunnel = true)
         return
     }
     if (signIn) {
@@ -370,9 +362,17 @@ fun Onboarding() {
         return
     }
 
+    // V2-c: the funnel is FIVE screens (REDESIGN_V2 §3.2) — welcome, the legal
+    // gate, consent, the first check-in, the guest/account branch — and then
+    // Today. What left, and where it went: Language (auto-detected below;
+    // changeable in You → Language), Intro (a brochure whose three cards all
+    // called next()), Reset (a feature staged as setup — it IS Today's first
+    // recommendation), Reflection (asked a question and discarded the answer),
+    // Notify (reminders are asked in-context after a real check-in exists),
+    // Ready (a pure interstitial; its continueAsGuest moved onto Guest's CTA).
+    // Their OStep branches remain below, unreachable, until the V2-e sweep.
     val order = listOf(
-        OStep.Welcome, OStep.Language, OStep.Intro, OStep.Disclosure, OStep.State,
-        OStep.Reset, OStep.Reflection, OStep.Consent, OStep.Notify, OStep.Guest, OStep.Ready,
+        OStep.Welcome, OStep.Disclosure, OStep.Consent, OStep.State, OStep.Guest,
     )
     fun next() { val i = order.indexOf(step); if (i < order.lastIndex) step = order[i + 1] }
     fun back() {
@@ -397,42 +397,17 @@ fun Onboarding() {
     // First-party funnel counts (anonymous install id, opt-out; mirrors iOS).
     LaunchedEffect(step) { Analytics.track("onboarding_step", funnelStepName(step.name)) }
 
-    var language by rememberSaveable { mutableStateOf("English") }
     var state by rememberSaveable(stateSaver = StateOptionSaver) { mutableStateOf<StateOption?>(null) }
-    var notify by rememberSaveable { mutableStateOf("evening") }
     var ageConfirmed by rememberSaveable { mutableStateOf(false) }
-    // Did they actually breathe, or press "Skip for now"? The Notify step used
-    // to congratulate everyone on "your first win" either way — telling a user
-    // who skipped that they had achieved something they had just declined.
-    var resetDone by rememberSaveable { mutableStateOf(false) }
     // Private by default: NOTHING pre-ticked — consent must be an action
-    // (EDPB/ICO; matches iOS ConsentScreen + web onboarding). The 38a63fa fix
-    // was silently reverted by the cc7cbd4 "ui" commit (same commit as the
-    // namespace slip) — restored 2026-07-25; keep every default false.
-    val consent = rememberSaveable(saver = ConsentSaver) {
-        mutableStateMapOf(
-            "mood_history" to true, "ai_memory" to true, "journal_memory" to false,
-            "sleep_history" to false, "voice_storage" to false, "model_training" to false,
-        )
-    }
+    // (EDPB/ICO; matches iOS ConsentScreen + web onboarding). This is the
+    // THIRD restoration of all-false (38a63fa → reverted by cc7cbd4 →
+    // restored 2026-07-25 → reverted again unnoticed → restored 2026-08-15,
+    // V2-c / Audit L defect 1) — now pinned by OnboardingLogicTest so the
+    // next silent revert fails CI instead of shipping.
+    val consent = rememberSaveable(saver = ConsentSaver) { defaultConsent() }
 
-    // Apply the onboarding reminder choice for real: persist it, schedule the daily
-    // alarm at the chosen hour, and ask for notification permission (Android 13+).
-    // Without this the Notify step's selection did nothing.
     val context = LocalContext.current
-    val notifyPermLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
-    fun applyReminderChoice() {
-        val prefs = context.getSharedPreferences("cerebro", Context.MODE_PRIVATE)
-        val hour = reminderHourFor(notify)
-            ?: run { prefs.edit().putBoolean("reminder_on", false).apply(); return }
-        prefs.edit().putBoolean("reminder_on", true).apply()
-        com.cerebrozen.app.notify.Reminders.schedule(context, hour)
-        if (Build.VERSION.SDK_INT >= 33 &&
-            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            notifyPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
-    }
 
     // W10: calm step transitions — a 250ms fade with a slight directional slide
     // (forward slides in from the right, back from the left). Reduce Motion
@@ -454,24 +429,6 @@ fun Onboarding() {
     ) { current ->
         when (current) {
         OStep.Welcome -> Welcome(onStart = { next() }, onSignIn = { signIn = true })
-
-        OStep.Intro -> Funnel(
-            OStep.Intro,
-            stringResource(R.string.ob_intro_eyebrow), stringResource(R.string.ob_intro_title),
-            stringResource(R.string.ob_intro_sub), stringResource(R.string.ob_intro_cta),
-            onBack = { back() }, onPrimary = { next() },
-            barTitle = stringResource(R.string.ob_intro_bar_title),
-            onUrgent = { urgentSupport = true },
-        ) {
-            Text(stringResource(R.string.ob_intro_section),
-                style = MaterialTheme.typography.titleLarge.copy(fontFamily = OnboardingSerif), color = TextPrimary)
-            // These are navigation cards, not decorative feature bullets. Each
-            // opens the next required onboarding step; the chevron also makes
-            // their tap affordance explicit and keeps the funnel order intact.
-            OnboardingFeatureCard("♧", stringResource(R.string.ob_intro_settle), stringResource(R.string.ob_intro_settle_sub), onClick = { next() })
-            OnboardingFeatureCard("□", stringResource(R.string.ob_intro_talk), stringResource(R.string.ob_intro_talk_sub), onClick = { next() })
-            OnboardingFeatureCard("▣", stringResource(R.string.ob_intro_write), stringResource(R.string.ob_intro_write_sub), onClick = { next() })
-        }
 
         OStep.Disclosure -> Funnel(
             OStep.Disclosure,
@@ -516,80 +473,6 @@ fun Onboarding() {
             // so they stay a matched pair without either one cropping its body.
         }
 
-        OStep.Language -> {
-            // The device's own language, so "Detected on this device" is a fact
-            // rather than a decoration. The prototype hardcodes English as both
-            // the detected AND the selected row, which is why its screenshot
-            // shows English ticked under a button reading "Continue in Hindi" —
-            // two different answers to one question. Here the tick follows the
-            // real selection and the caption follows the real locale.
-            val deviceLang = remember { detectedLanguageId(java.util.Locale.getDefault().language) }
-            var showAll by rememberSaveable { mutableStateOf(false) }
-            // English and Hindi lead; the rest sit behind "View all languages",
-            // matching ONB-01's shape without pretending the list is only two.
-            val lead = remember { LANGUAGES.filter { it.id == "English" || it.id == "Hindi" } }
-            val rest = remember { LANGUAGES.filterNot { it.id == "English" || it.id == "Hindi" } }
-            Funnel(
-                OStep.Language,
-                stringResource(R.string.ob_language_eyebrow), stringResource(R.string.ob_language_title),
-                stringResource(R.string.ob_language_sub),
-                // "Continue in Hindi" — the CTA names what the next screen will
-                // be written in, so the choice is confirmed before it applies.
-                stringResource(
-                    R.string.ob_language_continue_in,
-                    stringResource(languageLabelRes(language) ?: R.string.ob_lang_english),
-                ),
-                onBack = { back() }, onPrimary = { next() },
-                progress = 0.38f,
-                barTitle = stringResource(R.string.ob_language_bar_title),
-                onUrgent = { urgentSupport = true },
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
-                    lead.forEach { option ->
-                        LanguageCard(
-                            title = stringResource(option.labelRes),
-                            subtitle = if (option.id == deviceLang) {
-                                stringResource(R.string.ob_lang_detected)
-                            } else {
-                                ""
-                            },
-                            selected = language == option.id,
-                        ) {
-                            language = option.id
-                            applyOnboardingLanguage(context, option.id)
-                        }
-                    }
-                    if (showAll) {
-                        rest.forEach { option ->
-                            LanguageCard(
-                                title = stringResource(option.labelRes),
-                                subtitle = if (option.id == deviceLang) {
-                                    stringResource(R.string.ob_lang_detected)
-                                } else {
-                                    ""
-                                },
-                                selected = language == option.id,
-                            ) {
-                                language = option.id
-                                applyOnboardingLanguage(context, option.id)
-                            }
-                        }
-                    } else {
-                        LanguageCard(
-                            title = stringResource(R.string.ob_lang_view_all),
-                            // Names the languages actually behind the row. A
-                            // generic "and more" hides whether the one you want
-                            // is in there at all.
-                            // map is inline (so stringResource is legal here);
-                            // joinToString's transform is not.
-                            subtitle = rest.map { stringResource(it.labelRes) }.joinToString(" · "),
-                            selected = false,
-                        ) { showAll = true }
-                    }
-                }
-            }
-        }
-
         OStep.State -> Funnel(
             OStep.State,
             stringResource(R.string.ob_state_eyebrow), stringResource(R.string.ob_state_title),
@@ -607,41 +490,13 @@ fun Onboarding() {
                                 label = stringResource(option.labelRes),
                                 subtitle = stateOptionSubtitle(option.id),
                                 selected = state?.id == option.id,
+                                icon = moodIcon(option.mood),
                                 modifier = Modifier.weight(1f),
                             ) { state = option }
                         }
                         if (pair.size == 1) Spacer(Modifier.weight(1f))
                     }
                 }
-            }
-        }
-
-        OStep.Reset -> ResetStep(
-            onDone = { resetDone = true; next() },
-            onSkip = { next() },
-            onBack = { back() },
-            onUrgent = { urgentSupport = true },
-        )
-
-        OStep.Reflection -> Funnel(
-            OStep.Reflection,
-            stringResource(R.string.ob_reflection_eyebrow), stringResource(R.string.ob_reflection_title),
-            stringResource(R.string.ob_reflection_sub), "",
-            onBack = { back() }, onPrimary = {}, primaryEnabled = false,
-            barTitle = stringResource(R.string.ob_reflection_bar_title),
-            onUrgent = { urgentSupport = true },
-        ) {
-            listOf(
-                "↘" to stringResource(R.string.ob_reflection_calmer),
-                "—" to stringResource(R.string.ob_reflection_same),
-                "↗" to stringResource(R.string.ob_reflection_unsettled),
-                "·" to stringResource(R.string.ob_reflection_skip),
-            ).forEachIndexed { index, (icon, label) ->
-                OnboardingFeatureCard(
-                    icon, label,
-                    if (index == 3) stringResource(R.string.ob_reflection_private) else "",
-                    onClick = { next() },
-                )
             }
         }
 
@@ -661,12 +516,19 @@ fun Onboarding() {
                     .border(1.dp, InfoCardStroke, RoundedCornerShape(18.dp)),
             ) {
                 // All six categories, every time — DPDP "specific and informed":
-                // nothing collected under a switch the user never saw.
+                // nothing collected under a switch the user never saw. The
+                // comment said six while the list held three and the POST sent
+                // all six keys (V2-c / Audit L defect 2) — the three unseen
+                // categories were being asserted (as false) on the user's
+                // behalf. Every posted key now has a visible switch.
                 // Keys are the consent contract; labels/hints are display copy.
                 val rows = listOf(
                     Triple("mood_history", stringResource(R.string.ob_consent_mood), stringResource(R.string.ob_consent_mood_hint)),
+                    Triple("sleep_history", stringResource(R.string.ob_consent_sleep), stringResource(R.string.ob_consent_sleep_hint)),
                     Triple("ai_memory", stringResource(R.string.ob_consent_ai), stringResource(R.string.ob_consent_ai_hint)),
                     Triple("journal_memory", stringResource(R.string.ob_consent_journal), stringResource(R.string.ob_consent_journal_hint)),
+                    Triple("voice_storage", stringResource(R.string.ob_consent_voice), stringResource(R.string.ob_consent_voice_hint)),
+                    Triple("model_training", stringResource(R.string.ob_consent_training), stringResource(R.string.ob_consent_training_hint)),
                 )
                 rows.forEachIndexed { index, (key, label, hint) ->
                     // B37: heightIn + wrapping hint — "specific and
@@ -688,34 +550,13 @@ fun Onboarding() {
             }
         }
 
-        OStep.Notify -> Funnel(
-            OStep.Notify,
-            stringResource(R.string.ob_notify_eyebrow), stringResource(R.string.ob_notify_title),
-            stringResource(if (resetDone) R.string.ob_notify_sub else R.string.ob_notify_sub_skipped),
-            stringResource(R.string.ob_notify_cta), onBack = { back() }, onPrimary = { applyReminderChoice(); next() },
-            progress = 0.88f,
-            onUrgent = { urgentSupport = true },
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                NOTIFY.forEach { option ->
-                    val selected = notify == option.id
-                    OnboardingFeatureCard(
-                        if (option.id == "none") "×" else "♧",
-                        stringResource(option.labelRes),
-                        if (option.id == "evening") stringResource(R.string.ob_notify_recommended) else "",
-                        selected = selected,
-                        trailingCheck = selected,
-                        onClick = { notify = option.id },
-                    )
-                }
-            }
-        }
-
         OStep.Guest -> Funnel(
             OStep.Guest,
             stringResource(R.string.ob_guest_eyebrow), stringResource(R.string.ob_guest_title),
             stringResource(R.string.ob_guest_sub), stringResource(R.string.ob_guest_continue),
-            onBack = { back() }, onPrimary = { next() },
+            // V2-c: "Continue as guest" DOES it — the Ready interstitial that
+            // used to sit between this tap and the app is gone.
+            onBack = { back() }, onPrimary = { Analytics.unlock(); Session.continueAsGuest(context) },
             barTitle = stringResource(R.string.ob_guest_bar_title),
             onUrgent = { urgentSupport = true },
             secondary = {
@@ -730,7 +571,7 @@ fun Onboarding() {
             ReferenceCard(borderColor = Periwinkle.copy(alpha = .24f), fill = CardFill) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
                     Box(Modifier.size(44.dp).clip(RoundedCornerShape(15.dp)).background(OkSoft), contentAlignment = Alignment.Center) {
-                        Text("◇", color = Ok, style = MaterialTheme.typography.titleLarge)
+                        Icon(Icons.Outlined.Lock, contentDescription = null, tint = Ok, modifier = Modifier.size(22.dp))
                     }
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.ob_guest_private), style = MaterialTheme.typography.titleSmall, color = TextPrimary)
@@ -738,21 +579,6 @@ fun Onboarding() {
                     }
                 }
             }
-        }
-
-        OStep.Ready -> Funnel(
-            OStep.Ready,
-            stringResource(R.string.ob_ready_eyebrow), stringResource(R.string.ob_ready_title),
-            stringResource(R.string.ob_ready_sub), stringResource(R.string.ob_ready_cta),
-            onBack = { back() }, onPrimary = {
-                Analytics.unlock()
-                Session.continueAsGuest(context)
-            },
-            barTitle = stringResource(R.string.ob_ready_bar_title),
-            onUrgent = { urgentSupport = true },
-            titleCentered = true,
-        ) {
-            WelcomeOrb(Modifier.align(Alignment.CenterHorizontally), 150.dp)
         }
 
         OStep.Under18 -> Funnel(
@@ -899,48 +725,6 @@ private fun WelcomeOrb(modifier: Modifier = Modifier, size: androidx.compose.ui.
         )
     }
 }
-
-@Composable
-private fun ResetStep(onDone: () -> Unit, onSkip: () -> Unit, onBack: () -> Unit, onUrgent: () -> Unit) {
-    // Keep the same quiet bed as the full-screen reset. DisposableEffect inside
-    // this helper stops it as soon as onboarding advances, skips, or goes back.
-    ToolAmbienceEffect(R.raw.ambient_bed)
-    // The orb, count and Reduce-Motion behaviour all come from the shared
-    // BreatheEngine (Reset preset: four in, four out, no holds) — the same
-    // engine every breathe surface in the app hosts.
-    Funnel(
-        OStep.Reset,
-        stringResource(R.string.ob_reset_eyebrow), stringResource(R.string.ob_reset_title),
-        stringResource(R.string.ob_reset_sub),
-        stringResource(R.string.ob_reset_cta), onBack = onBack, onPrimary = onDone,
-        progress = 0.62f,
-        compactTitle = false,
-        barTitle = stringResource(R.string.ob_reset_bar_title),
-        onUrgent = onUrgent,
-        secondary = {
-            Box(
-                Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(26.dp))
-                    .background(ResetDoneFill).clickable(onClick = onSkip),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(stringResource(R.string.ob_reset_skip), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-            }
-        },
-    ) {
-        BreatheEngine(
-            preset = BreathePreset.Reset,
-            modifier = Modifier.fillMaxWidth(),
-            chimeOn = true,
-            compact = true,
-        )
-    }
-}
-
-// ── Shared bits ──────────────────────────────────────────────────────────
-
-/** The last funnel fraction shown, so the next step's bar animates from it
- * (each step is a separate composition inside AnimatedContent). Cosmetic only. */
-private object FunnelProgressMemory { var last = 0f }
 
 @Composable
 private fun Funnel(
@@ -1296,6 +1080,7 @@ private fun StateOptionRow(
     label: String,
     subtitle: String,
     selected: Boolean,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
@@ -1310,8 +1095,12 @@ private fun StateOptionRow(
                 .background(if (selected) Color.White.copy(alpha = .14f) else CardFill),
             contentAlignment = Alignment.Center,
         ) {
-            Text(if (selected) "≈" else "·", color = if (selected) Color.White else Periwinkle,
-                style = MaterialTheme.typography.titleLarge)
+            // Audit K: the old "·"/"≈" glyphs made six identical dot tiles —
+            // the first check-in looked unfinished. Selection reads from the
+            // tile colours; the icon stays put and names the state.
+            Icon(icon, contentDescription = null,
+                tint = if (selected) Color.White else Periwinkle,
+                modifier = Modifier.size(19.dp))
         }
         Column {
             Text(label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
@@ -1331,37 +1120,6 @@ private fun SecondaryOnboardingButton(label: String, onClick: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Text(label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Periwinkle)
-    }
-}
-
-@Composable
-private fun OnboardingFeatureCard(
-    glyph: String,
-    title: String,
-    subtitle: String,
-    selected: Boolean = false,
-    trailingCheck: Boolean = false,
-    onClick: (() -> Unit)? = null,
-) {
-    val shape = RoundedCornerShape(21.dp)
-    Row(
-        Modifier.fillMaxWidth().heightIn(min = 70.dp).clip(shape)
-            .background(if (selected) FieldFill else CardFill)
-            .border(if (selected) 2.dp else 1.dp, if (selected) Periwinkle else ProgressTrack, shape)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(15.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(13.dp),
-    ) {
-        Box(Modifier.size(44.dp).clip(RoundedCornerShape(15.dp)).background(FieldFill), contentAlignment = Alignment.Center) {
-            Text(glyph, color = Periwinkle, style = MaterialTheme.typography.titleLarge)
-        }
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
-            if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
-        }
-        if (trailingCheck) Icon(Icons.Outlined.Check, null, tint = Periwinkle, modifier = Modifier.size(20.dp))
-        else if (onClick != null) Icon(Icons.Outlined.ChevronRight, null, tint = Periwinkle, modifier = Modifier.size(19.dp))
     }
 }
 

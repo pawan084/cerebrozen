@@ -67,4 +67,26 @@ class AuthFlowTest {
         assertTrue("consent must reach the network despite cancellation", calls.any { it.endsWith("/users/me/consent") })
         assertTrue("first check-in must reach the network despite cancellation", calls.any { it.endsWith("/moods") })
     }
+
+    @Test
+    fun signOut_clears_the_leaving_persons_snapshots() = runTest {
+        // Found live on the 2026-08-16 device walk: after sign-out, a fresh
+        // GUEST session greeted the previous account by name and echoed their
+        // last check-in — `home_snapshot` hydrates Today's first frame and had
+        // outlived the account it described. On a shared device that is a
+        // privacy leak, not a convenience.
+        val store = FakeStore()
+        Session.resetForTest(store) { url, _, _, _, _, _ ->
+            200 to if (url.endsWith("/auth/login")) tokens else "{}"
+        }
+        Session.signIn("e@x.com", "pw")
+        Session.prefPut("home_snapshot", """{"name":"Smoke","recent":[]}""")
+        Session.prefPut("sleep_snapshot", """{"nights":3}""")
+        Session.prefPut("toolkit_recent", "ground")
+        Session.prefPut("milestone_celebrated", "7|2026-08-16")
+        Session.signOut()
+        listOf("home_snapshot", "sleep_snapshot", "toolkit_recent", "milestone_celebrated").forEach { key ->
+            assertTrue("$key must not survive sign-out", Session.prefGet(key) == null)
+        }
+    }
 }

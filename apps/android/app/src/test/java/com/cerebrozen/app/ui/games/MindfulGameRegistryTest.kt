@@ -32,8 +32,12 @@ class MindfulGameRegistryTest {
             assertNotEquals(0, game.nameRes)
             assertNotEquals(0, game.descriptionRes)
             assertNotEquals(0, game.practiceRes)
-            assertTrue("a card with no glyph draws an empty tile", game.glyph.isNotBlank())
         }
+        // Icons are ImageVectors now (audit K wave 2, emoji retired); the tile
+        // can no longer be blank, but two games sharing one icon would make the
+        // grid lie about variety — the same failure the mechanic dedupe fixed.
+        val icons = MindfulGameRegistry.games.map { it.glyph }
+        assertTrue("no two games may wear the same icon", icons.size == icons.toSet().size)
     }
 
     @Test

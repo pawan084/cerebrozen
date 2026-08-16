@@ -102,13 +102,11 @@ import com.cerebrozen.app.ui.screens.CompanionStyleScreen
 import com.cerebrozen.app.ui.screens.LanguageScreen
 import com.cerebrozen.app.ui.screens.NotificationInboxScreen
 import com.cerebrozen.app.ui.screens.CrisisRegionScreen
-import com.cerebrozen.app.ui.screens.CrisisScreen
 import com.cerebrozen.app.ui.screens.DataExportScreen
 import com.cerebrozen.app.ui.screens.GuidedImageryScreen
 import com.cerebrozen.app.ui.screens.HumanSupportScreen
 import com.cerebrozen.app.ui.screens.JournalScreen
 import com.cerebrozen.app.ui.screens.Onboarding
-import com.cerebrozen.app.ui.screens.PatternGlowScreen
 import com.cerebrozen.app.ui.screens.PatternScreen
 import com.cerebrozen.app.ui.screens.TrendsScreen
 import com.cerebrozen.app.ui.screens.PlanScreen
@@ -133,7 +131,6 @@ import com.cerebrozen.app.ui.screens.AuthScreen
 import com.cerebrozen.app.ui.screens.ToolkitScreen
 import com.cerebrozen.app.ui.screens.WindDownRitualScreen
 import com.cerebrozen.app.ui.screens.YouScreen
-import com.cerebrozen.app.ui.screens.ZenRipplesScreen
 import com.cerebrozen.app.ui.screens.AppearanceScreen
 import com.cerebrozen.app.ui.theme.AppTheme
 import com.cerebrozen.app.ui.theme.NavPillBottom
@@ -151,37 +148,36 @@ import com.cerebrozen.app.ui.theme.themeModeFromPref
 // W24: the tabs wear the hand-drawn orb-family line icons (res/drawable/ic_tab_*)
 // instead of stock Material glyphs — one consistent 2dp rounded-line set.
 //
-// W25 — the spec's five tabs (docs/REDESIGN_V2.md §3.1, owner ruling §6.1):
-// **Today · Explore · Talk · Journal · You**. Two changes from the shipped set:
+// W25 history (docs/REDESIGN_V2_2026-08-06-lightdawn.md §3.1/§6.1): the
+// Light-Dawn ruling demoted Sleep to a pushed screen and gave Explore the
+// slot. Home became **Today** in that pass — label and icon only; the route
+// stays `home` and the enum constant keeps its name so ~30 call sites,
+// deeplinks and saved back-stack entries keep working.
 //
-//  * Home is now **Today**. Only the label and the icon move; the route stays
-//    `home` so every deeplink, saved back-stack entry, nudge target and test
-//    that names it keeps working. The enum constant keeps its name for the same
-//    reason — renaming it would churn ~30 call sites to no user-visible end.
-//  * Sleep **leaves the tab bar** and Explore takes the slot. Sleep is now
-//    reached from Explore, from Today's sleep entry points and from the sleep
-//    quick tools; its route is unchanged, so nothing that pointed at it broke.
-//    The demotion is a recorded owner decision, not a mechanical one — Sleep is
-//    the evidenced flagship, and REDESIGN_V2 §6.1 says so out loud.
-//
-// Urgent support does NOT depend on this set and never did: it hangs off the
-// You tab's Support card and Explore's support door, so it stays two taps from
-// every tab (verified in NavigationChromeTest).
+// Urgent support does NOT depend on the tab set and never did: since V2-a the
+// shield sits in the top bar of every frame (Page/PremiumPage/SubPage), and
+// the You tab keeps its Support card (verified in NavigationChromeTest).
+// V2-d (REDESIGN_V2 §2, owner-approved 2026-08-15): Sleep takes the tab back
+// and Explore retires. This REVERSES the earlier five-tab ruling deliberately:
+// Sleep is the only bias-robust evidence domain (F2, g=0.71) and had no
+// permanent door, while Explore held a slot for browsing — the behaviour the
+// V2 research found distressed users abandon ("relief, not discovery"). The
+// library survives as the practices hub behind Today's "more options →"; the
+// `explore` route stays registered for deeplinks.
 internal enum class Tab(val route: String, @androidx.annotation.StringRes val labelRes: Int, @androidx.annotation.DrawableRes val icon: Int) {
     Home("home", R.string.tab_today, R.drawable.ic_tab_today),
-    Explore("explore", R.string.tab_explore, R.drawable.ic_tab_explore),
+    Sleep("sleep", R.string.tab_sleep, R.drawable.ic_tab_sleep),
     Talk("talk", R.string.tab_talk, R.drawable.ic_tab_talk),
     Journal("journal", R.string.tab_journal, R.drawable.ic_tab_journal),
     You("you", R.string.tab_you, R.drawable.ic_tab_you),
 }
 
 internal fun shouldShowBottomBar(route: String?): Boolean =
-    // talk/live + talk/chat are legacy aliases that render the Talk tab —
-    // without them here a stale entry point showed Talk with no tab pill.
-    // `sleep` is deliberately absent: it is a pushed screen now, and showing
-    // the pill on a route no tab owns leaves five unlit tabs and no way to
-    // tell where you are.
-    route in setOf("home", "explore", "practice-library", "gratitude", "sleepinsights", "talk", "journal", "you", "talk/live", "talk/chat", "groundingintro", "checkin", "notifications", "insights", "trends", "patterns", "dailyplan", "goals", "baseline", "reminders")
+    // V2-d: `sleep` is a tab root again; `explore` is the pushed screen now
+    // (deeplink-only), so it leaves this set for the same reason sleep once
+    // did — a pill with five unlit tabs says nothing about where you are.
+    // V2-e: the talk/live, talk/chat and dailyplan aliases left the graph.
+    route in setOf("home", "sleep", "practice-library", "gratitude", "sleepinsights", "talk", "journal", "you", "groundingintro", "checkin", "notifications", "insights", "trends", "patterns", "goals", "baseline", "reminders")
 
 /**
  * Resolve a notification deeplink to an in-app route, or null to stay Home.
@@ -615,9 +611,11 @@ fun CereBroApp() {
                 currentRoute = when {
                     current.startsWith("talk/") -> Tab.Talk.route
                     current == "groundingintro" || current == "checkin" || current == "notifications" || current == "insights" || current == "trends" || current == "patterns" || current == "dailyplan" || current == "goals" || current == "baseline" -> Tab.Home.route
-                    // `sleep` left shouldShowBottomBar when it became a pushed
-                    // screen, so a branch for it here could never be reached.
-                    current == "practice-library" || current == "gratitude" || current == "sleepinsights" -> Tab.Explore.route
+                    // V2-d: the practice family is reached from Today's hero
+                    // ("more options →"), so those routes light Home; sleep
+                    // insights lights the Sleep tab it belongs to.
+                    current == "practice-library" || current == "gratitude" -> Tab.Home.route
+                    current == "sleepinsights" -> Tab.Sleep.route
                     current == "reminders" -> Tab.You.route
                     else -> current
                 },
@@ -693,21 +691,24 @@ fun CereBroApp() {
                     onUrgent = { open("crisis") },
                 )
             }
-            composable(Tab.Explore.route) { ExploreScreen(onOpen = open) }
+            // V2-d: Explore is deeplink-only (its tab went back to Sleep); the
+            // route survives so `cerebro://explore` nudges keep their promise.
+            composable("explore") { ExploreScreen(onOpen = open) }
             composable("practice-library") { PracticeLibraryScreen(onBack = back, onOpen = open) }
             composable("breathing-intro") {
                 PracticeBreathingScreen(onBack = back, onUrgent = { open("crisis") }, onBegin = { open("breathe/reset") })
             }
             // Sleep is a pushed screen since the five-tab pass — it takes an
             // onBack so it carries a visible back door, not just the gesture.
-            composable("sleep") { SleepScreen(onOpen = open, onBack = back) }
+            // V2-d: Sleep is a tab root — no back arrow; the brand mark takes
+            // the slot (walk defect: the root wore a back door to Today).
+            composable("sleep") { SleepScreen(onOpen = open) }
             composable(Tab.Talk.route) { TalkScreen(onOpen = open) }
             // The live/chat split belonged to the two-mode Talk screen. Talk is
             // one surface again — voice and typing live together, with the
             // composer pinned below the transcript — so both routes land on it
             // rather than dead-ending anything still pointing at them.
-            composable("talk/live") { TalkScreen(onOpen = open) }
-            composable("talk/chat") { TalkScreen(onOpen = open) }
+            // V2-e: the talk/live + talk/chat aliases are gone — one Talk, one route.
             composable(Tab.Journal.route) { JournalScreen(onOpen = open) }
             // The Home check-in's "Say more" bridge lands in the composer, not the hub.
             composable("journal/new") { JournalScreen(startInEntry = true, onOpen = open, onExit = back) }
@@ -739,7 +740,7 @@ fun CereBroApp() {
                 popEnterTransition = { fadeIn(tween(240)) + scaleIn(initialScale = 1.05f, animationSpec = tween(240)) },
                 popExitTransition = { scaleOut(targetScale = 0.85f, animationSpec = tween(260)) + fadeOut(tween(260)) },
             ) { PlayerScreen(onBack = back, onOpen = open) }
-            composable("plan") { PlanScreen(onBack = back) }
+            composable("plan") { PlanScreen(onBack = back, onOpen = open) }
             composable("search") { SearchScreen(onBack = back) }
             // patterns and trends open the REAL screens. Both were imported
             // and never routed while a Reference mock held the door — the same
@@ -748,12 +749,12 @@ fun CereBroApp() {
             composable("trends") { TrendsScreen(onBack = back) }
             // `dailyplan` points at PlanScreen rather than being deleted: any
             // stale link still lands on the real plan instead of nowhere.
-            composable("dailyplan") { PlanScreen(onBack = back) }
+            // V2-e: the dailyplan alias is gone — plan is the one route.
             // sleepinsights KEPT and linked from the Sleep rhythm line. It is
             // wired week/month/3-month charts with no twin, so deleting it
             // would drop a feature rather than a duplicate.
             composable("sleepinsights") { ReferenceSleepInsightsScreen(onBack = back, onOpen = open) }
-            composable("safetyplan") { SafetyPlanScreen(onBack = back) }
+            composable("safetyplan") { SafetyPlanScreen(onBack = back, onOpen = open) }
             composable("goals") { GoalsScreen(onBack = back, onOpen = open) }
             // Toolkit is the one activities hub (games + tools merged). The old
             // `games` and `tools` routes stay as aliases so Oracle widgets, plan
@@ -771,7 +772,7 @@ fun CereBroApp() {
             // pointing at it — a genuine duplicate of `toolkit` (12 call sites),
             // so it is gone rather than kept as a synonym nobody types.
             // The one parameterized breathe engine (box / two-minute reset).
-            composable("breathe/box") { BreathLoopsScreen(onBack = back) }
+            composable("breathe/box") { BreathLoopsScreen(onBack = back, onUrgent = { open("crisis") }) }
             // NOT a duplicate of `imagery`, despite the audit pairing them:
             // this is ui.offline.GuidedImageryScreen — four journeys (forest,
             // ocean, mountain, meadow) from OfflineToolContent with a TTS cue —
@@ -798,7 +799,7 @@ fun CereBroApp() {
             // opens straight into it rather than showing a chooser in front of a
             // button that has already named what it gives you.
             composable("breathe/reset") {
-                BreathLoopsScreen(onBack = back, startPattern = BreathPattern.Reset)
+                BreathLoopsScreen(onBack = back, startPattern = BreathPattern.Reset, onUrgent = { open("crisis") })
             }
             // The two guided routines (web parity): the Sleep tab's wind-down
             // and the Toolkit's Settle visualization.
@@ -806,9 +807,10 @@ fun CereBroApp() {
             composable("imagery") { GuidedImageryScreen(onOpen = open, onBack = back) }
             composable("ritual") { RitualBuilderScreen(onBack = back) }
             composable("bubblepop") { BubblePopScreen(onBack = back) }
-            composable("patternglow") { PatternGlowScreen(onBack = back) }
             composable("ground") { GroundingScreen(onBack = back) }
-            composable("zenripples") { ZenRipplesScreen(onBack = back) }
+            // V2-e part 2: patternglow + zenripples (and the orphaned gratitude
+            // garden) were deleted — the games REGISTRY versions (pattern-recall,
+            // color-tap, still-point) are the one implementation per behavior.
             composable("gratitude") { GratitudeReflectionScreen(onBack = back, onUrgent = { open("crisis") }) }
             // The mock wrote four 1-10 sliders into a SharedPreferences file
             // called "personal_baseline" that nothing in the app reads. The
@@ -843,7 +845,7 @@ fun CereBroApp() {
             composable("companion") { CompanionStyleScreen(onBack = back) }
             composable("language") { LanguageScreen(onBack = back) }
             composable("notifications") { NotificationInboxScreen(onBack = back, onOpen = open) }
-            composable("appearance") { AppearanceScreen(onBack = back) }
+            composable("appearance") { AppearanceScreen(onBack = back, onOpen = open) }
             // The REAL reminders screen, imported since the redesign and never
             // routed while a mock held the door. ReferenceRemindersScreen's
             // "Save reminder schedule" had an empty body — five toggles of
@@ -853,7 +855,7 @@ fun CereBroApp() {
             // reads reminder_on/reminder_hour, so it kept saying "no reminder
             // scheduled" while the switch sat on, and nothing ever fired.
             composable("reminders") { RemindersScreen(onBack = back) }
-            composable("privacy") { PrivacyScreen(onBack = back) }
+            composable("privacy") { PrivacyScreen(onBack = back, onOpen = open) }
             composable("premium") { PremiumScreen(onBack = back) }
             composable("crisisregion") { CrisisRegionScreen(onBack = back) }
             composable("humansupport") { HumanSupportScreen(onBack = back) }

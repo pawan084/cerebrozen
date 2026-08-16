@@ -49,9 +49,12 @@ class SafetyCopyTest {
         // that the trusted-contact screen contradicts and the backend disproves.
         // It defaults off, so the sentence was true until the moment a user turned
         // the feature on, which is exactly when being wrong matters.
+        // V2-d: `urgent_trusted_detail` left this list with the whole dead
+        // `urgent_*` block (18 strings duplicating `crisis_*`, zero Kotlin
+        // references) when the CrisisScreen twin was deleted — one crisis
+        // surface, one string set, one honesty pin.
         listOf(
             R.string.crisis_trusted_detail,
-            R.string.urgent_trusted_detail,
         ).forEach { id ->
             val copy = res.getString(id)
             assertFalse(

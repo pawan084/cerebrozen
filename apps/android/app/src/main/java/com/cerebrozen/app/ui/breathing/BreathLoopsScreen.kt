@@ -131,7 +131,7 @@ private val ExhaleBottom: Color get() = AccentSoft
  * the user on a picker they never asked for.
  */
 @Composable
-fun BreathLoopsScreen(onBack: () -> Unit, startPattern: BreathPattern? = null) {
+fun BreathLoopsScreen(onBack: () -> Unit, startPattern: BreathPattern? = null, onUrgent: (() -> Unit)? = null) {
     val context = LocalContext.current
     val model: BreathLoopsViewModel = viewModel(
         factory = BreathLoopsViewModel.factory(context.applicationContext as Application),
@@ -216,19 +216,20 @@ fun BreathLoopsScreen(onBack: () -> Unit, startPattern: BreathPattern? = null) {
     }
 
     when (state.core.mode) {
-        BreathScreenMode.Picker -> PickerScreen(state, model, onBack)
-        BreathScreenMode.Active -> ActiveSession(state.core, model)
+        BreathScreenMode.Picker -> PickerScreen(state, model, onBack, onUrgent)
+        BreathScreenMode.Active -> ActiveSession(state.core, model, onUrgent)
         BreathScreenMode.Completed -> CompletionScreen(state.core.selectedPattern, model)
     }
 }
 
 @Composable
-private fun PickerScreen(state: BreathLoopsUiState, model: BreathLoopsViewModel, onBack: () -> Unit) {
+private fun PickerScreen(state: BreathLoopsUiState, model: BreathLoopsViewModel, onBack: () -> Unit, onUrgent: (() -> Unit)? = null) {
     Column(Modifier.fillMaxSize()) {
         CereBroTopBar(
             title = stringResource(R.string.breath_loops_title),
             subtitle = stringResource(R.string.breath_loops_subtitle),
             onBack = onBack,
+            onUrgent = onUrgent,
         )
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
@@ -320,7 +321,7 @@ private fun PatternCard(pattern: BreathPattern, selected: Boolean, onClick: () -
 }
 
 @Composable
-private fun ActiveSession(state: BreathLoopsCoreState, model: BreathLoopsViewModel) {
+private fun ActiveSession(state: BreathLoopsCoreState, model: BreathLoopsViewModel, onUrgent: (() -> Unit)? = null) {
     val position = requireNotNull(state.position)
     val phase = position.phase
     val colors = phaseGradient(phase.type)
@@ -376,6 +377,9 @@ private fun ActiveSession(state: BreathLoopsCoreState, model: BreathLoopsViewMod
             trailing = if (state.voiceEnabled) Icons.Outlined.VolumeUp else Icons.Outlined.VolumeOff,
             trailingLabel = if (state.voiceEnabled) muteVoiceDescription else enableVoiceDescription,
             onTrailingClick = model::toggleVoice,
+            // V2-a / Audit L defect: a running breathing session had no urgent
+            // door at all — the one screen a spiralling user is most likely on.
+            onUrgent = onUrgent,
         )
         Column(
             Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = 18.dp),

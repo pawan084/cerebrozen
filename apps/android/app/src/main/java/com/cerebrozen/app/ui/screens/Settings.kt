@@ -21,6 +21,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -294,7 +298,7 @@ fun LanguageScreen(onBack: () -> Unit) {
 /** You → Appearance: pick Night, Dawn, or follow the system (REDESIGN §4.1).
  * The choice persists as `theme_mode` and applies to every app screen. */
 @Composable
-fun AppearanceScreen(onBack: () -> Unit) {
+fun AppearanceScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
     val themeChoices = listOf(
         Triple(ThemeMode.System, stringResource(R.string.theme_system_title), stringResource(R.string.theme_system_hint)),
         Triple(ThemeMode.Night, stringResource(R.string.theme_night_title), stringResource(R.string.theme_night_hint)),
@@ -309,6 +313,13 @@ fun AppearanceScreen(onBack: () -> Unit) {
                 Session.prefPut("theme_mode", mode.prefValue())
             }
         }
+        // V2-e part 2: language lives behind the same You row as appearance
+        // ("Appearance & language" — REDESIGN_V2 §3.7), so its door is here.
+        NavRow(
+            stringResource(R.string.you_language_title),
+            stringResource(R.string.language_intro_short),
+            icon = Icons.Outlined.Translate,
+        ) { onOpen("language") }
     }
 }
 
@@ -363,7 +374,7 @@ fun CrisisRegionScreen(onBack: () -> Unit) {
 }
 
 @Composable
-fun PrivacyScreen(onBack: () -> Unit) {
+fun PrivacyScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
     val consent = remember { mutableStateMapOf<String, Boolean>() }
     val scope = rememberCoroutineScope()
     // DPDP s.5(3): the consent notice is readable in English or an
@@ -389,6 +400,10 @@ fun PrivacyScreen(onBack: () -> Unit) {
     // obvious reaction, re-toggling, would write consents they already had.
     var consentLoadFailed by remember { mutableStateOf(false) }
     fun loadConsent() {
+        // Guests have no server consent record — the read can never succeed, and
+        // rendering its failure as "we could not reach the server" was a false
+        // statement (audit K): the server was fine; there is simply no account.
+        if (Session.guestMode) { loaded = true; return }
         consentLoadFailed = false
         scope.launch {
             runCatching { Api.consent() }
@@ -414,6 +429,11 @@ fun PrivacyScreen(onBack: () -> Unit) {
         }
         if (!loaded) {
             Text(stringResource(R.string.privacy_loading), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        } else if (Session.guestMode) {
+            // No switches for a guest: they would show a consent state no server
+            // holds, and every write would fail. The gate says what is true —
+            // nothing is collected — and where choices live.
+            GuestSignInCard(onOpen = onOpen, subtitle = stringResource(R.string.guest_gate_privacy))
         } else {
             if (setupSyncFailed) {
                 SectionCard {
@@ -514,6 +534,23 @@ fun PrivacyScreen(onBack: () -> Unit) {
                 })
             }
         }
+
+        // V2-e part 2: the legal trio lives WITH the privacy controls it
+        // documents — the You list carried these as three more top-level rows
+        // (REDESIGN_V2 §3.7: You ≈ 10 rows, legal inside Privacy & data).
+        Text(
+            stringResource(R.string.you_legal_header),
+            style = MaterialTheme.typography.labelSmall, color = Periwinkle,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+        NavRow(stringResource(R.string.privacypolicy_title), stringResource(R.string.privacypolicy_eyebrow),
+            icon = Icons.Outlined.Shield) { onOpen("privacypolicy") }
+        NavRow(stringResource(R.string.export_title), stringResource(R.string.you_export_subtitle),
+            icon = Icons.Outlined.FileDownload) { onOpen("export") }
+        // Danger-tinted, exactly as it was on You: the one irreversible action
+        // must not dress like a link to a document.
+        NavRow(stringResource(R.string.delete_title), stringResource(R.string.you_delete_subtitle),
+            icon = Icons.Outlined.DeleteOutline, tint = Danger) { onOpen("delete") }
     }
 }
 
@@ -613,14 +650,31 @@ private fun PlanCard(name: String, price: String, note: String, featured: Boolea
 fun HumanSupportScreen(onBack: () -> Unit) = PremiumSubPage(stringResource(R.string.humansupport_eyebrow), stringResource(R.string.humansupport_title), onBack) {
     Text(stringResource(R.string.humansupport_intro),
         style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+    // Region-aware, same directory as every crisis surface (audit K: this
+    // screen was India-hardcoded while Urgent support followed the region —
+    // the app's two safety surfaces disagreed about where the user was).
     // Real, tappable pathways (REDESIGN §2.2) — no promises, just doors.
     // The dial/URL targets are contracts and stay literal.
-    SupportLinkRow(stringResource(R.string.humansupport_telemanas_title), stringResource(R.string.humansupport_telemanas_detail), "14416")
-    // W25: the WhatsApp row was removed — no official national Tele-MANAS
-    // WhatsApp exists (wa.me/9114416 was an invalid target). Voice line stays.
-    SupportLinkRow(stringResource(R.string.humansupport_icall_title), stringResource(R.string.humansupport_icall_detail), "9152987821")
-    SupportLinkRow(stringResource(R.string.humansupport_find_title), stringResource(R.string.humansupport_find_detail), "https://www.findahelpline.com/in")
-    InfoCard(stringResource(R.string.humansupport_coach_title), stringResource(R.string.humansupport_coach_body))
+    val region by rememberCrisisRegion()
+    if (normalizeRegion(region) == "IN") {
+        SupportLinkRow(stringResource(R.string.humansupport_telemanas_title), stringResource(R.string.humansupport_telemanas_detail), "14416")
+        // W25: the WhatsApp row was removed — no official national Tele-MANAS
+        // WhatsApp exists (wa.me/9114416 was an invalid target). Voice line stays.
+        SupportLinkRow(stringResource(R.string.humansupport_icall_title), stringResource(R.string.humansupport_icall_detail), "9152987821")
+        SupportLinkRow(stringResource(R.string.humansupport_find_title), stringResource(R.string.humansupport_find_detail), "https://www.findahelpline.com/in")
+        // The coach-directory note is an India roadmap statement; it stays an
+        // India-only card rather than promising other markets a plan.
+        InfoCard(stringResource(R.string.humansupport_coach_title), stringResource(R.string.humansupport_coach_body))
+    } else {
+        val line = primaryCrisisLine(region)
+        SupportLinkRow(stringResource(line.nameRes), stringResource(R.string.humansupport_line_detail), line.target)
+        val finderPath = normalizeRegion(region).lowercase(java.util.Locale.ROOT)
+        SupportLinkRow(
+            stringResource(R.string.humansupport_find_title),
+            stringResource(R.string.humansupport_find_detail),
+            if (finderPath.isEmpty()) "https://www.findahelpline.com/" else "https://www.findahelpline.com/$finderPath",
+        )
+    }
 }
 
 @Composable

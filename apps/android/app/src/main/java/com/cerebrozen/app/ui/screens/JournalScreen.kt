@@ -320,7 +320,7 @@ fun JournalScreen(
     val tuned = if (tunedDismissed) null else tunedPromptFor(todayMood)
 
     if (!unlocked) {
-        PremiumPage(stringResource(R.string.journal_eyebrow), stringResource(R.string.journal_title), trailing = Icons.AutoMirrored.Outlined.MenuBook) {
+        PremiumPage(stringResource(R.string.journal_eyebrow), stringResource(R.string.journal_title), trailing = Icons.AutoMirrored.Outlined.MenuBook, onUrgent = { onOpen("crisis") }) {
             SectionCard {
                 Text(stringResource(R.string.journal_locked_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                 Text(stringResource(R.string.journal_locked_body),

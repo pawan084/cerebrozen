@@ -1,268 +1,185 @@
-# CereBro Light Dawn Redesign Spec (v2)
+# Redesign V2 — the whole app, compact (2026-08-15)
 
-**Source:** `ref/` — `CereBro Master Product Specification.pdf` (48 pages, 15 sections,
-69 numbered modules) plus four single-file prototypes: `mobile.html` (126 screens,
-15 flows), `web.html` (37 routes), `portal.html` (36 routes), `landing.html` (7 pages).
-**Started:** 2026-08-06 · **Supersedes** the visual-language half of [REDESIGN.md](REDESIGN.md)
-(§4.1 "Dusk & Dawn", §4.2 tokens). Its IA and credibility work (§2, §3) still stands.
+> **Lineage note (2026-08-15):** this filename previously held the 2026-08-06 Light-Dawn
+> spec (ref/-derived; the ONB-xx contract and the five-tab §6.1 ruling live there). That
+> document is preserved at [REDESIGN_V2_2026-08-06-lightdawn.md](REDESIGN_V2_2026-08-06-lightdawn.md);
+> where the two disagree — tabs (Sleep returns, Explore retires) and the onboarding step
+> count (10 → 4) — THIS document carries the newer owner approval and governs.
 
----
+Supersedes `TODAY_REDESIGN.md` (folded in here as §3.1) and executes `REDESIGN.md` (2026-07,
+F1–F11) at screen level after Audit L and the 2026-08-15 four-thread research pass
+(competitors, distress cognitive load, India-first, layout systems). Owner correction
+applied: the first Today draft ran too airy — **the scale below is compact**. Density is
+not the enemy; *competition for attention* is. WhatsApp-dense, calm-ordered.
 
-## 0. The one-paragraph verdict
+## 1. Global system (every screen)
 
-The new `ref/` inverts the design system: the spec names a **"Light Dawn visual system"**
-with **"optional dark appearance later"**, where this repo was built night-first on deep
-indigo. It also replaces the accent family — lavender/periwinkle becomes **plum**, with
-sage, rose and amber as the tonal set. That much is a straight re-point. The harder parts
-are that the spec is **Android-first and names neither iOS nor an authenticated web client**,
-and that it introduces an entire **B2B2C organisation layer** (sponsored access, seats,
-cohorts, entitlements, a 36-route admin portal) for which this backend has **no model, no
-role and no route**. Phase 1 below is the token inversion, which is done and verified;
-everything after it is real product work, not restyling.
-
----
-
-## 1. What the sources actually contain
-
-Worth stating plainly, because it changes where the values come from:
-
-- **The PDF contains no design values.** No hex, no type scale, no spacing, no radii, no
-  motion, no contrast ratios, no touch-target size. `"Light Dawn visual system"` and
-  `"Optional dark appearance later"` are the complete visual content of all 48 pages.
-  Every token below therefore comes from the prototypes, not the spec.
-- **The PDF leaves almost every threshold unquantified** — cohort minimums, pricing, free
-  message caps, retention windows are all named as concepts with no number. The one
-  concrete number is in the prototypes: **minimum cohort = 20 active members** (options
-  20/30/50, configurable per organisation).
-- **The four prototypes do not share one palette.** `mobile.html`, `landing.html` and
-  `portal.html` agree on the core; `web.html` is the outlier on every one of them.
-
-| Role | mobile | landing | portal | web.html |
-|---|---|---|---|---|
-| ground | `#F8F4EE` | `#F8F4EE` | `#F8F4EE` | **`#F4F1EC`** |
-| paper | `#FFFCF8` | `#FFFCF8` | `#FFFCF8` | **`#FFFEFC`** |
-| ink | `#211D20` | `#211D20` | `#211D20` | **`#231F24`** |
-| plum | `#5A2B5C` | `#5A2B5C` | `#5A2B5C` | **`#542454`** |
-| line | `#E4DDD7` | `#E4DDD7` | `#E4DDD7` | **`#E6DED7`** |
-
-  **Resolution: the three-way agreement wins; `web.html`'s palette is not adopted.**
-  `web.html` also inverts two role names (`--sage`/`--rose` are *ink* there and *surface
-  tints* in landing) — do not port its naming.
-
-- **Display font diverges three ways** — Iowan Old Style (landing, web), Georgia (portal),
-  Fraunces (mobile's final layer). This repo already ships **Newsreader** via `next/font`
-  on all three web apps; it stays. No prototype loads a webfont at all, so none of them is
-  evidence for a change.
-
----
-
-## 2. Canonical Light Dawn tokens
-
-Live in [`design/tokens.css`](../design/tokens.css); propagated by `scripts/sync-tokens.mjs`;
-gated by the new `scripts/check-contrast.mjs`.
-
-Four tonal roles were **darkened from the prototype values** because they failed this
-repo's existing 4.5:1 gate. The changes are 4–9% and read as the same hue:
-
-| Role | Prototype | Worst ratio | Adopted | Worst ratio |
-|---|---|---|---|---|
-| `--text-faint` | `#716A70` | 4.00 | `#686267` | 4.53 |
-| `--warm` | `#B4596B` | 3.91 | `#A45161` | 4.56 |
-| `--danger` | `#CC3D36` | 4.21 | `#C23A33` | 4.57 |
-| `--amber` | `#AE7423` | 3.40 | `#92611D` | 4.58 |
-| `--line` | `#E4DDD7` | 1.16 vs field | `#DFD9D3` | 1.21 |
-
-Six roles are adopted **exactly as specified**: `--text #211D20`, `--text-secondary
-#514A50`, `--accent #5A2B5C`, `--accent-2 #8A4A78`, `--ok #49634F`, `--info #315C7A`.
-
-The gate is **per legal pairing**, not every-role-on-every-surface: a tonal role must clear
-4.5:1 on the three neutral grounds and on *its own* wash. Gating amber against a danger
-wash is a pairing that never occurs and would force the brand colours needlessly dark.
-
-**Night is retained**, reconciled from `landing.html`'s `[data-theme="dark"]` and
-`web.html`'s `[data-theme="night"]` (they agree within a few points). It is no longer the
-default — it is the opt-in appearance *and* the pinned theme for surfaces that are night by
-design: the Sleep tab and wind-down ritual, the onboarding funnel and auth card, the public
-`/crisis` page. `mobile.html` ships no dark theme at all (`[data-theme="night"]` is
-deliberately identical to Dawn); we keep ours because the sleep argument is real and
-`e2e/tests/theme.spec.ts` already pins it.
-
-**Naming.** New code reads semantic roles (`--surface`, `--surface-raised`, `--surface-field`,
-`--line`, `--text`, `--text-secondary`, `--text-faint`, `--accent`, `--accent-2`,
-`--accent-soft`, `--on-accent`, `--ok`, `--warm`, `--danger`, `--amber`, `--info`, each
-tonal role with a `-soft` wash). A legacy alias block re-points the ~900 existing
-`var(--night)` / `var(--lav)` / `var(--muted)` call sites so nothing broke on day one.
-**Do not add new usages of the aliases**; migrate call sites opportunistically.
-
----
-
-## 3. Information architecture
-
-### 3.1 Tabs — the spec's five, and what that costs us
-
-Spec order: **Today · Explore · Talk · Journal · You**, with urgent support globally
-accessible outside the tab set.
-
-| Client | Today | 2nd | 3rd | 4th | 5th |
-|---|---|---|---|---|---|
-| Spec / `mobile.html` | Today | **Explore** | Talk | Journal | You |
-| Android + iOS today | Home | **Sleep** | Talk | Journal | You |
-| `apps/app` sidebar today | Home | Talk | Sleep | Journal | **Insights** |
-
-Two deltas to close: **Sleep is not a top-level tab in the spec** (it lives under Explore,
-plus a Today entry point and quick tools), and the web client's fifth slot is Insights
-where native has You. `mobile.html` maps sub-screens to owning tabs by id prefix —
-`Today ← TOD|PRC|INS`, `Explore ← EXP|SLP|SND|MIX|GMS|PRG|VID`, `You ← YOU|PVR|SAF|PRM|ACC|ORG`.
-
-Demoting Sleep is a genuine product decision, not a mechanical one — Sleep is this
-product's evidenced flagship (REDESIGN.md §3.2, sleep g=0.71) and burying it under Explore
-argues against the strongest thing we have. **Flagged for owner decision; not actioned.**
-
-### 3.2 Route reconciliation
-
-`mobile.html` defines **126 screens in 15 flows**; Android's `NavHost` has **57**
-destinations. Note REDESIGN.md §2.2 targeted 40→28 and the count instead grew to 57, with
-routes explicitly marked KILL still registered (`onegoodthing`, `intention`, `breathing`,
-the `games`/`tools` aliases, `baseline`, `bubblepop`, `patternglow`). Reconcile against the
-prototype's flow map before adding anything new.
-
-### 3.3 The organisation layer is new, end to end
-
-`portal.html` is 36 routes across Identity, Dashboard, Eligibility, Cohorts, Programmes,
-Campaigns, Referrals, Analytics, Governance, Commercial and a member-experience preview.
-Against that, this repo has:
-
-**Corrected 2026-08-14 — the table below was a snapshot of a gap that has since been built,
-and reading it as current cost a day.** Every "absent" row was true when this section was
-written and false by the time anyone acted on it: `backend/app/models/organization.py` and
-Alembic `a1c4f7e2b930_add_organizations` landed the whole layer. The RBAC row did real damage
-— it was cited as evidence for an audit finding ("roles are stored and never consulted") that
-was published to `main` and `v2` before anyone opened the routes, which enforce them on all
-six write paths. The status column is therefore **dated**, so the next reader can tell a
-snapshot from a fact.
-
-| Concept | Then (2026-07) | Now (2026-08-14, verified in code) |
+### Spacing (dp) — base-4, compact
+| Token | dp | |
 |---|---|---|
-| Organisation / tenant | **absent** — no model, field or FK anywhere | `Organization` — region, contract dates, seats, reporting settings |
-| Sponsorship | **absent** — billing hangs directly off `User` | `SponsoredProgramme` (org funds a programme for a group; never enrols anyone) |
-| Entitlement / seat | **absent** — only `User.subscription_tier` as a string | `OrgMembership` — deliberately thin: org, user, dates, status, no behavioural field |
-| Cohort | **absent** as a model (a computed grouping in `services/metrics.py` only) | `EligibilityGroup` — describes eligibility, never anything a member did |
-| RBAC | **binary** — `User.is_admin`; the portal needs 7 roles | **4 org roles, enforced.** `ORG_ROLES` = benefits_owner / programme_admin / analyst / privacy_reviewer; `ROLES_CAN_WRITE` gates all six write routes via `_require_write`, pinned by `tests/test_org_roles.py` (16 cases). `User.is_admin` remains a separate, still-binary flag for the *staff* console |
-| Programme | present (`ProgramEnrollment` → `ContentItem`) | unchanged |
+| screen margin | **16** | M3 compact spec |
+| zone gap | **24** | between top-level sections |
+| heading → content | **10** | binds heading to its group |
+| card padding | **14** (hero 16) | |
+| sibling rows | **8** | |
+| intra-card | 6 (title→body 3) | |
+| last item → nav | 24 + insets | |
 
-Two caveats the "now" column should not overstate: `programme_admin` and `privacy_reviewer`
-are both simply "write" today — the names promise granularity `ROLES_CAN_WRITE` does not
-deliver (a product call, tracked in `TODO.md`) — and the portal's own screens are still
-largely `lib/mock.ts`.
+Invariant unchanged: inner space ≤ outer space; every step up in dp = a step up in meaning;
+**no dividers** — spacing and surface do the grouping. Rows are 48–52dp, not 76dp.
 
-`apps/admin` is **not** this portal. It is a single ~2000-line client component with a
-`useState` tab switcher, gated by one boolean, scoped to the whole platform (all users, all
-content, prompts, safety events). It is an internal staff console and should stay one; the
-organisation portal is a **new surface** — since built as `apps/portal`.
+### Type — 5 sizes, roles from `Type.kt`
+displayLarge **32/38** (greeting/screen hero only — down from 36) · titleLarge 18/24 ·
+body 16/22 & 14/20 · labelLarge 15/20 (pill, links) · labelSmall 11/14 (eyebrows).
+Hierarchy beyond five sizes = weight + `textSecondary`/`textFaint`, never new sizes.
 
----
+### Rules (all screens, enforceable in review)
+1. **One primary action** — exactly one white `PrimaryButton` per screen; secondary = tonal;
+   tertiary = accent text link. `ReferenceAction` retired.
+2. **≤4 zones per screen; ≤9 content tappables** (Cowan/Chernev budget).
+3. **Strings ≤7 familiar words**, reading age 9–11, no clinical acronyms unexpanded, no
+   academic citations in UI; `*_why` = one line behind a tap.
+4. **Icon + one-word label** on every door; never icon-only, never a paragraph.
+5. **Crisis shield in the same pixels on every screen** — `Page` gains `onUrgent`; Talk,
+   Journal and the breathe session get it (Audit L defect).
+6. **Stable layout** — zones never reorder by state; content swaps inside its zone.
+7. **Doors are unique** — one door per destination per screen; tabs own their features
+   (nothing on Today duplicates a tab).
+8. **Every list caps at 3 + "see all →"**; discovery lives in Explore only.
+9. Shoulder-surfing safe: no condition words in large type; generic notification copy.
+10. Four async states designed everywhere (Shimmer / honest empty / one-line error + retry
+    / content); cached render offline — never an empty home.
 
-## 4. Non-negotiables the sources reinforce
+### Visual language (the "world-class" layer)
+- **Aurora depth**: every screen opens on one soft radial glow at the top (existing
+  `Tokens.kt` gradient stops) over a solid ground; cards are soft-solids with a bevel
+  hairline — depth from the surface ladder, never shadows or fake glass.
+- **Per-tab accent light** (existing `Accent.*` tokens): Today lavender `#D9ACDE` ·
+  Sleep night-blue `#9CC4DC` (Sleep's whole surface shifts to the blue aurora) · Talk warm
+  rose · Practices green `#AFD6B2` · crisis stays `#FF8C82` for the shield only. One
+  saturated hue per screen.
+- **The orb is the brand motif**: the breathing orb glows in the Today hero and Sleep
+  hero, guides the breath in-session; static under Reduce Motion.
+- **Serif voice sparingly**: display serif only for the greeting and the step's name;
+  everything else quiet sans. Icons: one 24dp stroke family (Feather-weight), always with
+  a one-word label.
+- White pill primary gets a soft outer glow — the brightest object on any screen.
 
-These already match this repo's rules; the spec states them as product values, so they are
-now doubly binding.
+## 2. Navigation — tabs redesigned (pending owner/Deepak approval)
 
-- **Anti-gamification is explicit in five places** — M4 "No streak pressure", M22 "No
-  streak-loss messaging", M19 "No leaderboards / No competitive scoring / No intelligence
-  claims", persona C6 "No performance scoring", O5 "non-coercive copy". The only sanctioned
-  progress affordances are neutral: small progress summary, seven-day history, programme
-  progress, completion indicator.
-- **Crisis is never paywalled** — M26 "No Premium requirement"; M30 "Safety features remain
-  available after expiry". Tele-MANAS **14416** leads, then **112**.
-- **Safety never blocks and never guesses** — when the safety classifier is unavailable the
-  app routes to humans rather than guessing (`TLK-07`).
-- **No organisation notification, ever** — M26/M29/O10. §12 lists nine categories of
-  prohibited organisation access; the portal's own sidebar carries a permanent privacy wall.
-- **Region honesty** — `mobile.html` marks **only India** `verified:true` and renders an
-  explicit unverified warning elsewhere. This repo's own audit flagged the opposite bug
-  (Indian numbers shown as "Verified" for all countries). Keep the honest version.
+**Tabs: `Today · Sleep · Talk · Journal · You`** — Explore retires, Sleep takes its slot.
+Rationale: Sleep is the only bias-robust evidence domain (F2, g=0.71) yet had no tab, while
+Explore held a permanent slot for browsing — the behavior stressed users measurably abandon
+("immediate relief, not discovery"; Wysa ships no explore tab). Hindi labels are single
+spoken words: **आज · नींद · बात · डायरी · आप**.
 
----
+Explore's content keeps doors (nothing orphaned): the merged **Practices** library (one hub:
+search + Breathe/Ground/Reframe/Settle + programs + games) is reached from the Today hero's
+**"more options →"** (the moment browsing is actually wanted), Talk's activity chips, and a
+You row. Sounds already lives in Sleep; the urgent door is the shield + You Support card.
 
-## 5. Phasing
+Bar spec: 64dp · icons 24dp + labels always visible (NBU: never icon-only) · active =
+accent tint + soft tonal pill behind the icon; inactive = `textFaint` · no badges/dots ·
+haptic tick on switch · targets ≥48dp.
 
-| Phase | Scope | Status |
+Route count 67 → ~40:
+aliases killed (`dailyplan`, `talk/live`, `talk/chat`), orphans deleted (`breathing`,
+`onegoodthing`, `intention`, unrouted `InsightsScreen`, `GratitudeGardenScreen`), one
+implementation per behavior (6 breathing → 1 engine · 5 gratitude → 1 · 4 grounding → 2
+(normal+crisis) · 2 imagery → 1 · 2 Simon games → 1 · 2 crisis screens → 1 · Toolkit +
+Practice library → **one library**). Analytics: 5 named surfaces → **2** ("Your week" in
+You/Insights; sleep trends inside Sleep).
+
+## 3. Screens
+
+### 3.1 Today (enriched 2026-08-15 — owner: home should carry more relevant items)
+Zones: greeting + one interpreted sentence (32sp, the only display text) → **THE CARD**
+(ask: 6 mood chips 2×3 @48dp → morphs into one step: title ≤4 words, why ≤10 words, one
+white pill, one tertiary "more options →" to the Practices hub; intensity/note = skippable
+bottom sheet) → **Your day**: Tonight door (stable slot, clock-aware: morning 1-tap sleep
+log / evening wind-down) + plan-progress row ("Today's plan · 2 of 3 done") + clock-aware
+journal-prompt row (evening) → **Quick helps**: one row of 4 icon-chips (Breathe · Ground ·
+Sounds · Games — direct doors, no browsing) → **this week** passive row (7 presence dots →
+Insights) → guest one-liner.
+Discipline that keeps "more" from becoming clutter: rows not cards, ≤7-word labels, one
+white pill still, contextual rows appear by clock/state (never all at once), total ≤14
+tappables / ~55 words — still a fraction of the old 32/140. Deleted stays deleted: lede,
+rail, folds, banners, bell, tour modal, duplicate insights doors, `GuestSignInCard`.
+
+### 3.2 Onboarding — 13 → 5 screens
+1 **Welcome** (name the promise in ≤12 words; "2 minutes" now true) → 2 **Age +
+disclosure** (one screen: 18+ toggle + can/can't in 3 bullets ≤6 words each) →
+3 **Consent** (all 6 categories visible, all default OFF, 13-language notice reachable
+here — fixes both DPDP defects) → 4 **"How are you right now?"** (same 6-chip picker as
+Today; correct mood mapping — fixes the wrong-write defect; seeds the first step) →
+5 lands on **Today** with the hint chip (no Ready page, no tour modal, no breathing step —
+the first recommendation IS the breathing exercise). Language auto-detected (chip to
+change on Welcome); reminders asked in-context after first real check-in. Guest is the
+default; account ask stays a step, not a wall.
+
+### 3.3 Explore — the one library
+Zones: search field → **4 need-doors** (Breathe · Ground · Reframe · Settle — the merged
+Toolkit/Practice-library taxonomy, ≤4 items each + see-all) → Programs row → Games row
+(registry's 8) → quiet Urgent-support door. Sounds lives in Sleep; content rail lives
+here. ≤9 taps. "Mindful activities"/"Toolkit" naming resolved: **one name — "Practices"**.
+
+### 3.4 Talk — chat-first (Wysa evidence, F3)
+The thread is the screen. Top bar: AI pill + shield (new `onUrgent`). Empty state: 3
+starter chips max (was: banners + hints + cards). Inline activity chips stay (evidenced
+routing). Crisis banner unchanged — never blocks. Disclosure re-sheet cadence unchanged.
+Signed-out: local companion + one sign-in chip after first refused send (not before).
+
+### 3.5 Journal
+Zones: prompt-of-day card with **Start writing** (the white pill) → recent entries (3 +
+see all) → lock chip row. One good thing / intention / gratitude become **prompt chips in
+the composer** (kills 3 routes). Reflection appears on the entry, not the hub. Biometric
+lock unchanged.
+
+### 3.6 Sleep — split "Tonight" vs "Your sleep" (worst screen: 14 blocks → 5)
+Tab shows **Tonight**: player hero (play/pause + timer chip — the white pill) → wind-down
+ritual door → morning-aware 1-tap sleep log card (chips, not steppers) → Sounds door →
+**Your sleep** door (diary history, trends, Health Connect, insights — all one level
+down). Sleep-insights screen localized (Audit L defect) and folded into "Your sleep".
+
+### 3.7 You — 23 rows → 10
+Identity row → **Support card** (crisis, unchanged prominence) → *Care*: Your week
+(insights+trends+patterns as tabs inside), Safety plan, Trusted contact → *Settings*:
+Reminders, Appearance & language (one screen, two sections), Privacy & data (consent,
+export, delete, policy inside — one door) → *About*: Help & about (tour replay, version,
+legal inside). Premium row hidden until Play Billing exists (honesty). Work-coaching row
+stays sponsored-only. One footer line.
+
+### 3.8 Crisis — one screen (delete the twin)
+Dial hero (region line, bilingual: "मदद चाहिए? / Need help? 14416") → 3 rows: call/WhatsApp
+Tele-MANAS · my safety plan · grounding now → change-region link. `CrisisScreen` +
+16 `urgent_*` strings deleted; onboarding points at `UrgentSupportScreen`.
+
+### 3.9 Plan, Settings sub-screens, Games
+Plan already passes (one pill, ~35 words) — becomes the template. Settings sub-screens:
+intro paragraphs cut to ≤12 words (`language_intro` 35→12, `appearance_intro` 25→8);
+13-language chips behind a disclosure; error bodies → one line + Retry. SafetyPlan: 7 Save
+buttons → autosave + one Done; intro 32→12 words. Games hub: registry list only, one
+Simon, one tap-calm; card copy loses the redundant `practiceRes` line.
+
+## 4. Copy system (app-wide)
+- EN: simple English, ≤7 words/string, contractions fine, no jargon (CBT-I → "sleep
+  method, tested"), zero citations on-screen.
+- HI: warm spoken Hindi, loanwords in Devanagari (चेक-इन, प्लान); body ≥16sp, lh 1.6–1.8;
+  crisis lines bilingual. `ConsentNotice.kt` languages move to `values-*/`.
+- Disclaimers: "not medical care" said **twice** in the app (onboarding disclosure + Talk
+  pill), not 12×. "No streaks" said **once** (Insights). One canonical claim line per
+  evidence family (4 dedup groups from Audit L).
+
+## 5. Delivery order (compact waves, each shippable)
+| Wave | Scope | Depends on |
 |---|---|---|
-| **1. Token inversion** | `design/tokens.css` → Light Dawn light-first + Night opt-in; new `scripts/check-contrast.mjs` gate; sync into web/admin/app; primary CTA moves from white pill to accent fill; nav/topbar de-hardcoded from indigo | **done, verified** |
-| **2. Native token port** | Android `ui/theme/*.kt` and iOS `DesignSystem/Theme.swift` to the same role scale, both contrast suites green | **Android done** (Dawn default, Night re-toned to plum, every canonical role byte-pinned against `tokens.css`, `ContrastTest` 19→22 green — no value needed adjusting for contrast); **iOS not started** |
-| **3. Surface sweep** | The ~53 `rgba(255,255,255,…)` night-era veils across the three web apps; regenerate the baked marketing screenshots (still show the indigo app, and one shows a "3-day streak" — a banned affordance) | **not started** |
-| **4. IA** | Tab reconciliation, route reconciliation against the 126-screen flow map | Unblocked by §6. **Five-tab IA done on `apps/app` and Android** (Today · Explore · Talk · Journal · You; Sleep pushed under Explore; a support door on Explore *and* You so crisis stayed ≤2 taps). **iOS pending; route reconciliation not started** |
-| **5. B2B2C** | Organisation/membership/entitlement/cohort models, 7-role RBAC, aggregation with threshold + small-cell suppression, then the 36-route portal as a new app | **not started** |
+| V2-a | Global: spacing/type tokens compacted, `Page.onUrgent`, `PrimaryButton` everywhere, row heights | — |
+| V2-b | Today (§3.1) + dead-string/route cleanup | V2-a |
+| V2-c | Onboarding 5-screen cut + consent/mood defect fixes (= Audit L Waves L1+L2) | — |
+| V2-d | Sleep split + You 10-row + Crisis merge | V2-a |
+| V2-e | Explore one-library + Talk/Journal simplification + route consolidation | V2-d |
+| V2-f | Copy diet + Hindi parity for every touched string | any |
 
----
-
-## 6. Owner decisions — RESOLVED 2026-08-06
-
-**Ruling: follow `ref/` strictly, across all five surfaces.** Where the spec and this repo
-disagree, the spec wins. Recorded so later readers know these were decided, not drifted into:
-
-1. **Sleep is demoted from the top-level tabs.** Tabs become the spec's five —
-   **Today · Explore · Talk · Journal · You** — with Sleep reached via Explore's Sleep
-   category, Today's "Tonight's sleep plan" entry, and the sleep quick tools. This overrides
-   the recommendation in the previous revision of this section, which argued Sleep is the
-   evidenced flagship (sleep g=0.71, REDESIGN.md §3.2) and should keep its tab. That
-   argument is not withdrawn on the merits — it lost to the ruling. If engagement with
-   sleep content drops after this ships, this is the first thing to re-examine.
-2. **The spec's IA is authoritative** wherever it is explicit, including the id-prefix →
-   owning-tab map in `mobile.html` (`Today ← TOD|PRC|INS`, `Explore ← EXP|SLP|SND|MIX|GMS|
-   PRG|VID`, `You ← YOU|PVR|SAF|PRM|ACC|ORG`).
-3. **iOS and `apps/app` are still redesigned**, both to the spec's IA. "Strictly" resolves
-   conflicts in the spec's favour; it does not delete surfaces the spec merely omits.
-   Android leads (the spec's primary platform), the others follow to the same structure.
-4. **Spelling is en-GB** — organisation, programme, personalise. `landing.html`'s
-   "organization" is the outlier and is not adopted.
-5. **Cohort floor is 20 active members**, options 20/30/50, configurable per organisation.
-
-## 7. Execution order
-
-Sequenced by dependency so nothing is built twice. Each wave is verifiable on its own.
-
-| Wave | Scope | Why here |
-|---|---|---|
-| **1. Tabs** | The five-tab IA + Sleep demotion, on Android, iOS and `apps/app` in one change | Load-bearing: every screen nests inside it, and it is a cross-stack contract (ARCHITECTURE.md) |
-| **2. Landing** | 7 pages to `landing.html`'s structure; regenerate the stale indigo screenshots | Self-contained, public, no auth or backend — the fastest complete surface |
-| **3. Member web** | 37 routes to `web.html`'s shell and route groups | Fastest to iterate and visually verify locally |
-| **4. Android** | 126 screens / 15 flows | The richest prototype and the spec's primary platform |
-| **5. iOS** | Parity to the same IA and screens | Follows Android per the existing parity practice |
-| **6. B2B2C** | Organisation/membership/entitlement/cohort models, 7-role RBAC, threshold + small-cell aggregation, then the 36-route portal | Greenfield; mostly backend before any screen exists to design |
-
-### 7.1 Design-first working mode (owner direction, 2026-08-06)
-
-Screens are designed **before** they are wired. Redesigned screens live on a no-backend,
-no-auth **design surface** (`apps/app/app/design/**`, `noindex`) rendered entirely from local
-mock constants — structurally the same thing the `ref/` prototypes are. Two reasons: the live
-screens keep their working API wiring until a design is signed off, and a screen behind the
-session guard cannot be reviewed without a running Postgres. Each screen graduates into its
-real route once approved; the surface is scaffolding and should shrink to nothing.
-
-### 7.2 Parallel wave in flight (2026-08-06)
-
-Four independent surfaces, deliberately on non-overlapping paths so they cannot collide:
-
-| Surface | Path touched | Depends on |
-|---|---|---|
-| Android foundation — tokens + 5-tab IA + Explore | `apps/android/**` | nothing; **blocks all Android screen work** |
-| Landing rebuild to `landing.html` | `apps/web/**` | web tokens (done) |
-| Organisation portal scaffold | `apps/portal/**` (new app, port 3003) | nothing; mock data only |
-| Member-web design screens (TOD-02, EXP-01, SLP-01, SAF-01) | `apps/app/app/design/**` | the existing `/design/today` pattern |
-
-`apps/portal` must be added to `scripts/sync-tokens.mjs` TARGETS once it exists, or its token
-block will silently drift from `design/tokens.css`.
-
-### 7.3 Concurrency lesson (2026-08-06)
-
-Two agents were run against `apps/android` **in the same working tree at the same time**
-(the raw-hex sweep and the Today redesign). They collided: `TodayScreen.kt` changed under
-the sweep mid-run and was briefly brace-unbalanced, and the sweep ran `git stash` /
-`git stash pop` on the shared tree to diagnose it — which momentarily reverted the other
-agent's in-flight work. The tree was verified intact afterwards (empty stash list, all files
-present, all gates green, 144→0 literals), but it was luck rather than design.
-
-**Rule going forward:** never run two agents against the same client in one tree. Either
-serialise them, or give each `isolation: "worktree"` so they get their own checkout. Agents
-must also not run `git stash` on a shared tree — it is not a local operation.
+Cross-stack: zero contract changes (taxonomy, widget kinds, crisis regions, product ids
+untouched). iOS/web adopt the V2 system in a later pass — Android first, before the Play
+internal-testing build.

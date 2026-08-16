@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -264,9 +265,9 @@ private fun GameHeader(game: MindfulGame, gameName: String, accent: Color) {
                     .border(1.dp, accent.copy(alpha = 0.45f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    game.glyph, style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.semantics { contentDescription = gameName },
+                Icon(
+                    game.glyph, contentDescription = gameName,
+                    tint = TextPrimary, modifier = Modifier.size(24.dp),
                 )
             }
             Column {

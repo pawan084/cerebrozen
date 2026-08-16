@@ -319,31 +319,52 @@ class ScreenLogicTest {
     fun funnelProgress_climbs_with_the_step_not_the_language() {
         // The bug this replaced: the fraction matched the English eyebrow copy,
         // so on a Hindi device every step after Language fell through to 1f.
-        val canonical = listOf(OStep.Welcome, OStep.Language, OStep.Intro, OStep.Disclosure,
-            OStep.State, OStep.Reset, OStep.Reflection, OStep.Consent, OStep.Notify, OStep.Guest, OStep.Ready)
+        // V2-c canonical order: five screens, then Today.
+        val canonical = listOf(OStep.Welcome, OStep.Disclosure, OStep.Consent, OStep.State, OStep.Guest)
         val fractions = canonical.map { funnelProgress(it) }
         assertEquals(canonical.size, fractions.size)
         assertEquals(0f, funnelProgress(OStep.Welcome), 0.0001f)
-        assertEquals(1f, funnelProgress(OStep.Ready), 0.0001f)
         fractions.zipWithNext().forEach { (a, b) ->
             assertTrue("the bar never goes backwards", b > a)
         }
     }
 
-    // ── Onboarding step numbering (the ONB-xx contract, not the enum order) ──
+    // ── Onboarding step numbering (the V2 four-step contract) ──
     @Test
-    fun funnelStepIndex_follows_the_spec_numbering_and_leaves_gaps() {
-        // Deliberately hand-mapped to the canonical mobile.html ONB contract.
-        assertEquals(0, funnelStepIndex(OStep.Welcome))   // SPL-01, outside the count
-        assertEquals(1, funnelStepIndex(OStep.Language))  // ONB-01
-        assertEquals(2, funnelStepIndex(OStep.Intro))
-        assertEquals(3, funnelStepIndex(OStep.Disclosure))
-        assertEquals(6, funnelStepIndex(OStep.Reflection))
-        assertEquals(9, funnelStepIndex(OStep.SignUp))
-        assertEquals(10, funnelStepIndex(OStep.Ready))
+    fun funnelStepIndex_follows_the_v2_contract() {
+        assertEquals(0, funnelStepIndex(OStep.Welcome))   // outside the count
+        assertEquals(1, funnelStepIndex(OStep.Disclosure))
+        assertEquals(2, funnelStepIndex(OStep.Consent))
+        assertEquals(3, funnelStepIndex(OStep.State))
+        assertEquals(4, funnelStepIndex(OStep.Guest))
+        assertEquals(4, funnelStepIndex(OStep.SignUp))    // account branch shares the slot
         val used = OStep.entries.map { funnelStepIndex(it) }
-        assertTrue("all canonical steps are represented", (1..10).all { it in used })
+        assertTrue("all counted steps are represented", (1..ONBOARDING_STEPS).all { it in used })
         assertTrue("no step numbers past the declared total", used.all { it <= ONBOARDING_STEPS })
+    }
+
+    // ── V2-c defect pins (Audit L) ──
+    @Test
+    fun consent_defaults_are_all_false_and_cover_all_six_categories() {
+        // "Nothing pre-ticked" has been silently reverted TWICE in this file's
+        // history; this pin makes the third revert fail CI instead of shipping.
+        val c = defaultConsent()
+        assertEquals(
+            setOf("mood_history", "ai_memory", "journal_memory", "sleep_history", "voice_storage", "model_training"),
+            c.keys,
+        )
+        assertTrue("consent must be an action — no category may default on", c.values.none { it })
+    }
+
+    @Test
+    fun state_tiles_write_the_mood_their_label_says() {
+        // Audit L defect 3: "Clear · I feel steady" wrote mood "Anxious" as a
+        // new profile's first data. The wire mood now matches the tile.
+        assertEquals("Good", STATE_OPTIONS.first { it.id == "stressed" }.mood)
+        assertEquals("Overwhelmed", STATE_OPTIONS.first { it.id == "distant" }.mood)
+        // Every seeded mood stays inside the six-state cross-stack taxonomy.
+        val taxonomy = setOf("Good", "Anxious", "Low", "Tired", "Overwhelmed", "Not sure")
+        assertTrue(STATE_OPTIONS.all { it.mood in taxonomy })
     }
 
     @Test
@@ -561,29 +582,9 @@ class ScreenLogicTest {
     }
 
     // ── Onboarding reminder options (every chip must mean something) ──
-    @Test
-    fun everyReminderChipResolvesToARealChoice() {
-        // A "Private previews" chip shipped in this single-select group. Nothing
-        // read the value, no preview setting exists, and the reminder it would
-        // have hidden says only "A moment for you" — so what it actually did was
-        // fall through to the else branch and turn reminders OFF. A user who
-        // asked for a discreet daily nudge got no nudge, and was told nothing.
-        //
-        // The rule this pins: an option in NOTIFY is a TIME, or it is the
-        // explicit "none". There is no third, silent meaning.
-        val timed = NOTIFY.filter { it.id != "none" }
-        assertTrue("the group must still offer real times", timed.size >= 2)
-        timed.forEach { option ->
-            val hour = reminderHourFor(option.id)
-            assertTrue(
-                "NOTIFY option '${option.id}' silently means no-reminder",
-                hour != null && hour in 0..23,
-            )
-        }
-        assertEquals(null, reminderHourFor("none"))
-        assertEquals(8, reminderHourFor("morning"))
-        assertEquals(21, reminderHourFor("evening"))
-    }
+    // (V2-e: the everyReminderChipResolvesToARealChoice pin retired with the
+    // NOTIFY machinery it pinned — the Notify step left the funnel and
+    // Settings → Reminders owns scheduling with a real time picker.)
 
     // ── AI-disclosure cadence (re-show every 3h, across tab switches) ──
     @Test
@@ -706,12 +707,9 @@ class ScreenLogicTest {
         assertEquals(tints[0], breatheTint(BreathePreset.Color, 4)) // cycle wraps
     }
 
-    @Test
-    fun flowerFor_is_deterministic_and_cycles_the_palette() {
-        assertEquals(flowerFor(0), FLOWERS[0])
-        assertEquals(flowerFor(FLOWERS.size), FLOWERS[0])   // wraps
-        assertEquals(flowerFor(2), flowerFor(2))
-    }
+    // (V2-e part 2: the flowerFor pin retired with Games.kt — PatternGlow,
+    // ZenRipples and the orphaned GratitudeGarden left; the games REGISTRY
+    // versions are the one implementation per behavior.)
 
     @Test
     fun sleepFavs_toggle_round_trips_through_the_store() {
@@ -942,14 +940,18 @@ class ScreenLogicTest {
     @Test
     fun toolkitRecentLabel_knows_every_practice_and_declines_the_rest() {
         listOf(
-            "ground", "zenripples", "games", "bubblepop", "breathe/box",
+            "ground", "games", "bubblepop", "breathe/box",
             "breathe/reset", "cbt", "tipp", "imagery", "ritual", "gratitude",
-            "patternglow", "sounds",
+            "sounds",
         ).forEach { assertTrue("label for $it", toolkitRecentLabelRes(it) != null) }
         // Crisis must never render as "pick up where you left off", and a
         // stale pref from a retired route renders nothing rather than crashing.
+        // V2-e part 2: zenripples + patternglow are exactly that retired case —
+        // a phone with either in `toolkit_recent` hides the chip, no crash.
         assertNull(toolkitRecentLabelRes("crisis"))
         assertNull(toolkitRecentLabelRes("retired_tool"))
+        assertNull(toolkitRecentLabelRes("zenripples"))
+        assertNull(toolkitRecentLabelRes("patternglow"))
     }
 
     @Test

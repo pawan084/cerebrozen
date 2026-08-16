@@ -179,10 +179,13 @@ fun YouScreen(onOpen: (String) -> Unit) {
                     tint = Warm, modifier = Modifier.size(24.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(stringResource(R.string.you_support_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    val supportName = stringResource(supportLine.nameRes)
                     Text(
-                        if (supportIsUrl) stringResource(supportLine.nameRes)
-                        else stringResource(R.string.you_support_line,
-                            stringResource(supportLine.nameRes), supportLine.target),
+                        // "988 Suicide & Crisis Lifeline · 988" said the number
+                        // twice (audit K): append the target only when the name
+                        // doesn't already carry it.
+                        if (supportIsUrl || supportName.contains(supportLine.target)) supportName
+                        else stringResource(R.string.you_support_line, supportName, supportLine.target),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }
                 // One tap fewer on the path that matters most: a direct dial
@@ -261,27 +264,21 @@ fun YouScreen(onOpen: (String) -> Unit) {
             // which at 11% alpha on the light card read as grey-blue — the one
             // well on the page that looked unstyled rather than emphasised.
             icon = Icons.Outlined.ChatBubbleOutline) { onOpen("companion") }
-        // Onboarding asked for a language and nothing could change the answer:
-        // the profile card above SHOWED it ("Calm Guide · Hindi") but opened the
-        // companion picker, so a mistyped first run was permanent.
-        PremiumNavRow(stringResource(R.string.you_language_title),
-            stringResource(R.string.you_language_subtitle, run {
-                val lang = language.ifBlank { "English" }
-                languageLabelRes(lang)?.let { stringResource(it) } ?: lang
-            }),
-            icon = Icons.Outlined.Translate) { onOpen("language") }
-        // Rows carry their current value — a settings row that hides its state
-        // makes every check a round-trip.
+        // V2-e part 2: ONE row for appearance + language (REDESIGN_V2 §3.7) —
+        // the Appearance screen carries the language door. The subtitle keeps
+        // both current values, so neither setting hides its state.
         PremiumNavRow(
-            stringResource(R.string.you_appearance_title),
-            stringResource(
-                R.string.you_appearance_state,
-                when (com.cerebrozen.app.ui.theme.AppTheme.mode) {
+            stringResource(R.string.you_appearance_lang_title),
+            run {
+                val theme = when (com.cerebrozen.app.ui.theme.AppTheme.mode) {
                     com.cerebrozen.app.ui.theme.ThemeMode.Night -> stringResource(R.string.theme_night_title)
                     com.cerebrozen.app.ui.theme.ThemeMode.Dawn -> stringResource(R.string.theme_dawn_title)
                     else -> stringResource(R.string.theme_system_title)
-                },
-            ),
+                }
+                val lang = language.ifBlank { "English" }
+                val langLabel = languageLabelRes(lang)?.let { stringResource(it) } ?: lang
+                "$theme · $langLabel"
+            },
             icon = Icons.Outlined.DarkMode,
         ) { onOpen("appearance") }
         run {
@@ -310,15 +307,12 @@ fun YouScreen(onOpen: (String) -> Unit) {
         // The one screen the user fills in rather than reads.
         PremiumNavRow(stringResource(R.string.you_goals_title), stringResource(R.string.you_goals_subtitle),
             icon = Icons.Outlined.Flag) { onOpen("goals") }
+        // V2-d: ONE analytics door. Trends and Patterns rows left this list —
+        // the Insights screen already doors both (its pills and rows), so the
+        // three rows here were three names for one place, which is exactly the
+        // five-similarly-named-surfaces confusion Audit L measured.
         PremiumNavRow(stringResource(R.string.you_insights_title), stringResource(R.string.you_insights_subtitle),
             icon = Icons.Outlined.Insights) { onOpen("insights") }
-        // Trends sits beside Insights, not inside it: Insights is what the app
-        // has to say, Trends is what the user's own entries look like. They
-        // answer different questions and one should not be buried in the other.
-        PremiumNavRow(stringResource(R.string.you_trends_title), stringResource(R.string.you_trends_subtitle),
-            icon = Icons.Outlined.ShowChart) { onOpen("trends") }
-        PremiumNavRow(stringResource(R.string.you_patterns_title), stringResource(R.string.you_patterns_subtitle),
-            icon = Icons.Outlined.Psychology) { onOpen("patterns") }
 
         Text(stringResource(R.string.you_group_safety), style = MaterialTheme.typography.labelSmall,
             color = Periwinkle, modifier = Modifier.padding(top = 8.dp))
@@ -335,12 +329,9 @@ fun YouScreen(onOpen: (String) -> Unit) {
                 ?: stringResource(R.string.you_trusted_subtitle),
             icon = Icons.Outlined.PersonAddAlt,
         ) { onOpen("trustedcontact") }
-        PremiumNavRow(
-            stringResource(R.string.you_crisisregion_title),
-            if (region.isNotBlank()) stringResource(R.string.you_crisisregion_state, region.uppercase())
-            else stringResource(R.string.you_crisisregion_subtitle),
-            icon = Icons.Outlined.Public,
-        ) { onOpen("crisisregion") }
+        // V2-d: the crisis-region row left — the region picker lives IN
+        // context on the crisis screen ("Showing IN · change"), which is the
+        // moment a wrong-country list actually matters.
         PremiumNavRow(stringResource(R.string.humansupport_title), stringResource(R.string.you_humansupport_subtitle),
             icon = Icons.Outlined.Diversity3) { onOpen("humansupport") }
 
@@ -355,30 +346,25 @@ fun YouScreen(onOpen: (String) -> Unit) {
             tier != "free" -> stringResource(R.string.you_premium_subtitle_active)
             else -> stringResource(R.string.you_premium_subtitle)
         }
-        val offering = !sponsored && tier == "free"
-        Box((if (offering) Modifier.sheen() else Modifier).padding(top = 8.dp)) {
-            PremiumNavRow(stringResource(R.string.you_premium_title), premiumSubtitle,
-                icon = Icons.Outlined.WorkspacePremium) { onOpen("premium") }
+        // V2-d honesty: on Android nothing is purchasable (Play Billing is not
+        // built), so a free, unsponsored member gets NO premium row — a door to
+        // a screen whose only content is "billing isn't wired" is an upsell to
+        // nothing. The row returns with Play Billing; members who already have
+        // premium (sponsored or bought elsewhere) keep their manage door.
+        if (sponsored || tier != "free") {
+            Box(Modifier.padding(top = 8.dp)) {
+                PremiumNavRow(stringResource(R.string.you_premium_title), premiumSubtitle,
+                    icon = Icons.Outlined.WorkspacePremium) { onOpen("premium") }
+            }
         }
 
-        Text(stringResource(R.string.you_legal_header), style = MaterialTheme.typography.labelSmall, color = Periwinkle,
-            modifier = Modifier.padding(top = 8.dp))
-        PremiumNavRow(stringResource(R.string.privacypolicy_title), stringResource(R.string.privacypolicy_eyebrow),
-            icon = Icons.Outlined.Shield) { onOpen("privacypolicy") }
-        PremiumNavRow(stringResource(R.string.export_title), stringResource(R.string.you_export_subtitle),
-            icon = Icons.Outlined.FileDownload) { onOpen("export") }
-        // Deliberately NOT a PremiumNavRow like every row above it: as a premium
-        // row, "Delete account · Permanently erase everything" was pixel-identical
-        // to "Privacy policy · How we handle your data", so the single most
-        // irreversible action in the app looked like a link to a document. The
-        // danger tint is the difference (2026-07-31 module audit).
-        NavRow(stringResource(R.string.delete_title), stringResource(R.string.you_delete_subtitle),
-            icon = Icons.Outlined.DeleteOutline, tint = Danger) { onOpen("delete") }
+        // V2-e part 2: the legal trio (policy · export · delete) lives inside
+        // Privacy & memory now — with the controls it documents, and with the
+        // delete row keeping its danger tint there.
 
-        // Replay-the-tour is a once-ever action: it lives at the bottom now,
-        // not above the safety rows it used to outrank.
-        PremiumNavRow(stringResource(R.string.you_tour_title), stringResource(R.string.you_tour_subtitle),
-            icon = Icons.Outlined.Explore) { TourState.reset(); onOpen("home") }
+        // V2-d: the replay-the-tour row left with the tour itself — Today's
+        // 4-stop modal became a one-line hint (V2-b), and a row to re-arm a
+        // hint is not worth a slot on this list.
 
         // Sign out was a bare TextButton in TextMuted — a caption, on a screen
         // where every other action is a bordered card — and it signed you out on

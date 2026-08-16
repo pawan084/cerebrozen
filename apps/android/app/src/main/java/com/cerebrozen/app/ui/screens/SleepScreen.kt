@@ -66,6 +66,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Offset
@@ -92,6 +93,7 @@ import androidx.compose.ui.zIndex
 import com.cerebrozen.app.R
 import com.cerebrozen.app.audio.Player
 import com.cerebrozen.app.net.Api
+import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.theme.Accent2
 import com.cerebrozen.app.ui.theme.ButtonDisabled
 import com.cerebrozen.app.ui.theme.CardShadow
@@ -441,6 +443,15 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
 
     val scrollState = rememberScrollState()
     var refreshing by remember { mutableStateOf(false) }
+    // ── V2-d part 2: the Sleep split (REDESIGN_V2 §3.6) ──────────────────
+    // One route, two pages. TONIGHT is what an 11pm visit needs — the player,
+    // the check-in, the ritual and two doors. YOUR SLEEP holds everything
+    // analytical (summary, chart, rhythm, diary, mixer/programs doors, the
+    // guides). Same composition state on both pages, so the diary's
+    // edit-in-form flow keeps working — Edit just flips back to Tonight where
+    // the form lives. Back gesture returns to Tonight before leaving the tab.
+    var showDetails by rememberSaveable { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(enabled = showDetails) { showDetails = false }
     Box(
         Modifier
             .fillMaxSize()
@@ -690,6 +701,8 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
         // leads; evenings and the small hours the wind-down hero does. Decided
         // once when the tab composes ([checkInLeadsAt] is the tested boundary).
         val checkInFirst = remember { checkInLeadsAt(java.time.LocalTime.now().hour) }
+        if (!showDetails) {
+        // ── TONIGHT: five quiet blocks and nothing analytical ────────────
         if (checkInFirst) {
             checkInBlock()
             heroBlock()
@@ -700,6 +713,47 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
         // The transport lives where play starts — right under the lead cards,
         // not buried beneath the nav doors. Renders nothing while idle.
         NowPlayingBar(onOpenPlayer = { onOpen("player") })
+        // While something plays at night, the auto-stop timer is the killer
+        // feature — a real row beside the transport it belongs to.
+        if (Player.nowPlaying != null) {
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
+                    .background(CardFill).border(1.dp, LineStroke, RoundedCornerShape(18.dp))
+                    .clickable { Player.cycleTimer(context) }
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.sleep_timer_row), style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+                Text(
+                    if (Player.timerMinutes > 0) stringResource(R.string.sleep_timer_min, Player.timerMinutes)
+                    else stringResource(R.string.sleep_timer_off),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (Player.timerMinutes > 0) Cyan else TextMuted,
+                )
+            }
+        }
+        SleepNavCard(
+            icon = Icons.Outlined.Bedtime,
+            title = stringResource(R.string.sleep_ritual_nav_title),
+            subtitle = stringResource(R.string.sleep_ritual_nav_subtitle),
+        ) { onOpen("winddown") }
+        SleepNavCard(
+            icon = Icons.Outlined.LibraryMusic,
+            title = stringResource(R.string.sleep_sounds_header),
+            subtitle = stringResource(R.string.sleep_sounds_door_sub),
+        ) { onOpen("sounds") }
+        SleepNavCard(
+            icon = Icons.Outlined.MonitorHeart,
+            title = stringResource(R.string.sleep_data_title),
+            subtitle = stringResource(R.string.sleep_details_door_sub),
+        ) { showDetails = true; scope.launch { scrollState.animateScrollTo(0) } }
+        WhyThisWorks(stringResource(R.string.sleep_cbti_why))
+        } else {
+        // ── YOUR SLEEP: the analytical page ──────────────────────────────
+        TextButton(onClick = { showDetails = false }) {
+            Text(stringResource(R.string.sleep_details_back), color = Cyan)
+        }
 
         // Loading: the shape of the card that is coming, not a spinner and not
         // an empty state that would be a claim about the user's history.
@@ -710,16 +764,22 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
             }
         }
 
-        // Failed: say so, and offer the retry. Silence here reads as "no nights".
+        // Failed: say so, and offer the retry — unless the failure is the guest
+        // gate, where a retry can never work and the honest door is sign-in
+        // (audit-K discipline; found again on the 2026-08-15 device walk).
         if (!loading && loadFailed && summary == null) {
-            SectionCard {
-                Text(stringResource(R.string.sleep_week_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                Text(
-                    stringResource(R.string.sleep_load_failed),
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
-                )
-                TextButton(onClick = { scope.launch { loading = true; reload() } }) {
-                    Text(stringResource(R.string.common_retry), color = Cyan)
+            if (Session.guestMode) {
+                GuestSignInCard(onOpen)
+            } else {
+                SectionCard {
+                    Text(stringResource(R.string.sleep_week_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+                    Text(
+                        stringResource(R.string.sleep_load_failed),
+                        style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                    )
+                    TextButton(onClick = { scope.launch { loading = true; reload() } }) {
+                        Text(stringResource(R.string.common_retry), color = Cyan)
+                    }
                 }
             }
         }
@@ -827,6 +887,9 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
                                     editDate = n.date
                                     savedSummaryLine = null
                                     status = null
+                                    // The form lives on the Tonight page — flip
+                                    // back so the prefilled card is what appears.
+                                    showDetails = false
                                     scope.launch { scrollState.animateScrollTo(0) }
                                 }) { Text(stringResource(R.string.common_edit), color = Cyan) }
                                 TextButton(onClick = { pendingDelete = n }) {
@@ -839,9 +902,9 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
             }
         }
 
-        // The two doors: mornings keep them here, up with the planning mind;
-        // at night they step below the sounds — the thing you actually came
-        // for at 11pm outranks navigation.
+        // The two deeper doors live with the data they extend (V2-d part 2 —
+        // the morning/night reordering retired with the Tonight/Your-sleep
+        // split; Tonight carries its own doors now).
         val doorsBlock: @Composable () -> Unit = {
             SleepNavCard(
                 icon = Icons.Outlined.LibraryMusic,
@@ -862,73 +925,17 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
                 } else stringResource(R.string.sleep_programs_nav_subtitle),
             ) { onOpen("programs") }
         }
-        if (checkInFirst) doorsBlock()
+        doorsBlock()
 
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            SleepSectionHeader("♫", stringResource(R.string.sleep_sounds_header))
-            // The Sounds hub exists; this section used to dead-end at whatever
-            // the API returned.
-            TextButton(onClick = { onOpen("sounds") }) {
-                Text(stringResource(R.string.sleep_sounds_all), color = Cyan)
-            }
-        }
-        // While something plays at night, the auto-stop timer is the killer
-        // feature — surfaced as a real row, not small text in the transport.
-        if (Player.nowPlaying != null) {
-            Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
-                    .background(CardFill).border(1.dp, LineStroke, RoundedCornerShape(18.dp))
-                    .clickable { Player.cycleTimer(context) }
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.sleep_timer_row), style = MaterialTheme.typography.titleSmall, color = TextPrimary)
-                Text(
-                    if (Player.timerMinutes > 0) stringResource(R.string.sleep_timer_min, Player.timerMinutes)
-                    else stringResource(R.string.sleep_timer_off),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (Player.timerMinutes > 0) Cyan else TextMuted,
-                )
-            }
-        }
-        // metaLabel lambdas are not composable — capture the templates here.
+        // V2-d part 2: the sleep-stories ContentList left this screen — the
+        // Sounds hub IS the catalogue, and Tonight's Sounds door opens it.
+        // metaLabel lambdas are not composable — capture the template here.
         val minutesTemplate = stringResource(R.string.common_minutes)
-        val storyMeta = stringResource(R.string.sleep_meta_story)
         val guideMeta = stringResource(R.string.sleep_meta_guide)
-        ContentList(
-            "sleep",
-            { d -> if (d > 0) minutesTemplate.format(d) else storyMeta },
-            // Same catalogue item, same behaviour as Home's rail: play it and
-            // open the player. A second tap on the playing row pauses in place.
-            onItemTap = { title ->
-                if (Player.nowPlaying == title && Player.isPlaying) {
-                    Player.toggle(context, title, "sleep")
-                } else {
-                    Player.play(context, title, "sleep")
-                    onOpen("player")
-                }
-            },
-            emptyText = stringResource(R.string.sleep_sounds_empty),
-            emptyIcon = Icons.Outlined.LibraryMusic,
-        )
 
-        if (!checkInFirst) doorsBlock()
-
-        // CBT-I-informed wind-down guide (served `wind_down` content, read-only).
-        SleepSectionHeader("☾", stringResource(R.string.sleep_winddown_header))
-
-        // Action leads the section: the guided ritual first, the reference
-        // cards after — it used to trail four passive cards.
-        SleepNavCard(
-            icon = Icons.Outlined.Bedtime,
-            title = stringResource(R.string.sleep_ritual_nav_title),
-            subtitle = stringResource(R.string.sleep_ritual_nav_subtitle),
-        ) { onOpen("winddown") }
+        // CBT-I-informed wind-down guides (served `wind_down` content,
+        // read-only; the guided ritual's door lives on Tonight now).
+        SleepSectionHeader(Icons.Outlined.Bedtime, stringResource(R.string.sleep_winddown_header))
         // The served guides, falling back to the bundled stimulus-control pair
         // (CBT-I Phase 1) when the catalogue is unreachable or empty — advice
         // worth having at 3am on a bad connection.
@@ -968,9 +975,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
             },
         )
 
-        // One citation for the section, not one under each card. The diary now
-        // lives inside the merged "Your sleep" card above.
-        WhyThisWorks(stringResource(R.string.sleep_cbti_why))
+        }   // end YOUR SLEEP page (the one citation lives on Tonight)
     }
     }
 
@@ -1380,7 +1385,7 @@ internal fun NightsChart(nights: List<SleepNight>) {
 /** A richer standalone section header — a soft lavender glyph leading a title —
  * mirroring the redesign's sub-section headers, on our tokens. */
 @Composable
-private fun SleepSectionHeader(glyph: String, title: String) {
+private fun SleepSectionHeader(glyph: androidx.compose.ui.graphics.vector.ImageVector, title: String) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1393,7 +1398,7 @@ private fun SleepSectionHeader(glyph: String, title: String) {
                 .border(1.dp, LineStroke, RoundedCornerShape(11.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Text(glyph, style = MaterialTheme.typography.titleMedium, color = PeriwinkleSoft)
+            Icon(glyph, contentDescription = null, tint = PeriwinkleSoft, modifier = Modifier.size(18.dp))
         }
         Text(title, style = MaterialTheme.typography.titleLarge, color = TextSoft)
     }

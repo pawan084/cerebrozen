@@ -4,6 +4,304 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — V2 device walk 1 (2026-08-15 night, OnePlus CPH2681, live backend via adb reverse)
+
+Fresh install → full V2 walk, screenshots in the session scratchpad. **Verified on glass:**
+the 4-step funnel (Welcome → Honesty 1/4 → Privacy 2/4 with ALL SIX switches OFF →
+check-in 3/4 with honest tiles → Guest 4/4 → straight to Today); the new Today (hint chip,
+fused card, Your-day rows incl. evening prompt, Quick helps, This-week empty-state card,
+guest one-liner — ~1.5 screenfuls); tab bar Today·Sleep·Talk·Journal·You with the
+crescent; Sleep Tonight page + doors + "Your sleep" details page with back link; Talk's
+new top-bar shield; the trimmed You. **Six walk defects found, five fixed + re-verified
+same night, all gated (`:app:check` REAL_EXIT:0):**
+1. **Guest morph dead (critical)** — a guest's mood tap error'd out and the card never
+   became the step; now a guest-gate failure still morphs ("Anxious — noted · Undo") with
+   the honest not-saved line. Verified: guest tap → grounding step card.
+2. "Overwhelmed" clipped in the compact grid — root cause was width, not type
+   (labelSmall is the tracking-wide eyebrow role and made it WORSE); grid is 2-across now,
+   all labels complete at 720px.
+3. Disclosure CTA said "Continue to first check-in" but lands on consent → "Continue"
+   (EN + new HI).
+4. Sleep tab root wore a back arrow → brand mark (onBack dropped at registration).
+5. "Your sleep" guest load-failure showed a retry that can never work → `GuestSignInCard`.
+6. NOT yet fixed: Today's status line ghosts under the translucent top bar on scroll —
+   pre-existing (audit-K "hero/app-bar ghosting"), stays on that list.
+Note: the installed debug build points at localhost:8000 — off-USB it runs local-first
+with the offline line (by design); rebuild plain `assembleDebug` before handing the phone
+to anyone expecting live sync, or sign in over adb reverse.
+
+**Signed-in walk (same night, smoke account over adb reverse) — all green:** auth flow
+(the IME Done key submits; field drafts survive a Gboard-settings detour via
+rememberSaveable); check-in round-trips the server ("Earlier · Good · Clear" on reload);
+the hero renders a REAL AI plan step ("Evening Relaxation") with the ai-path provenance
+sentence and — wired during the walk, it had been missed in V2-b — **"· STEP 2 OF 3" in
+the eyebrow** (tappable → plan); program row shows "Sleep Reset · Day 7 of 7"; presence
+dots render with today's halo; signed-in You confirms **no Premium row for free
+unsponsored** + danger-tinted Delete; sign-out dialog honest, returns to Welcome.
+Nameless-account greeting correctly falls back to the friend line (not a defect — the
+smoke profile has no name). Final `:app:check` REAL_EXIT:0. Phone left at fresh Welcome
+on the new build.
+
+**V2 visual-language pass 1 (owner: "why have you not followed the design", 2026-08-15
+night):** honest gap named — structure matched the approved prototype, the visual layer
+was partial, and the phone's light mode showed Dawn while the prototype is Night.
+Shipped + Night-verified on device: **the orb** (FocusCard `orb = true`, drawn from the
+section accent, both themes safe) glows on THE CARD; **mood-chip icon wells wear each
+mood's hue** (14% wash); **`pastel` FocusCard de-hexed** — the hardcoded light stops
+(0xFFFFE1D4/0xFFE0C9EC) washed Night's card out silver and sank "more options →";
+now `AccentSoft/FieldFill` tokens, both palettes gated by ContrastTest (`:app:check`
+REAL_EXIT:0). **Visual pass 2 (2026-08-16, Night-verified on device):** Sleep's night-blue world
+(`Accent.sleep` Periwinkle→Cyan — the animated aurora shifts blue on the Sleep tab);
+**greeting name defect fixed** — `today_greeting_format` had DROPPED %2$s, so no
+signed-in user ever saw their name; the format carries the name now, greetings went
+lowercase-calm, and `today_friend` carries the gentle guest line (EN+HI); ask-card
+title padded clear of the orb.
+**⚠️ PRIVACY DEFECT found & fixed on this walk:** `home_snapshot`/`sleep_snapshot`
+(+ toolkit_recent, milestone, banner-dismissals, talk_crisis_sticky, mixer_state,
+consent_sync_failed) **survived sign-out** — a fresh guest was greeted by the previous
+account's NAME and last check-in line. On a shared device in a family-stigma context
+that is the exact leak the privacy posture forbids. `Session.signOut()` now sweeps
+`PERSONAL_PREF_KEYS`; pinned by `AuthFlowTest.signOut_clears_the_leaving_persons_
+snapshots`; e2e-verified on device (sign in → out → guest sees only the gentle line).
+**Visual gaps still open (V2-e/f):** This-week mood sparkline (needs an owner call on
+the honest mood→height mapping — charts stay sentences-first); You "Your month"
+presence grid; journal mood-pills; richer nav active-pill treatment.
+
+- [x] **V2-e part 1 (2026-08-16): the dead-code sweep + in-context reminders.**
+  Onboarding: the six retired steps are DELETED, not parked — `OStep` is seven
+  entries in funnel order (AnimatedContent direction derives from ordinal), their
+  when-branches, `ResetStep`, `OnboardingFeatureCard`, the `language`/`notify`/
+  `resetDone` vars and the whole Notify machinery (NOTIFY, `reminderHourFor`,
+  `applyReminderChoice`, permission launcher) are gone; `funnelStepIndex/Progress`
+  hold only live steps. Today: `FoldSection`, `ContentRail`, `railKindLabel`,
+  `todayExtra` deleted (`railKindFor`/`artKindForTitle`/`checkInsToday` stay —
+  tested pure fns for Explore's future rail). GuidedTour: overlay + stops deleted;
+  `TourState` survives as the hint's memory (briefly swept by an over-greedy cut,
+  caught by the compiler, restored). Routes: `talk/live`, `talk/chat`, `dailyplan`
+  deleted from the graph + bottom-bar set; `NavigationChromeTest` now pins the
+  aliases STAY dead; `RouteReachabilityTest`'s excuse list emptied; the retired
+  NOTIFY test removed with its subject. **Reminders ask lives in context now**: an
+  InfoBanner on Today after a check-in lands, once ever, doors to Settings →
+  Reminders (EN+HI). "Toolkit" is renamed **"Practices"** (EN+HI). Gates:
+  compile ×3 + full `:app:check :app:assembleDebug` REAL_EXIT:0; morph re-verified
+  on device. Noted for later: `loggedMood` is remember-scoped, so a tab hop
+  returns a GUEST to the ask card (pre-existing; signed-in users get the marked
+  chip from the server row).
+- [x] **V2-e part 2 (2026-08-16): the one-per-behavior kill + You merges.**
+  **Practices trim** (device-verified): zenripples, patternglow, bodyscan, gratitude
+  and sounds cards left the hub; Box+Reset became ONE "Breathing" card (breathe/box
+  with no start pattern IS the pattern picker). The hub is now Ground (5-4-3-2-1 ·
+  Bubble pop featured · Mindful Games door) / Breathe (one) / Reframe (CBT · TIPP) /
+  Settle (imagery · ritual) / support — ~9 doors from 15. **Games.kt DELETED whole**
+  (PatternGlowScreen, ZenRipplesScreen, the orphaned GratitudeGardenScreen + helpers
+  + routes + RippleBrightnessTest + the flowerFor pin): the registry's pattern-recall
+  / color-tap / still-point are the one implementation each. `toolkitRecentLabelRes`
+  declines the retired routes (pinned — a stale recent-chip pref hides, never
+  crashes). bodyscan + gratitude keep their Calm-now doors (RouteReachability green).
+  **You merges**: legal trio (policy · export · delete, danger tint kept) moved INTO
+  Privacy & memory under the Legal header; appearance+language = ONE row
+  ("Appearance & language · Night · English") with the language door inside the
+  Appearance screen. You is ~11 rows for a typical free user (from 23).
+  **Explore route**: decision recorded — stays registered, deeplink-only, excused in
+  RouteReachability; final shape follows the search decision (V2-f or later).
+  Gates: full `:app:check :app:assembleDebug` REAL_EXIT:0 ×2; Practices + morph
+  re-verified on device. Note: the ask-card title now wraps to two lines beside the
+  orb at 720px — acceptable (matches the greeting's rhythm), revisit if it grates.
+- [x] **V2-f (2026-08-16): copy diet + Sleep-insights localization — the last wave.**
+  **Copy diet** (Audit-L L4): the 18 `*_why` provenance lines are one calm sentence
+  each, author-year citations out of the UI (`SalvagedToolsTest`'s pin FLIPPED to
+  enforce the diet: 30–120 chars, no parens); `journal_private_body` +
+  `privacypolicy_private_body` compressed with every disclosure kept (safety-scan
+  via provider, reviewer exception + audit trail); 4 error essays → one line saying
+  what happened and what is safe; `humansupport_intro` / `toolkit_tipp_subtitle` /
+  `offline_disclaimer` trimmed; 6 HI mirrors. `scripts/check-claims.mjs` green
+  ("No unbacked claims across 206 user-facing files").
+  **Sleep-insights localized** (Audit-L L6): `ReferenceSleepInsightsScreen`'s ~20
+  hardcoded English literals → 18 new `si_*` strings EN+HI; window state now holds
+  locale-free ids (`week/month/3m`) with chips rendering localized labels; the
+  bar-chart's last raw hex pair → `Cyan→Periwinkle` tokens. Device-verified EN
+  **and HI** (per-app locale): hero/chips/stats/"record, not a diagnosis" branch
+  all render; window switching works; ≥3-nights honesty branch correct per window.
+  Gate: full `:app:check :app:assembleDebug` REAL_EXIT:0. `ConsentNotice.kt`
+  literals (L6's other half) remain open below.
+  ⚠️ **New debt found — Robolectric AppNotIdle flake**: three consecutive full-suite
+  runs failed with 14–26 `AppNotIdleException`s ("Compose did not get idle… 4M
+  attempts") across DIFFERENT previously-green Compose test classes, same code
+  green before and after (isolated classes always pass; full suite passed clean on
+  the 4th run, 27s). Cross-test contamination — some run leaves an infinite
+  composition/idling condition that poisons every later `createComposeRule` class
+  in the JVM. Not reproducible on demand; if CI hits it, rerun once and treat a
+  repeat as the signal to bisect (execution order is recoverable from the
+  test-results XML timestamps).
+
+## Open — audit L: declutter/verbosity review from first outside-tester feedback (2026-08-15)
+
+Full report: [audit/L-declutter-feedback-2026-08-15.md](audit/L-declutter-feedback-2026-08-15.md).
+Tester feedback ("cluttered, too much to read, be self-intuitive, launch now") verified against
+the Android codebase in four deep passes. Confirmed: first run = 13 screens / ~610 words / 14 taps;
+Today worst-case 22 blocks / 32 CTAs; "not medical care" ×12, "no streaks" ×6; 6 breathing +
+5 gratitude + 4 grounding implementations; 16 dead `urgent_*` strings duplicating `crisis_*`;
+Sleep has no permanent Today door. Also found real defects: **consent pre-ticked + 6 categories
+POSTed while 3 shown (DPDP)**, onboarding state tiles write the wrong mood, crisis shield absent
+on Talk/Journal top bars, Sleep-insights screen fully hardcoded English (760-key values-hi gap).
+
+- [x] **Wave L1 — correctness & safety** — DONE via V2-a/V2-c (2026-08-15): consent
+      defaults/categories ✓ (pinned), mood-tile mapping ✓ (pinned), `onUrgent` on
+      Talk/Journal + breathe session ✓, custom-time reminder moot (Notify step retired),
+      Reflection step retired ✓. Remaining from this wave: **dead crisis twin deletion**
+      (`CrisisScreen` + 16 `urgent_*` strings) → rides V2-d.
+- [x] **Wave L2 — onboarding cut** — DONE via V2-c (2026-08-15), deeper than planned:
+      13→5 screens (spec'd 8); tour modal → one inline hint (V2-b).
+- [ ] **Wave L3 — Today declutter** (compact mood grid, one hero CTA on house `PrimaryButton`,
+      no rail, folds calmed, bell removed, "Tonight"/Sleep-door decision).
+      → **Superseded by [REDESIGN_V2.md](REDESIGN_V2.md)** (2026-08-15): app-wide compact
+      redesign — global spacing/type system, all 5 tabs + onboarding/crisis/settings specs,
+      delivery waves V2-a…f. Waves L1–L6 map into it; L1's defects ride wave V2-c.
+      **Design APPROVED by owner 2026-08-15** (interactive prototype:
+      claude.ai/code/artifact/8b24bcae-7907-4027-b3fa-f67096f47e2f — the reference for
+      implementation; owner sharing it with Deepak).
+      - [x] **V2-a (partial, 2026-08-15): foundation** — `Space` tokens compacted 4/8/14/24
+        (ratios preserved); `Page`/`PageHeader` gained `onUrgent` and the shield now sits on
+        Talk's top bar, both Journal frames, and BreathLoops (picker + the running session —
+        the Audit-L "no urgent door mid-session" defect); `ReferenceAction` delegates to house
+        `PrimaryButton` (raw-hex plum pill retired). `:app:compileDebugKotlin
+        :app:testDebugUnitTest` green (exit 0). Still in V2-a: row-height compaction sweep +
+        an emulator/device look at the tightened rhythm.
+      - [x] **V2-b (2026-08-15): the new Today shipped** — the approved one-card design:
+        greeting (34sp) + one rotating status line (offline → earlier check-in) · **THE CARD**
+        (no check-in today → 3-across compact mood grid inside the hero slot; a check-in
+        morphs it into the one next step with "step x of y" in the eyebrow (→plan), one
+        white pill, "more options →" tertiary (→practices), and the in-card undoable
+        confirmation) · **Your day** rows (Tonight — Sleep's permanent clock-aware door —
+        + program + evening journal prompt + build-a-plan) · **Quick helps** (Breathe /
+        Ground / Sounds / Games) · **This week** card (presence dots + kind sentence +
+        milestone, one door to Insights) · guest one-liner. Deleted from Today: date row,
+        bell, lede, GuestSignInCard, rail (+its fetch), both folds, sleep/wind-down/program
+        banners (absorbed into rows), metric tiles + duplicate insights doors, recent list,
+        4-stop tour modal (→ one dismissible hint line). 18 new strings EN+HI (warm spoken
+        register). Pure fns (homeBannerPriority, railKindFor, FoldSection…) kept — tests
+        untouched; compile + full unit suite green (41s, exit 0). Dead-code sweep of the
+        now-unused Today helpers rides V2-e. **Not yet walked on a device.**
+      - [x] **V2-c (2026-08-15): onboarding 13→5 + the three data defects, CI-pinned** —
+        funnel `order` is now Welcome → Disclosure → Consent → State → Guest(→Today);
+        Language (auto-detected; changeable in You), Intro, Reset, Reflection, Notify and
+        Ready are off-path (branches remain till the V2-e sweep; "Continue as guest" now
+        IS the continue). Defects fixed: **consent defaults all-false again** (third
+        restoration — extracted to `defaultConsent()` and pinned by
+        `consent_defaults_are_all_false_and_cover_all_six_categories`), **all six DPDP
+        categories now render as switches** (three were being POSTed unseen), and the
+        **state tiles write the mood their label says** ("Clear" wrote "Anxious";
+        stressed→Good, distant→Overwhelmed — pinned by
+        `state_tiles_write_the_mood_their_label_says`; `onboardingMoodNote` gained
+        Overwhelmed). Stepper contract updated: `ONBOARDING_STEPS`=4,
+        funnelStepIndex/funnelProgress re-mapped, both tests rewritten. The "custom time"
+        reminder defect is moot (Notify left the funnel; Settings has a real picker).
+        Reminders in-context ask (post-first-check-in) still TODO — rides V2-e.
+        Compile + full unit suite green (exit 0). **Not yet walked on a device.**
+      - [x] **V2-d part 1 (2026-08-15): tabs · one crisis surface · You trim.**
+        **Tabs**: Sleep takes the second slot back (new `ic_tab_sleep` crescent), Explore
+        retires to a deeplink-only route; bottom-bar set + highlight mapping updated
+        (practice-library/gratitude light Home; sleepinsights lights Sleep);
+        `NavigationChromeTest` re-pinned to the new ruling. ⚠️ Doc-lineage incident,
+        caught and repaired: the new spec OVERWROTE the 2026-08-06 Light-Dawn
+        `REDESIGN_V2.md` unread — recovered from git to
+        [REDESIGN_V2_2026-08-06-lightdawn.md](REDESIGN_V2_2026-08-06-lightdawn.md) with a
+        supersession header; both docs now cross-reference, and stale code citations to
+        "§6.1/§3.1" were repointed.
+        **Crisis**: the onboarding-only `CrisisScreen` twin deleted; onboarding now uses
+        `UrgentSupportScreen(inFunnel = true)` (in-app doors hidden — no dead taps on a
+        crisis surface; dial intents work everywhere); all 18 dead `urgent_*` strings
+        deleted from EN + HI.
+        **You**: 23 → ~16 rows — trends/patterns rows out (Insights doors both),
+        crisis-region row out (in-context on the crisis screen), tour row out (tour is
+        retired), and the **Premium row hides for free unsponsored members** (nothing is
+        purchasable on Android until Play Billing; sponsored/active keep the manage door).
+        Remaining to reach ~10: merge appearance+language and fold the legal trio into
+        Privacy & data — rides V2-e with the screen merges.
+        Gate: `:app:check :app:assembleDebug` green with the REAL exit code checked
+        (`$?` on the gradle command itself). ⚠️ The `cmd | grep …; echo EXIT` pattern
+        bit AGAIN this session — two intermediate "green" claims were actually
+        compile failures (a stale `CrisisScreen` import, then two test references to
+        deleted `urgent_*`/old routes), caught only by the closing gate. Same trap
+        this file already documents for pytest+tail. Fixed: import removed,
+        `SafetyCopyTest` drops the deleted string, `RouteReachabilityTest` records
+        `explore` as deeplink-only with the V2-d reason.
+      - [x] **V2-d part 2 (2026-08-15): the Sleep split shipped** — one route, two pages
+        sharing composition state. **TONIGHT** (default): hero/check-in (time-ordered as
+        before), NowPlayingBar + timer row, ritual door, Sounds door, "Your sleep" door,
+        the one CBT-I citation. **YOUR SLEEP** (`showDetails`, back-gesture returns):
+        summary/chart/rhythm card (incl. `sleepinsights` link), editable diary (Edit flips
+        back to Tonight where the form lives — the save/edit flow is untouched),
+        mixer + programs doors, wind-down guides. Deleted from the tab: the sleep-stories
+        ContentList (the Sounds hub IS the catalogue) and the morning/night door
+        reordering (each page owns its doors). 3 new strings EN+HI. Full gate green with
+        REAL exit code (`:app:check :app:assembleDebug`, REAL_EXIT:0). Sleep-insights
+        localization still pending (V2-f). **Not yet walked on a device.**
+- [x] **Wave L4 — copy diet** — DONE via V2-f (2026-08-16): `*_why` one line no citations
+      (pinned), disclosures compressed honestly, error essays one line, acronyms plain.
+- [x] **Wave L5 — IA consolidation** — DONE via V2-d/V2-e (2026-08-15/16): one implementation
+      per behavior, Practices 15→~9, You 23→~11, Sleep split, guest wall one shape,
+      orphans/aliases killed. (SafetyPlan single-save not revisited — its current shape stayed.)
+- [~] **Wave L6 — localization** — Sleep-insights DONE via V2-f (18 `si_*` EN+HI,
+      device-verified in Hindi). Still open: `ConsentNotice.kt` literals → resources; a
+      sweep for remaining hardcoded literals; hi parity for strings touched this cycle.
+- [ ] **Owner: Play launch track** (keystore, Play Console, data-safety + Health Connect forms,
+      account-deletion URL deploy, graphics) — see report §4; no app-code blockers for internal
+      testing; launch free without Play Billing.
+
+## Open — audit K: emulator UI/UX walk (2026-08-15, ~28 screens rated)
+
+Full report: [audit/K-emulator-uiux-2026-08-15.md](audit/K-emulator-uiux-2026-08-15.md).
+Fresh-install onboarding → guest walk → signed-in walk on a headless Pixel 6 AVD.
+Overall ~8/10; the honesty patterns hold up live. Four systemic findings, none fixed yet:
+
+- [x] **Guest states lie — FIXED (2026-08-15 wave 1, verified on emulator screenshots):**
+  `Api.activePlan()` no longer swallows failures (the eternal spinner was unreachable
+  error-state); `Throwable.isGuestGate()` + `GuestSignInCard(subtitle=…)` now answer the
+  guest 401 with a sign-in door on Daily plan, ContentList (Sounds + every catalogue),
+  Privacy & memory (switches hidden — they could only lie), Safety plan (editor gated —
+  guest writing could never save), and both insights screens. Pinned by
+  `GuestGateScreensTest` (3 tests) + the rewritten `activePlan` contract test; full unit
+  suite 504 green.
+- [x] **Two icon languages + emoji + broken medallion — FIXED (wave 2, verified on
+  emulator):** shared `moodIcon()` now faces the six states everywhere (Today grid,
+  check-in sheet, onboarding first check-in); onboarding's suits/arrows/×/◇ are outlined
+  icons; games registry carries ImageVectors (emoji retired; uniqueness pinned in
+  `MindfulGameRegistryTest`); Ground family wears LocalFlorist, not the crisis shield;
+  `EmptyStateArt` overlays a guaranteed-contrast glyph (journal/insight/sleep) over the
+  generative bed; Insights-hub rows and Sleep section headers use real icons. Sleep's
+  emoji rest scale stays — owner decision #25.
+- [x] **Tour references invisible UI — copy FIXED (wave 3):** stop 1 names the
+  "How are you right now?" tiles, stop 2 says "the big card at the top of this screen"
+  (English + Hindi). Mechanical spotlight/scroll-to anchoring remains future polish.
+- [x] **Jargon — FIXED (wave 4, en + hi where translated):** "prototype"→CereBro;
+  "Agentic plan"→"Built for you"; grounding subtitle de-clinicalised; TIPP expanded to
+  "Temperature, movement and sensory skills"; Premium/inbox dev-speak humanised;
+  "Enter Today"→"Take me there"; welcome privacy said once; "988 … · 988" deduped
+  (append target only when the name doesn't carry it).
+- [x] **Human support region-aware — FIXED (wave 5, verified):** rides
+  `rememberCrisisRegion()`/`primaryCrisisLine()` like every crisis surface; IN keeps
+  Tele-MANAS + iCall + the coach note, elsewhere the region's line + regional
+  findahelpline path. **ONB-08 permission timing FIXED** same wave: the funnel advances
+  from the permission launcher's callback, so the dialog lands on the step that caused it.
+- **Device e2e (2026-08-15 evening, OnePlus CPH2681, live backend via adb reverse):**
+  all five waves re-verified on the handset — mood icons crisp at 720p; plan/sounds/
+  privacy/safety-plan guest gates render and the sign-in door genuinely lands on Auth;
+  Human support keeps Tele-MANAS + iCall on the IN device (region branch verified both
+  ways vs the US emulator); re-armed tour fires stop 1 with the check-in tiles visible,
+  so the new copy is true on screen; crisis card shows the number exactly once in both
+  regions; full loop guest → sign-in (smoke account) → personalized hero + program chip
+  → sign out; grounding practice runs. Phone restored to guest as found.
+- [ ] Remaining small: mood tap has no persistent selected state; label==placeholder on
+  form fields; post-sign-in lands at You-bottom; hero/app-bar ghosting on scroll;
+  "This week +" bare control; Insights "No diary yet" tile overflow; eyebrow==title on
+  Insight Reel; 5-4-3-2-1 self-description; tour spotlight anchoring.
+- [ ] Judgment (owner): "Not verified yet" pill on the crisis screen — verify the four seeded
+  regions' numbers and drop the pill for known-good regions, or keep the honesty as is.
+- Rig note: emulator segfaults under sustained animation (host SwiftShader; reinstall did not
+  help). Headless `-no-window` walks static screens fine; breathe/games/wind-down stay
+  device-only. The app itself never crashed.
+
 ## Open — full-codebase review (2026-08-13, gates run)
 
 Backend 617 passed / **2 failed** / 2 skipped, coverage 95.58% (gate ≥95% holds). Android

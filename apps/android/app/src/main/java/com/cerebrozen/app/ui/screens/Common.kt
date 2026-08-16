@@ -42,11 +42,20 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.AutoStories
+import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.HealthAndSafety
+import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.PersonAddAlt
+import androidx.compose.material.icons.outlined.QueryStats
+import androidx.compose.material.icons.outlined.Waves
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -65,6 +74,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -494,11 +504,46 @@ internal fun EmptyStateArt(kind: String, size: Dp = 56.dp, modifier: Modifier = 
                 alpha = settle.value
             }
             .clip(RoundedCornerShape(16.dp)),
+        contentAlignment = Alignment.Center,
     ) {
         // The kind doubles as the seed title (like the InfoBanner medallion),
         // so each surface's illustration is stable across visits.
         ContentArt(title = kind, kind = kind, modifier = Modifier.fillMaxSize())
+        // Audit K: the "journal"/"insight" seeds generate art so dark and
+        // featureless at 48–56dp that the medallion read as a broken, unloaded
+        // image on two live screens. The art stays as the bed; a glyph on top
+        // guarantees the tile always says something. ArtTextSoft is the token
+        // for ink over generative art (blends toward ArtScrim in both themes).
+        Icon(
+            emptyStateGlyph(kind), contentDescription = null,
+            tint = com.cerebrozen.app.ui.theme.ArtTextSoft,
+            modifier = Modifier.size(size * 0.44f),
+        )
     }
+}
+
+/** The overlay glyph per empty-state kind — same outlined set as everywhere. */
+internal fun emptyStateGlyph(kind: String): androidx.compose.ui.graphics.vector.ImageVector = when (kind) {
+    "journal" -> Icons.Outlined.AutoStories
+    "insight" -> Icons.Outlined.QueryStats
+    "sleep" -> Icons.Outlined.Bedtime
+    else -> Icons.Outlined.AutoAwesome
+}
+
+/**
+ * One outlined icon per check-in state, keyed on the WIRE value — shared by
+ * Today's mood grid, the check-in sheet and onboarding's first check-in, so
+ * the six states wear the same faces everywhere. Replaces the text glyphs
+ * (◌ ⌁ ↓ ☾ ⁘ …) that rendered as six near-identical placeholder dots at tile
+ * size (audit K: "looks unfinished" was the first-hour impression they made).
+ */
+internal fun moodIcon(name: String): androidx.compose.ui.graphics.vector.ImageVector = when (name) {
+    "Good" -> Icons.Outlined.LightMode
+    "Anxious" -> Icons.Outlined.Bolt
+    "Low" -> Icons.Outlined.ArrowDownward
+    "Tired" -> Icons.Outlined.Bedtime
+    "Overwhelmed" -> Icons.Outlined.Waves
+    else -> Icons.Outlined.MoreHoriz   // "Not sure", honestly unnamed
 }
 
 /** A quiet, single-purpose banner (W9 B5): SurfaceRaised fill, a soft accent
@@ -640,6 +685,16 @@ internal fun Throwable.userMessage(fallback: String): String =
     (this as? Session.ApiException)?.message?.takeIf { it.isNotBlank() } ?: fallback
 
 /**
+ * True when this failure is the guest gate: a 401 raised while browsing without
+ * an account — the request was never going to succeed and never will, no matter
+ * how often it is retried. Screens must render a sign-in door for it, not a
+ * "Try again" (audit K: Sounds offered a retry that could not work, and the
+ * Daily plan called it a loading state; both were this one failure, misdressed).
+ */
+internal fun Throwable.isGuestGate(): Boolean =
+    (this as? Session.ApiException)?.code == 401 && Session.guestMode
+
+/**
  * Shared page frame for the live tabs: eyebrow + large rounded title + scroll column.
  *
  * [trailing] renders as a soft icon well top-right. Pass [onTrailingClick] to make
@@ -663,6 +718,10 @@ internal fun Page(
     eyebrowColor: Color = EyebrowMuted,
     trailingLabel: String? = null,
     onTrailingClick: (() -> Unit)? = null,
+    /** V2-a: the crisis door in the same pixels on tab roots too. Talk and
+     * Journal used [Page]/[PremiumPage] without it, which made the shield's
+     * position screen-dependent — the exact property the rule exists to buy. */
+    onUrgent: (() -> Unit)? = null,
     /** Pinned below the scrolling body, outside [scrollState].
      *
      * For a composer that must not travel with the transcript. Talk had its
@@ -703,6 +762,7 @@ internal fun Page(
         eyebrowColor = eyebrowColor,
         trailingLabel = trailingLabel,
         onTrailingClick = onTrailingClick,
+        onUrgent = onUrgent,
     )
     Column(
         Modifier
@@ -751,6 +811,7 @@ internal fun PageHeader(
     eyebrowColor: Color = EyebrowMuted,
     trailingLabel: String? = null,
     onTrailingClick: (() -> Unit)? = null,
+    onUrgent: (() -> Unit)? = null,
 ) = CereBroTopBar(
     title = title,
     subtitle = eyebrow,
@@ -758,6 +819,7 @@ internal fun PageHeader(
     trailing = trailing,
     trailingLabel = trailingLabel,
     onTrailingClick = onTrailingClick,
+    onUrgent = onUrgent,
 )
 
 /**
@@ -913,6 +975,11 @@ internal fun FocusCard(
     accent: Color = BrandPrimary,
     modifier: Modifier = Modifier,
     pastel: Boolean = false,
+    /** V2 visual language: the brand orb glows in the card's top-right corner —
+     * the one living motif of the approved prototype (REDESIGN_V2 §1, "the orb
+     * is the brand"). Drawn from [accent], so both palettes stay contrast-safe;
+     * it is decoration behind content and carries no semantics. */
+    orb: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(Radius.hero)
@@ -927,8 +994,13 @@ internal fun FocusCard(
             .clip(shape)
             .background(Gradients.glass)
             .then(
+                // Themed, not literal (device walk 2026-08-15): the old
+                // hardcoded light stops (0xFFFFE1D4 / 0xFFE0C9EC) washed the
+                // card's lower half out silver on Night and sank the tertiary
+                // link into it. Tokens resolve per palette, so both themes get
+                // the soft diagonal wash the prototype shows.
                 if (pastel) Modifier.background(
-                    Brush.linearGradient(listOf(Color(0xFFFFE1D4), AccentSoft, Color(0xFFE0C9EC))),
+                    Brush.linearGradient(listOf(AccentSoft, FieldFill, AccentSoft)),
                 ) else Modifier,
             )
             .background(
@@ -936,6 +1008,29 @@ internal fun FocusCard(
                     0f to Color.Transparent,
                     1f to accent.copy(alpha = 0.10f),
                 ),
+            )
+            .then(
+                if (orb) Modifier.drawBehind {
+                    val r = 26.dp.toPx()
+                    val c = androidx.compose.ui.geometry.Offset(size.width - 44.dp.toPx(), 40.dp.toPx())
+                    // The halo — a soft accent glow the body sits in.
+                    drawCircle(
+                        Brush.radialGradient(
+                            listOf(accent.copy(alpha = 0.30f), Color.Transparent),
+                            center = c, radius = r * 2.6f,
+                        ),
+                        radius = r * 2.6f, center = c,
+                    )
+                    // The body, lit from the upper-left like the prototype's.
+                    drawCircle(
+                        Brush.radialGradient(
+                            listOf(Color.White.copy(alpha = 0.95f), accent.copy(alpha = 0.85f), accent.copy(alpha = 0f)),
+                            center = androidx.compose.ui.geometry.Offset(c.x - r * 0.35f, c.y - r * 0.35f),
+                            radius = r * 1.6f,
+                        ),
+                        radius = r, center = c,
+                    )
+                } else Modifier,
             )
             .border(
                 1.dp,
@@ -1032,9 +1127,16 @@ internal fun SectionCard(
  * a clickable card, which gives TalkBack two overlapping targets for one action.
  */
 @Composable
-internal fun GuestSignInCard(onOpen: (String) -> Unit, modifier: Modifier = Modifier) {
+internal fun GuestSignInCard(
+    onOpen: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    /** Surface-specific promise (audit K: the guest gate should say what signing
+     * in buys HERE — "sync your plan, journal and check-ins" on a sounds library
+     * answered a question nobody asked). Null keeps the generic line. */
+    subtitle: String? = null,
+) {
     val title = stringResource(R.string.guest_sign_in_title)
-    val subtitle = stringResource(R.string.guest_sign_in_subtitle)
+    val subtitle = subtitle ?: stringResource(R.string.guest_sign_in_subtitle)
     val action = stringResource(R.string.guest_sign_in_action)
     SectionCard(
         onClick = { onOpen("auth") },

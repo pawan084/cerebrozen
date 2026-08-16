@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Landscape
 import androidx.compose.material.icons.outlined.HealthAndSafety
+import androidx.compose.material.icons.outlined.LocalFlorist
 import androidx.compose.material.icons.outlined.PersonAddAlt
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Spa
@@ -141,7 +142,10 @@ fun PracticeLibraryScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
             )
             Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
                 PracticeFamilyRow(Icons.Outlined.Spa, stringResource(R.string.practicelib_breathe_title), stringResource(R.string.practicelib_breathe_sub), OkSoft, Color(0xFF4B775E)) { onOpen("breathing-intro") }
-                PracticeFamilyRow(Icons.Outlined.HealthAndSafety, stringResource(R.string.practicelib_ground_title), stringResource(R.string.practicelib_ground_sub), WarmSoft, Color(0xFFC75270)) { onOpen("groundingintro") }
+                // LocalFlorist, not HealthAndSafety: the red-cross shield is this
+                // app's crisis symbol (Urgent support wears it on every screen),
+                // and audit K found it labelling a routine practice family here.
+                PracticeFamilyRow(Icons.Outlined.LocalFlorist, stringResource(R.string.practicelib_ground_title), stringResource(R.string.practicelib_ground_sub), WarmSoft, Color(0xFFC75270)) { onOpen("groundingintro") }
                 PracticeFamilyRow(Icons.Outlined.FavoriteBorder, stringResource(R.string.practicelib_reset_title), stringResource(R.string.practicelib_reset_sub), WarmSoft, Color(0xFFC75270)) { onOpen("tipp") }
                 PracticeFamilyRow(Icons.Outlined.Psychology, stringResource(R.string.practicelib_thoughts_title), stringResource(R.string.practicelib_thoughts_sub), WarmSoft, Color(0xFFC75270)) { onOpen("cbt") }
                 PracticeFamilyRow(Icons.Outlined.Bedtime, stringResource(R.string.practicelib_sleep_title), stringResource(R.string.practicelib_sleep_sub), OkSoft, Color(0xFF4B775E)) { onOpen("bodyscan") }
@@ -354,7 +358,17 @@ fun crisisRegionIsVerified(region: String): Boolean =
     region.trim().uppercase() in VERIFIED_CRISIS_REGIONS
 
 @Composable
-fun UrgentSupportScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
+fun UrgentSupportScreen(
+    onBack: () -> Unit,
+    onOpen: (String) -> Unit,
+    /** V2-d: true when composed from the ONBOARDING funnel, which has no
+     * NavHost — the in-app doors (trusted contact, grounding, region, safety
+     * plan) would be dead taps there, and a dead control on a crisis surface
+     * is the one place that can never happen. The dial actions are intents
+     * and work everywhere. This param is what let the duplicate
+     * `CrisisScreen` be deleted (one crisis surface, one string set). */
+    inFunnel: Boolean = false,
+) {
     val serif = FontFamily(Font(R.font.newsreader))
     val region by rememberCrisisRegion()
     val regional = crisisLinesFor(region)
@@ -452,22 +466,26 @@ fun UrgentSupportScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
             // that opens onto a setup form must say it is one. And it no longer
             // borrows Tele-MANAS's heart: a public helpline and a named
             // individual are different kinds of help, and here that matters.
-            val hasAccount = Session.signedIn
-            UrgentAction(
-                stringResource(if (hasAccount) R.string.crisis_trusted_title else R.string.crisis_trusted_setup_title),
-                stringResource(if (hasAccount) R.string.crisis_trusted_detail else R.string.crisis_trusted_setup_detail),
-                Icons.Outlined.PersonAddAlt,
-            ) { onOpen("trustedcontact") }
-            UrgentAction(stringResource(R.string.crisis_cannot_call), stringResource(R.string.crisis_cannot_call_detail), Icons.Outlined.Spa, sage = true) { onOpen("crisisgrounding") }
+            if (!inFunnel) {
+                val hasAccount = Session.signedIn
+                UrgentAction(
+                    stringResource(if (hasAccount) R.string.crisis_trusted_title else R.string.crisis_trusted_setup_title),
+                    stringResource(if (hasAccount) R.string.crisis_trusted_detail else R.string.crisis_trusted_setup_detail),
+                    Icons.Outlined.PersonAddAlt,
+                ) { onOpen("trustedcontact") }
+                UrgentAction(stringResource(R.string.crisis_cannot_call), stringResource(R.string.crisis_cannot_call_detail), Icons.Outlined.Spa, sage = true) { onOpen("crisisgrounding") }
+            }
             androidx.compose.material3.HorizontalDivider(color = LineStroke.copy(alpha = .7f))
             Text(stringResource(R.string.crisis_cached_title), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = TextMuted)
             Text(stringResource(R.string.crisis_sources), style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp), color = Color(0xFF776E6E))
-            Text(stringResource(R.string.crisis_change_region), modifier = Modifier.padding(7.dp).clickable { onOpen("crisisregion") }, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF6C2768))
-            Box(
-                Modifier.fillMaxWidth().height(49.dp).clip(RoundedCornerShape(25.dp)).background(CardFill)
-                    .border(1.dp, LineStroke, RoundedCornerShape(25.dp)).clickable { onOpen("safetyplan") },
-                contentAlignment = Alignment.Center,
-            ) { Text(stringResource(R.string.crisis_open_safety_plan), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF6C2768)) }
+            if (!inFunnel) {
+                Text(stringResource(R.string.crisis_change_region), modifier = Modifier.padding(7.dp).clickable { onOpen("crisisregion") }, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF6C2768))
+                Box(
+                    Modifier.fillMaxWidth().height(49.dp).clip(RoundedCornerShape(25.dp)).background(CardFill)
+                        .border(1.dp, LineStroke, RoundedCornerShape(25.dp)).clickable { onOpen("safetyplan") },
+                    contentAlignment = Alignment.Center,
+                ) { Text(stringResource(R.string.crisis_open_safety_plan), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF6C2768)) }
+            }
             Spacer(Modifier.height(6.dp))
         }
     }

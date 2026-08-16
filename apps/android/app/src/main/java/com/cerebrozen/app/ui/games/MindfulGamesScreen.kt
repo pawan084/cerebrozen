@@ -32,6 +32,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.spring
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -117,8 +118,8 @@ fun MindfulGamesScreen(onBack: () -> Unit, onOpenGame: (String) -> Unit) {
                                     .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(18.dp)),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Text(game.glyph, style = MaterialTheme.typography.headlineMedium,
-                                    modifier = Modifier.semantics { contentDescription = name })
+                                Icon(game.glyph, contentDescription = name,
+                                    tint = TextPrimary, modifier = Modifier.size(26.dp))
                             }
                             Text(name, style = MaterialTheme.typography.titleMedium, color = TextPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             Text(description, style = MaterialTheme.typography.bodySmall, color = TextMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)

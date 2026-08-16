@@ -69,7 +69,7 @@ internal val SAFETY_PLAN_VALUES_SAVER = Saver<Map<String, String>, String>(
  *    `Session.servedStale` says so honestly rather than hiding it.
  */
 @Composable
-fun SafetyPlanScreen(onBack: () -> Unit) {
+fun SafetyPlanScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
     var values by rememberSaveable(stateSaver = SAFETY_PLAN_VALUES_SAVER) {
         mutableStateOf<Map<String, String>>(emptyMap())
     }
@@ -122,6 +122,12 @@ fun SafetyPlanScreen(onBack: () -> Unit) {
     )
 
     LaunchedEffect(Unit) {
+        // Guests: no request (it can never succeed) and no editor below — a
+        // guest who wrote seven sections here would lose them on the next app
+        // restart, and losing user writing is this app's worst defect class.
+        // The gate card renders instead; audit K's "your plan is still on your
+        // account" (said to someone with no account) came from this path.
+        if (Session.guestMode) { loading = false; return@LaunchedEffect }
         if (hydrated) { loading = false; return@LaunchedEffect }
         runCatching { Api.safetyPlan() }
             .onSuccess { plan ->
@@ -162,6 +168,10 @@ fun SafetyPlanScreen(onBack: () -> Unit) {
         Text(stringResource(R.string.safetyplan_privacy_note),
             style = MaterialTheme.typography.bodySmall, color = TextMuted)
 
+        if (Session.guestMode) {
+            GuestSignInCard(onOpen = onOpen, subtitle = stringResource(R.string.guest_gate_safetyplan))
+            return@SubPage
+        }
         if (servedFromCache) {
             Text(stringResource(R.string.safetyplan_offline),
                 style = MaterialTheme.typography.bodySmall, color = Periwinkle)

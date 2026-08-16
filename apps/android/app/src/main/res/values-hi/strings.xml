@@ -165,7 +165,8 @@
         <item quantity="one">%1$d शब्द</item>
         <item quantity="other">%1$d शब्द</item>
     </plurals>
-    <string name="today_friend">दोस्त</string>
+    <!-- V2: the guest fallback carries the gentle line (the name slot is real now). -->
+    <string name="today_friend">आराम से चलिए</string>
     <string name="today_search_cd">लाइब्रेरी में खोजें</string>
     <string name="today_banner_offline">आप ऑफ़लाइन हैं — आपकी पिछली कॉपी दिख रही है।</string>
     <string name="today_banner_sleep">कल रात कैसी रही? 20 सेकंड का चेक-इन।</string>
@@ -449,7 +450,7 @@
 
     <!-- ── Toolkit hub ─────────────────────────────────────────────────── -->
     <string name="toolkit_eyebrow">थमने के छोटे तरीक़े</string>
-    <string name="toolkit_title">टूलकिट</string>
+    <string name="toolkit_title">प्रैक्टिस</string>
     <string name="toolkit_intro">जो इस पल चाहिए वह चुनें — वर्तमान में लौटें, साँस लें, सोच सुलझाएँ, ठहरें।</string>
     <string name="toolkit_header_ground">वर्तमान में लौटें</string>
     <string name="toolkit_header_breathe">साँस</string>
@@ -546,7 +547,7 @@
     <string name="programs_loading">यात्राएँ लोड हो रही हैं…</string>
     <string name="programs_error_fallback">यात्राएँ लोड नहीं हो पाईं — थोड़ी देर में फिर कोशिश करें।</string>
     <string name="programs_active_unknown_title">आपकी यात्रा जाँची नहीं जा सकी</string>
-    <string name="programs_active_unknown_body">अगर कोई यात्रा चल रही थी, तो वह अब भी वहीं है — हम बस सर्वर से पढ़ नहीं सके। नीचे कुछ भी शुरू या प्रतिस्थापित नहीं हुआ है।</string>
+    <string name="programs_active_unknown_body">सर्वर से संपर्क नहीं हो सका। अगर कोई प्रोग्राम चल रहा था, तो वह अब भी चल रहा है।</string>
     <string name="programs_day_eyebrow">प्रोग्राम · दिन %1$d / %2$d</string>
     <string name="programs_completed_subtitle">पूरा हुआ — बहुत सुंदर। जब मन हो, कोई और शुरू करें।</string>
     <string name="programs_active_subtitle">आज बस आ जाना ही पूरा काम है।</string>
@@ -593,7 +594,7 @@
     <string name="inbox_group_delivered">भेजी गईं</string>
     <string name="inbox_empty_title">अभी तक कुछ नहीं भेजा गया</string>
     <string name="inbox_empty_body">आपको मिलने वाले रिमाइंडर यहाँ दिखेंगे, ताकि शेड साफ़ करने के बाद भी आप देख सकें कि कोई आया था।</string>
-    <string name="inbox_empty_body_push_off">आपका रोज़ाना रिमाइंडर आने पर यहाँ दिखेगा। सर्वर से भेजे जाने वाले नज इस बिल्ड में बंद हैं, इसलिए कोई आ नहीं सकता।</string>
+    <string name="inbox_empty_body_push_off">आपका रोज़ाना रिमाइंडर आने पर यहाँ दिखेगा। CereBro की ओर से आने वाले नज अभी बंद हैं, इसलिए कोई आ नहीं सकता।</string>
     <string name="inbox_open">खोलें</string>
     <string name="inbox_dismiss">हटाएँ</string>
     <string name="inbox_clear_all">सब हटाएँ</string>
@@ -617,7 +618,7 @@
     <string name="privacy_consent_error">यह बदलाव सहेजा नहीं जा सका — कनेक्शन देखें और फिर कोशिश करें।</string>
     <string name="privacy_notice_language_label">यह सूचना इस भाषा में पढ़ें</string>
     <string name="privacy_consent_load_failed_title">आपकी पसंद लोड नहीं हो सकी</string>
-    <string name="privacy_consent_load_failed_body">नीचे के स्विच वह नहीं दिखा रहे जो आपने चुना है — सर्वर से संपर्क नहीं हो सका। कुछ भी बदला नहीं है। इन्हें छूने से पहले फिर कोशिश करें।</string>
+    <string name="privacy_consent_load_failed_body">सर्वर से संपर्क नहीं हो सका — ये स्विच पुराने हो सकते हैं। कुछ बदला नहीं है; फिर कोशिश करें।</string>
     <string name="privacy_stats_title">गुमनाम उपयोग आँकड़े</string>
     <string name="privacy_stats_hint">सिर्फ़ गिनती — कभी आपकी सामग्री या खाता नहीं</string>
     <string name="privacy_unlock_journal">जर्नल अनलॉक करें</string>
@@ -634,7 +635,7 @@
     <string name="premium_monthly_price">₹499 / माह</string>
     <string name="premium_monthly_note">कभी भी रद्द करें</string>
     <string name="premium_cta">निःशुल्क ट्रायल शुरू करें</string>
-    <string name="premium_billing_note">Android पर बिलिंग अभी जुड़ी नहीं है — Play Billing, Play Console सेटअप के साथ आएगी।</string>
+    <string name="premium_billing_note">ऐप के इस संस्करण में ख़रीदारी अभी उपलब्ध नहीं है।</string>
     <string name="premium_sponsored_eyebrow">आपके संगठन द्वारा भुगतान</string>
     <string name="premium_sponsored_title">पहले से खुला हुआ</string>
     <string name="premium_sponsored_intro">इस सीट का भुगतान आपका संगठन करता है, इसलिए यहाँ कुछ खरीदना या रद्द करना नहीं है। पूरी लाइब्रेरी और असीमित दैनिक बातचीत इस खाते पर पहले से खुली हैं।</string>
@@ -658,7 +659,7 @@
     <string name="privacypolicy_eyebrow">हम आपका डेटा कैसे सँभालते हैं</string>
     <string name="privacypolicy_title">निजता नीति</string>
     <string name="privacypolicy_private_title">निजता, डिज़ाइन से</string>
-    <string name="privacypolicy_private_body">आपका जर्नल, चैट और नींद की सामग्री आपकी ही रहती है। सपोर्ट टूलिंग को गिनती और खाते की स्थिति दिखती है, आपके शब्द नहीं। एक अपवाद: अगर कोई एंट्री संकट के रूप में चिह्नित हो, तो समीक्षक उसे खोल सकता है — और हर बार खोलने का रिकॉर्ड रखा जाता है।</string>
+    <string name="privacypolicy_private_body">आपकी डायरी, बातचीत और नींद की जानकारी आपकी ही रहती है — सपोर्ट टीम को गिनती दिखती है, शब्द नहीं। एक अपवाद: संकट-चिह्नित एंट्री एक समीक्षक खोल सकता है, और हर बार खोलना दर्ज होता है।</string>
     <string name="privacypolicy_controls_title">आपके नियंत्रण</string>
     <string name="privacypolicy_controls_body">निजता और मेमोरी में तय करें कि क्या याद रहे, कभी भी पूरी कॉपी निर्यात करें, या सब कुछ स्थायी रूप से मिटाएँ।</string>
     <string name="privacypolicy_noselling_title">बेचना नहीं, कभी नहीं</string>
@@ -775,7 +776,7 @@
     </plurals>
 
     <!-- ── Plan ────────────────────────────────────────────────────────── -->
-    <string name="plan_eyebrow">एजेंटिक योजना · आपके चेक-इन से ढलती है</string>
+    <string name="plan_eyebrow">आपके लिए बनी · आपके चेक-इन से ढलती है</string>
     <string name="plan_default_title">दैनिक योजना</string>
     <string name="plan_load_error">अभी आपकी योजना लोड नहीं हो पाई।</string>
     <string name="plan_loading">आपकी योजना लोड हो रही है…</string>
@@ -842,7 +843,7 @@
     <string name="tour_stop1_title">रोज़ चेक-इन करें</string>
     <string name="tour_stop1_body">एक टैप CereBro को बताता है कि आप कैसे आए हैं — योजनाएँ, इनसाइट और शुरुआती सुझाव इसी से ढलते हैं।</string>
     <string name="tour_stop2_title">आपकी योजना ढलती है</string>
-    <string name="tour_stop2_body">दिन के तीन छोटे कदम, आपके चेक-इन और नींद डायरी से नए सिरे से बनते हैं। हीरो पर कभी भी टैप करें।</string>
+    <string name="tour_stop2_body">दिन के तीन छोटे कदम, आपके चेक-इन और नींद डायरी से नए सिरे से बनते हैं। इसी स्क्रीन के ऊपर वाला बड़ा कार्ड इनका घर है।</string>
     <string name="tour_stop3_title">खुलकर बात करें</string>
     <string name="tour_stop4_title">डिफ़ॉल्ट रूप से निजी</string>
     <string name="tour_stop4_body">आपकी हाँ के बिना कुछ याद नहीं रखा जाता। आप → निजता और मेमोरी में कभी भी बदलें।</string>
@@ -1014,25 +1015,7 @@
          above rather than the TIPP one. -->
     <string name="tipp_urge_note">अगर ख़ुद को नुकसान पहुँचाने का ख़याल आ रहा है, तो कृपया किसी से बात भी करें। असली लोग हर समय मौजूद हैं।</string>
     <string name="tipp_urge_action">तत्काल सहायता खोलें</string>
-    <string name="urgent_subtitle">इंसानी मदद पहले</string>
-    <string name="urgent_danger_title">अगर तुरंत ख़तरा है, तो अभी %1$s पर कॉल करें।</string>
-    <string name="urgent_danger_body">CereBro आपातकालीन सेवा नहीं है और आपकी सुरक्षा की निगरानी नहीं कर सकता।</string>
-    <string name="urgent_verified">सत्यापित</string>
-    <string name="urgent_hero">इंसानी मदद\nपहले आती है।</string>
-    <string name="urgent_intro">सत्यापित इंसानी सहायता जल्दी पाएँ, ऑफ़लाइन विकल्पों के साथ।</string>
-    <string name="urgent_emergency_title">आपातकालीन सेवाओं को कॉल करें</string>
-    <string name="urgent_emergency_detail">%1$s · पुलिस, दमकल, स्वास्थ्य और अन्य आपात स्थितियाँ</string>
-    <string name="urgent_call_line">%1$s को कॉल करें</string>
-    <string name="urgent_line_detail_in">%1$s · 20 भाषाओं में मुफ़्त 24/7 मानसिक-स्वास्थ्य सहायता</string>
-    <string name="urgent_line_detail_other">%1$s · सत्यापित मानसिक-स्वास्थ्य सहायता</string>
-    <string name="urgent_trusted_title">मेरे भरोसेमंद व्यक्ति से संपर्क करें</string>
-    <string name="urgent_trusted_detail">वह व्यक्ति जिसे आपने चुना; अपने आप संपर्क तभी होगा जब आपने यह चालू किया हो</string>
     <string name="crisis_trusted_detail">वह व्यक्ति जिसे आपने चुना; अपने आप संपर्क तभी होगा जब आपने यह चालू किया हो</string>
-    <string name="urgent_cannot_call_title">मैं कॉल नहीं कर सकता/सकती</string>
-    <string name="urgent_cannot_call_detail">संदेश, आमने-सामने और ग्राउंडिंग के विकल्प देखें</string>
-    <string name="urgent_cached_title">सहेजी गई सहायता जानकारी</string>
-    <string name="urgent_cached_body">स्रोत: सरकारी और सत्यापित क्षेत्रीय सहायता निर्देशिकाएँ। ऑफ़लाइन होने पर, हो सके तो जानकारी की पुष्टि करें क्योंकि सेवाएँ बदल सकती हैं।</string>
-    <string name="urgent_open_safety_plan">मेरी सुरक्षा योजना खोलें</string>
     <string name="groundingintro_title">5-4-3-2-1 ग्राउंडिंग</string>
     <string name="groundingintro_subtitle">अभ्यास परिचय</string>
     <string name="checkindetail_title">चेक-इन करें</string>
@@ -1081,7 +1064,7 @@
     <!-- Human support directory -->
     <string name="humansupport_eyebrow">ऐप से आगे</string>
     <string name="humansupport_title">इंसानी सहायता</string>
-    <string name="humansupport_intro">CereBro एक साथी है, चिकित्सक नहीं। जब आप किसी असली इंसान से बात करना चाहें, ये आपको उनसे जोड़ते हैं।</string>
+    <string name="humansupport_intro">जब आप किसी असली इंसान से बात करना चाहें, ये रास्ते वहीं ले जाते हैं।</string>
     <string name="humansupport_telemanas_title">टेली-मानस — 14416 पर कॉल करें</string>
     <string name="humansupport_telemanas_detail">निःशुल्क सरकारी मानसिक स्वास्थ्य लाइन · चौबीसों घंटे</string>
     <string name="humansupport_icall_title">iCall — काउंसलर से बात करें</string>
@@ -1172,7 +1155,7 @@
     <string name="companion_quiet_detail">काम पहले — एक बार में एक छोटा ठोस क़दम</string>
 
     <string name="privacy_setup_sync_failed_title">आपकी सेटअप पसंद सहेजी नहीं गई</string>
-    <string name="privacy_setup_sync_failed_body">सेटअप के दौरान चुनी गई आपकी गोपनीयता पसंद सर्वर तक नहीं पहुँची। नीचे दिए स्विच वही दिखाते हैं जो वाक़ई सहेजा गया है — कृपया इन्हें अपनी इच्छा के अनुसार सेट करें।</string>
+    <string name="privacy_setup_sync_failed_body">सेटअप के आपके चुनाव सर्वर तक नहीं पहुँचे। स्विच वैसे सेट कर लें जैसे आप चाहते हैं।</string>
 
     <string name="talk_voice_network">बोली पहचानने के लिए अभी कनेक्शन चाहिए — आप नीचे टाइप कर सकते हैं।</string>
     <string name="talk_voice_busy">माइक्रोफ़ोन व्यस्त है — एक पल दें, या नीचे टाइप करें।</string>
@@ -1204,7 +1187,7 @@
     <string name="safetyplan_privacy_note">CereBro इसे आपको सलाह बनाकर नहीं लौटाता, न इसका आकलन करता है, न साझा।</string>
     <string name="safetyplan_offline">इस डिवाइस पर सहेजी कॉपी दिख रही है — सर्वर से संपर्क नहीं हो सका।</string>
     <string name="safetyplan_load_failed_title">आपकी योजना लोड नहीं हो सकी</string>
-    <string name="safetyplan_load_failed_body">इस डिवाइस पर अभी कोई प्रति सहेजी नहीं है, इसलिए नीचे के बॉक्स खाली हैं। कुछ भी हटाया नहीं गया — आपकी योजना आपके खाते में सुरक्षित है।</string>
+    <string name="safetyplan_load_failed_body">आपका प्लान लोड नहीं हो सका। कुछ मिटा नहीं है — वह आपके अकाउंट पर है।</string>
     <string name="safetyplan_saved">सहेजा गया।</string>
     <string name="safetyplan_done">हो गया</string>
     <string name="safetyplan_save_failed">यह हिस्सा सहेजा नहीं जा सका — लिखा हुआ यहीं है, थोड़ी देर में फिर कोशिश करें।</string>
@@ -1310,4 +1293,57 @@
     <string name="journal_delete_body">यह एंट्री आपके खाते से हमेशा के लिए हट जाएगी।</string>
     <string name="sleep_delete_title">यह नींद की एंट्री हटाएँ?</string>
     <string name="sleep_delete_body">%1$s की नींद की एंट्री हमेशा के लिए हट जाएगी।</string>
+
+    <!-- V2-b Today — warm spoken register, loanwords in Devanagari (REDESIGN_V2 §4) -->
+    <string name="today_hint">जैसा महसूस हो रहा है वो चुनें — CereBro एक कदम सुझाएगा</string>
+    <string name="today_checkin_note">साथ में नोट जोड़ें →</string>
+    <string name="today_hero_more">और विकल्प →</string>
+    <string name="today_hero_step_progress">कदम %1$d / %2$d</string>
+    <string name="today_your_day">आपका दिन</string>
+    <string name="today_tonight_title">आज रात</string>
+    <string name="today_tonight_wind">विंड-डाउन · 10 मिनट</string>
+    <string name="today_tonight_ready">आज रात का विंड-डाउन तैयार है</string>
+    <string name="today_prompt_title">आज रात का सवाल</string>
+    <string name="today_prompt_sub">एक चीज़ जो आपने आज संभाल ली</string>
+    <string name="today_program_day">दिन %1$d / %2$d</string>
+    <string name="today_quick_helps">झटपट मदद</string>
+    <string name="today_qh_breathe">साँस</string>
+    <string name="today_qh_ground">ग्राउंड</string>
+    <string name="today_qh_sounds">आवाज़ें</string>
+    <string name="today_qh_games">गेम्स</string>
+    <string name="today_week_sentence">पिछले 7 दिनों में से %1$d दिन आप यहाँ आए</string>
+    <string name="today_guest_line">प्रोग्रेस बचाएँ · साइन इन करें</string>
+
+    <!-- V2-c walk fix -->
+    <string name="ob_disclosure_cta">जारी रखें</string>
+
+    <!-- V2-d part 2: Sleep split -->
+    <string name="sleep_sounds_door_sub">बारिश, हवा और शांत मिक्स</string>
+    <string name="sleep_details_door_sub">डायरी, चार्ट और आपकी रिदम</string>
+    <string name="sleep_details_back">‹ आज रात पर वापस</string>
+    <!-- V2-e -->
+    <string name="today_reminder_ask">रोज़ एक हल्का रिमाइंडर चाहेंगे? कोई स्ट्रीक नहीं, कोई दबाव नहीं।</string>
+    <string name="today_reminder_ask_action">सेट करें</string>
+    <!-- V2-e part 2 -->
+    <string name="language_intro_short">जिस भाषा में जवाब आते हैं</string>
+    <string name="you_appearance_lang_title">रूप और भाषा</string>
+    <!-- V2-f: sleep insights -->
+    <string name="si_title">नींद की इनसाइट्स</string>
+    <string name="si_subtitle">रुझान, निदान नहीं</string>
+    <string name="si_eyebrow">नींद की इनसाइट्स</string>
+    <string name="si_hero">दिशा देखिए,
+परफ़ेक्शन नहीं।</string>
+    <string name="si_lede">आज रात की नींद के लिए सहारा — कोई निदान नहीं, कोई वादा नहीं।</string>
+    <string name="si_win_week">हफ़्ता</string>
+    <string name="si_win_month">महीना</string>
+    <string name="si_win_3m">3 महीने</string>
+    <string name="si_stat_avg">औसत</string>
+    <string name="si_stat_bedtime">सोने का दायरा</string>
+    <string name="si_stat_quality">आराम की गुणवत्ता</string>
+    <string name="si_noticed">CereBro ने क्या देखा</string>
+    <string name="si_reading">आपकी नींद की डायरी पढ़ रहे हैं…</string>
+    <string name="si_need_three">दिशा बताने से पहले कम से कम तीन रातें लॉग करें।</string>
+    <string name="si_shown">आपकी डायरी से %1$d रातें। छूटी रातें खाली रहती हैं — यह रिकॉर्ड है, निदान नहीं।</string>
+    <string name="si_reminders_link">विंड-डाउन रिमाइंडर देखें →</string>
+    <string name="si_load_failed">नींद की इनसाइट्स लोड नहीं हो सकीं।</string>
 </resources>

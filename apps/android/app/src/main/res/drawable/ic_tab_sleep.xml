@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- V2-d tab icon: the crescent returns — Sleep takes the second slot back
+     (REDESIGN_V2 §2, owner-approved 2026-08-15: the evidenced flagship gets a
+     permanent tab; Explore retires). Same thin rounded-line style as the set
+     (2dp stroke on a 24dp grid), drawn in white; the Icon composable tints it
+     per selection state. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- The crescent: a waning moon, open to the upper-left. -->
+    <path
+        android:pathData="M20.6,13.1 A8.6,8.6 0 1,1 10.9,3.4 A6.9,6.9 0 0,0 20.6,13.1 Z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

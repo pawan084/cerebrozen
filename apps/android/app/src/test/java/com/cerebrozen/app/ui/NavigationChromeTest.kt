@@ -9,44 +9,43 @@ import org.junit.Test
 class NavigationChromeTest {
     @Test
     fun bottomBarOnlyAppearsOnRootTabs() {
-        listOf("home", "explore", "talk", "journal", "you").forEach {
+        listOf("home", "sleep", "talk", "journal", "you").forEach {
             assertTrue(it, shouldShowBottomBar(it))
         }
-        listOf("tools", "games", "mindfulgame/{gameId}", "guidedimagery", "player", null).forEach {
+        listOf("tools", "games", "mindfulgame/{gameId}", "guidedimagery", "player", "explore", null).forEach {
             assertFalse(it ?: "null", shouldShowBottomBar(it))
         }
     }
 
     @Test
-    fun theTabsAreTheSpecsFive() {
-        // docs/REDESIGN_V2.md §3.1 + owner ruling §6.1: Today · Explore · Talk ·
-        // Journal · You. Pinned by ROUTE because the labels are localized; the
-        // Today tab deliberately keeps the `home` route so deeplinks, saved
-        // back-stack state and the nudge vocabulary all survived the rename.
-        assertEquals(listOf("home", "explore", "talk", "journal", "you"), Tab.entries.map { it.route })
+    fun theTabsAreTheV2Five() {
+        // REDESIGN_V2.md §2, owner-approved 2026-08-15: Today · Sleep · Talk ·
+        // Journal · You. This REVERSES the Light-Dawn §6.1 ruling (archived at
+        // docs/REDESIGN_V2_2026-08-06-lightdawn.md) deliberately: Sleep is the
+        // only bias-robust evidence domain and gets its permanent door back;
+        // Explore's slot retires and the library lives behind Today's
+        // "more options →". Pinned by ROUTE because the labels are localized;
+        // Today keeps the `home` route so deeplinks and saved state survive.
+        assertEquals(listOf("home", "sleep", "talk", "journal", "you"), Tab.entries.map { it.route })
     }
 
     @Test
-    fun sleepIsAPushedScreenNotATab() {
-        // Sleep left the tab bar (owner ruling §6.1) and is reached from
-        // Explore. It must NOT light the pill: a tab bar showing on a route no
-        // tab owns leaves five unlit tabs and no sense of where you are.
-        assertFalse("sleep no longer owns a tab", shouldShowBottomBar("sleep"))
-        assertFalse("sleep" in Tab.entries.map { it.route })
-        // …but it is still a real destination, so everything that pointed at it
-        // — nudges, plan steps, Today's entry points — keeps working.
-        assertEquals("sleep", routeForDeeplink("cerebro://sleep"))
+    fun exploreIsAPushedScreenNotATab() {
+        // The mirror of the ruling above: `explore` must not light the pill —
+        // a tab bar showing on a route no tab owns leaves five unlit tabs and
+        // no sense of where you are. The route survives for deeplinks.
+        assertFalse("explore no longer owns a tab", shouldShowBottomBar("explore"))
+        assertFalse("explore" in Tab.entries.map { it.route })
+        assertEquals("explore", routeForDeeplink("cerebro://explore"))
     }
 
     @Test
     fun urgentSupportSurvivesTheTabChange() {
-        // The safety rule is that crisis stays <= 2 taps from anywhere. It never
-        // hung off the Sleep tab — it hangs off the You tab's Support card and,
-        // since the five-tab pass, Explore's support door. Both of those tabs
-        // are one tap from every tab route, so the path is unchanged in length.
+        // The safety rule is that crisis stays <= 2 taps from anywhere. Since
+        // V2-a the shield sits in the top bar of every frame, and the You tab
+        // keeps its Support card — one tap from every tab route.
         assertTrue("You is still a tab", "you" in Tab.entries.map { it.route })
-        assertTrue("Explore is a tab", "explore" in Tab.entries.map { it.route })
-        listOf("home", "explore", "talk", "journal", "you").forEach {
+        listOf("home", "sleep", "talk", "journal", "you").forEach {
             assertTrue("the pill (and so the You tab) is reachable from $it", shouldShowBottomBar(it))
         }
         // And the crisis screen stays a first-class deeplink target.
@@ -54,11 +53,12 @@ class NavigationChromeTest {
     }
 
     @Test
-    fun theTalkAliasesKeepTheirTabChrome() {
-        // talk/live + talk/chat render the Talk tab; without the pill a stale
-        // entry point showed Talk chrome-less (audit A12).
-        assertTrue(shouldShowBottomBar("talk/live"))
-        assertTrue(shouldShowBottomBar("talk/chat"))
+    fun theRetiredAliasesStayRetired() {
+        // V2-e: talk/live, talk/chat and dailyplan left the graph — a stale
+        // entry point must not resurrect chrome for routes that don't exist.
+        assertFalse(shouldShowBottomBar("talk/live"))
+        assertFalse(shouldShowBottomBar("talk/chat"))
+        assertFalse(shouldShowBottomBar("dailyplan"))
     }
 
     @Test

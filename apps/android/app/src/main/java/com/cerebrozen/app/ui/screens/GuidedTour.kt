@@ -33,82 +33,15 @@ import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextSoft
 
-// First-run guided tour (ref GUIDED TOUR OVERLAY): four gentle stops over
-// Home, shown once per install (`tour_done` on the Store seam).
-
-/** The four tour stops, resolved from resources in composition. */
-@Composable
-internal fun tourStops(): List<Pair<String, String>> = listOf(
-    stringResource(R.string.tour_stop1_title) to stringResource(R.string.tour_stop1_body),
-    stringResource(R.string.tour_stop2_title) to stringResource(R.string.tour_stop2_body),
-    stringResource(R.string.tour_stop3_title) to stringResource(R.string.tour_stop3_body),
-    stringResource(R.string.tour_stop4_title) to stringResource(R.string.tour_stop4_body),
-)
+// V2-e: the 4-stop tour overlay (tourStops + GuidedTourOverlay) left with the
+// tour — Today's one-line hint replaced it (V2-b). TourState survives as the
+// hint's once-per-install memory.
 
 internal object TourState {
     private const val KEY = "tour_done"
     fun isDone(): Boolean = Session.prefGet(KEY) == "true"
     fun markDone() = Session.prefPut(KEY, "true")
 
-    /**
-     * Re-arm the tour from You (iOS parity: the "Take a quick tour" row).
-     *
-     * Clears this one flag and nothing else — the tour is the only thing being
-     * replayed, not onboarding, not consent, not any content the user made.
-     * Home reads `isDone()` through a plain `remember`, so it re-evaluates when
-     * the tab is composed again and the overlay comes back on its own.
-     */
+    /** For You → "Take the tour again": re-arm the first-run hint. */
     fun reset() = Session.prefPut(KEY, "false")
-}
-
-@Composable
-internal fun GuidedTourOverlay(onDone: () -> Unit) {
-    var idx by remember { mutableIntStateOf(0) }
-    val stops = tourStops()
-    val (label, caption) = stops[idx]
-    Box(
-        Modifier.fillMaxSize().background(ModalScrim),
-        contentAlignment = Alignment.BottomCenter,
-    ) {
-        Column(
-            Modifier.fillMaxWidth()
-                .padding(16.dp)
-                .glass(RoundedCornerShape(22.dp))
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(stringResource(R.string.tour_header, idx + 1, stops.size),
-                style = MaterialTheme.typography.labelSmall, color = Cyan)
-            Text(label, style = MaterialTheme.typography.titleMedium, color = TextSoft)
-            Text(caption, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    stops.indices.forEach { i ->
-                        Box(
-                            Modifier.size(7.dp).clip(CircleShape)
-                                .background(if (i == idx) Periwinkle else LineStroke),
-                        )
-                    }
-                }
-                Row {
-                    TextButton(onClick = { TourState.markDone(); onDone() }) {
-                        Text(stringResource(R.string.tour_skip), color = TextMuted)
-                    }
-                    TextButton(onClick = {
-                        if (idx < stops.size - 1) idx++
-                        else { TourState.markDone(); onDone() }
-                    }) {
-                        Text(
-                            if (idx < stops.size - 1) stringResource(R.string.common_next) else stringResource(R.string.tour_begin),
-                            color = Periwinkle,
-                        )
-                    }
-                }
-            }
-        }
-    }
 }

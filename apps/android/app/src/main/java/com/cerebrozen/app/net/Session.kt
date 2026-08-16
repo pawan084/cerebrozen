@@ -48,9 +48,11 @@ object Session {
         private set
 
     /** Local-first access selected at ONB-09. Guest mode never fabricates an
-     * auth token; it only opens the offline-capable product shell. */
+     * auth token; it only opens the offline-capable product shell.
+     * Setter is internal-for-tests only (GuestGateScreensTest composes screens
+     * in guest mode); production writes stay inside this file. */
     var guestMode by mutableStateOf(false)
-        private set
+        internal set
 
     /** Compose-observable offline signal: true while GET reads are being served
      * from the encrypted response cache (a network read failed and the last copy
@@ -652,6 +654,20 @@ object Session {
             .forEach { storage.remove(it) }
     }
 
+    /** Pref keys that hold the LEAVING person's data outside the `cache:`
+     * namespace. Found live on the 2026-08-16 device walk: after sign-out, a
+     * fresh GUEST session greeted the previous account by name and echoed
+     * their last check-in ("Earlier · Good · Clear") — `home_snapshot`
+     * hydrates Today's first frame and had outlived the account it described.
+     * On a shared device in a family-stigma context, "Earlier · Anxious ·
+     * Loud thoughts" shown to the next person is precisely the leak the
+     * privacy posture forbids. Pinned by AuthFlowTest. */
+    private val PERSONAL_PREF_KEYS = listOf(
+        "home_snapshot", "sleep_snapshot", "toolkit_recent",
+        "milestone_celebrated", "sleepBannerDismissed", "windDownBannerDismissed",
+        "talk_crisis_sticky", "mixer_state", "consent_sync_failed",
+    )
+
     fun signOut() {
         access = null
         storage.remove(REFRESH_KEY)
@@ -666,6 +682,7 @@ object Session {
         // pays for a seat that is not theirs.
         storage.remove(ENTITLEMENT_TIER)
         storage.remove(ENTITLEMENT_SPONSORED)
+        PERSONAL_PREF_KEYS.forEach { storage.remove(it) }
         clearCache()
         servedStale = false
         signedIn = false
@@ -912,8 +929,13 @@ object Api {
     suspend fun regeneratePlan(): JSONObject =
         JSONObject(Session.api("/plans/generate", "POST", JSONObject()))
 
-    suspend fun activePlan(): JSONObject? =
-        runCatching { JSONObject(Session.api("/plans/active")) }.getOrNull()
+    /** Throws on failure — both callers wrap in their own runCatching. The old
+     * internal swallow returned null for EVERY failure, which PlanScreen could
+     * not tell apart from "no plan yet": a guest (or any failed load) sat on
+     * "Loading your plan…" forever because its error branch was unreachable
+     * (audit K, guest-state class). */
+    suspend fun activePlan(): JSONObject =
+        JSONObject(Session.api("/plans/active"))
 
     /** Patch profile fields (companion, region, language, name…) via PATCH /users/me. */
     suspend fun updateProfile(patch: JSONObject): JSONObject =

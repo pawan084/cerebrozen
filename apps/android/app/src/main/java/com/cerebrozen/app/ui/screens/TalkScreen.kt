@@ -729,6 +729,10 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         trailing = Icons.Outlined.GraphicEq,
         accent = Cyan,
         scrollState = chatScroll,
+        // V2-a: the shield in the same pixels here too — Talk relied on the
+        // sticky in-thread crisis card, so its top bar was the only tab root
+        // without the door.
+        onUrgent = { onOpen("crisis") },
         // The composer stays put while the transcript scrolls under it. It used
         // to be the last item of the scrolling body, so after any real
         // conversation you had to scroll to the bottom to type — and the

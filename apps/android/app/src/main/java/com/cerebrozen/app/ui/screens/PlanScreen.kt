@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.cerebrozen.app.R
 import com.cerebrozen.app.ui.Haptics
 import com.cerebrozen.app.net.Api
+import com.cerebrozen.app.net.Session
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.PeriwinkleDeep
 import com.cerebrozen.app.ui.theme.TextMuted
@@ -60,7 +61,7 @@ internal fun parsePlanSteps(plan: JSONObject): List<PlanStep> {
  * Re-skinned to the teammate's plan look — a gradient rationale hero and one
  * numbered gradient card per step — rebuilt on our design tokens/components. */
 @Composable
-fun PlanScreen(onBack: () -> Unit) {
+fun PlanScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
     var plan by remember { mutableStateOf<JSONObject?>(null) }
     var steps by remember { mutableStateOf(listOf<PlanStep>()) }
     // Monotonic mutation counter: only the latest toggle's response may
@@ -80,7 +81,10 @@ fun PlanScreen(onBack: () -> Unit) {
             runCatching { adopt(Api.activePlan()) }.onFailure { loadError = true }
         }
     }
-    LaunchedEffect(Unit) { load() }
+    // Pre-flight, not a failure branch: for a guest this read can never succeed
+    // (audit K — the screen sat on "Loading your plan…" forever). The gate is
+    // known before any request, so no request is made.
+    LaunchedEffect(Unit) { if (!Session.guestMode) load() }
 
     val defaultTitle = stringResource(R.string.plan_default_title)
     PremiumSubPage(
@@ -89,7 +93,9 @@ fun PlanScreen(onBack: () -> Unit) {
         onBack,
     ) {
         val p = plan
-        if (p == null && loadError) {
+        if (Session.guestMode) {
+            GuestSignInCard(onOpen = onOpen, subtitle = stringResource(R.string.guest_gate_plan))
+        } else if (p == null && loadError) {
             PremiumStateCard(
                 icon = Icons.Outlined.CloudOff,
                 message = stringResource(R.string.plan_load_error),

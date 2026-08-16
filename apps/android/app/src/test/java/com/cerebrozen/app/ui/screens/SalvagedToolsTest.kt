@@ -33,12 +33,14 @@ class SalvagedToolsTest {
 
     @Test
     fun `both tools carry a why-this-works line like every other tool here`() {
-        // CBT and TIPP set the precedent: a tool that asks the user to write
-        // something says what the practice is and where it comes from.
+        // V2-f flipped this pin's direction: provenance is ONE calm sentence,
+        // and the author-year-journal citations left the UI (nobody in distress
+        // reads "(Gollwitzer & Sheeran, 2006)"; REDESIGN_V2 copy diet,
+        // owner-approved). The line must still exist and still say something.
         for (id in listOf(R.string.onegood_why, R.string.intention_why)) {
             val why = res.getString(id)
-            assertTrue("provenance too thin: $why", why.length > 60)
-            assertTrue("provenance cites nothing: $why", why.contains("("))
+            assertTrue("provenance missing: $why", why.length in 30..120)
+            assertTrue("citations left the UI in V2-f: $why", !why.contains("("))
         }
     }
 

@@ -30,22 +30,18 @@ class RouteReachabilityTest {
      * registered` keeps it honest: delete a route and its excuse must go too.
      */
     private val knownUnreachable = mapOf(
-        // Duplicate registrations of the Talk tab: all three call
-        // TalkScreen(onOpen = open) with identical arguments, verified on device
-        // to render the same screen. Pending removal — see docs/TODO.md.
-        "talk/live" to "duplicate alias of the talk tab",
-        "talk/chat" to "duplicate alias of the talk tab",
-        // Same shape: composable("dailyplan") and composable("plan") both render
-        // PlanScreen(onBack = back). It was kept during the 2026-08-12 merge "so
-        // a stale link lands somewhere real" — but it is not in EXTERNAL_ROUTES,
-        // so no external link can reach it either, and that reason does not hold.
-        // Found by this test, not by eye. Pending removal with the talk aliases.
-        "dailyplan" to "duplicate alias of plan",
+        // (V2-e: the talk/live, talk/chat and dailyplan aliases this list used
+        // to excuse were deleted from the graph — the excuse left with them.)
         // Opened only when the model emits the matching activity widget
         // (TalkScreen's "intention_set" / "one_good_thing" mapping), so there is
         // no static caller by design.
         "intention" to "opened by an AI activity widget",
         "onegoodthing" to "opened by an AI activity widget",
+        // V2-d: Explore's tab went back to Sleep (REDESIGN_V2 §2, owner-approved
+        // 2026-08-15). The route stays registered for the `cerebro://explore`
+        // deeplink (EXTERNAL_ROUTES) until the V2-e library merge decides its
+        // final shape — deeplinks are not in-app navigation, so it lands here.
+        "explore" to "deeplink-only since the V2-d tab swap",
     )
 
     /** Only real navigation counts. A route named in an accent `when` branch or

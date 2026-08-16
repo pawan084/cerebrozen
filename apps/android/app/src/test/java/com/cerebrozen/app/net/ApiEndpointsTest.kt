@@ -390,13 +390,22 @@ class ApiEndpointsTest {
     }
 
     @Test
-    fun activeProgram_is_null_when_none_and_activePlan_swallows_failure() = runTest {
+    fun activeProgram_is_null_when_none_and_activePlan_propagates_failure() = runTest {
         script(mapOf("GET /programs/active" to """{"program":null}"""))
         assertNull(Api.activeProgram())
         Session.resetForTest(FakeStore("refresh_token" to "r1")) { url, _, _, _, _, _ ->
             if (url.endsWith("/auth/refresh")) 200 to tokens else 404 to """{"detail":"no plan"}"""
         }
-        assertNull("activePlan degrades to null instead of throwing", Api.activePlan())
+        // The old contract ("degrades to null instead of throwing") is exactly
+        // what audit K's eternal "Loading your plan…" was made of: PlanScreen
+        // could not tell a swallowed failure from "no plan yet", so its error
+        // branch was unreachable. Failures now propagate; both callers wrap in
+        // their own runCatching and choose the right state (guest gate / retry).
+        val thrown = runCatching { Api.activePlan() }.exceptionOrNull()
+        assertTrue(
+            "activePlan must propagate the failure so screens can classify it",
+            thrown is Session.ApiException,
+        )
     }
 
     @Test

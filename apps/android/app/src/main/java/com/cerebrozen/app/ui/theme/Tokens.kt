@@ -27,12 +27,14 @@ object Elevation {
 }
 
 /** Consistent vertical rhythm. Three tiers only, so proximity actually groups:
- * items inside a group hug, sections breathe. */
+ * items inside a group hug, sections breathe. Compacted for Redesign V2
+ * (2026-08-15, owner call: WhatsApp-dense, calm-ordered) — the tier *ratios*
+ * carry the grouping, so all four steps came down together. */
 object Space {
-    val tight = 6.dp     // label → value
-    val item = 12.dp     // between items in a group
-    val group = 16.dp    // between groups in a section
-    val section = 28.dp  // between sections
+    val tight = 4.dp     // label → value
+    val item = 8.dp      // between items in a group
+    val group = 14.dp    // between groups in a section
+    val section = 24.dp  // between sections
 }
 
 /**
@@ -43,7 +45,11 @@ object Space {
  */
 object Accent {
     val home: Color get() = Periwinkle
-    val sleep: Color get() = Periwinkle
+    // V2 visual pass (2026-08-16): Sleep gets its night-blue world back — the
+    // approved prototype tints the whole Sleep surface toward the info-blue.
+    // Cyan is a text-safe token (it already labels half the Sleep screen), so
+    // the aurora/eyebrow uses stay contrast-gated in both palettes.
+    val sleep: Color get() = Cyan
     val talk: Color get() = Cyan
     val journal: Color get() = Periwinkle
     val breathe: Color get() = Ok
