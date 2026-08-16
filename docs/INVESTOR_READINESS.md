@@ -7,6 +7,12 @@
 > Health & Fitness or cross-category medians — not mental-wellness-specific — and reflect
 > 2025 data. Companions: [PRD.md](PRD.md), [SLEEP_TRACKING.md](SLEEP_TRACKING.md),
 > [WEB_APP_PLAN.md](WEB_APP_PLAN.md), [TODO.md](TODO.md).
+>
+> **[POSITIONING.md](POSITIONING.md) (2026-08-16) is the story these numbers sit
+> inside** — the market map, the USP, and the regulatory timing thesis. This file
+> stays the source for benchmarks and the gap list; that one is what gets shown.
+> Note §5 below (India funding rounds) was single-pass and never adversarially
+> verified — POSITIONING flags it as re-confirm-before-quoting for that reason.
 
 ## 1. The numbers investors will benchmark us against
 

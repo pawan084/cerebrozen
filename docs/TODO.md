@@ -385,6 +385,26 @@ and the orb; what it lacked was motion where movement *means* something.
   state is hoisted for this); screens whose bar scrolls with the body leave it
   false.
 
+### Positioning research (2026-08-16)
+
+[POSITIONING.md](POSITIONING.md) — market map, USP in four pillars, and the
+timing thesis (8 US states now ban or regulate AI therapy; Woebot retired its
+consumer app; no chatbot holds FDA clearance — so "companion, never clinician"
+turned into a moat). Shareable deck:
+claude.ai/code/artifact/01d01938-813d-4d35-9e1c-17008e250e54
+
+- [ ] **Re-verify India funding amounts before any external use.**
+      INVESTOR_READINESS §5 was single-pass research (2026-07-03), never
+      adversarially verified. The deck does not quote those figures; anything
+      that does must re-confirm them first.
+- [ ] **Re-check the competitor row assessments** (Calm / Headspace / Wysa /
+      Amaha / Replika) before external use — they were read off public product
+      surfaces in Aug 2026, not from anything internal.
+- [ ] **Keep the "not true yet" panel in every version of the deck** (not live,
+      zero users, no retention data, no named clinical advisor, iOS/web on the
+      older shape, Hindi safety copy unreviewed). It is the same discipline
+      CLAIMS_MAP enforces on product copy, applied to the pitch.
+
 **Open after V3/V4/V5**: the AppNotIdle Robolectric flake (see V2-f note above);
 the Play launch track; Hindi clinical review of the V3 safety-adjacent copy.
 
