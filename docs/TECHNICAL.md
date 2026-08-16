@@ -23,6 +23,24 @@ docker compose up --build       # db + api :8000 (/docs) + web :3000 + admin :30
 Seeded dev logins: `admin@cerebro.app / admin12345`, `pawan@cerebro.app / demo12345`
 (dev only — the prod boot guard rejects these).
 
+**Use the demo account for any UI walk.** Since 2026-08-16 `pawan@cerebro.app`
+boots with a month of history — 19 check-ins across 30 days, 12 sleep nights, 5
+journal entries (each carrying a `mood:` tag, so the journal pills are visible),
+an active 3-step plan with one step done, and a Sleep Reset enrolment on day 4
+(`backend/app/seed.py` `_seed_demo_journey`, behind `SEED_DEMO_DATA`). An empty
+account hides most of the design: charts, rings, presence dots and the
+re-engagement card all render their empty states.
+
+It is idempotent via a **marker** on the rows it writes (`MoodLog.trigger =
+"demo-seed"`), not via "does this account have data" — a demo account collects
+stray taps the moment anyone opens it, and a presence check would then refuse to
+seed forever. Seeding only ever INSERTs, so a tester's own rows are never
+touched.
+
+> **The api image is baked** (no source bind-mount). Editing `seed.py` needs
+> `docker compose up -d --build api` — a plain `docker compose restart api`
+> re-runs the OLD code and looks like the seed silently did nothing.
+
 iOS: open `apps/ios/CereBro.xcodeproj`, run on a Simulator. DEBUG builds talk to
 `http://localhost:8000` (ATS allows it via `NSAllowsLocalNetworking`); a DEBUG-only
 "Server URL" field in Cloud Sync lets a physical device point at your LAN IP.

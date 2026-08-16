@@ -1,5 +1,20 @@
 # Redesign V2 — the whole app, compact (2026-08-15)
 
+> **⚠️ SUPERSEDED IN PART by V3–V5 (2026-08-16).** The **global system below still
+> governs** — spacing tokens, type scale, components, the copy diet, and the
+> honesty rules are all live and unchanged. What V3 overturned is §2's **tab
+> ruling**: the five tabs (Today · Sleep · Talk · Journal · You) became **three
+> (Home · Chat · Sleep)**, the app now opens on Chat, You moved behind the
+> top-bar gear and Journal became a chat tool plus a room doored from Home.
+> Today's one-card hero also gave way to Home's journey hero + Today's care.
+>
+> Why: the same tester who prompted V2 read the result as "features relevant,
+> still cluttered — focus on chat, be proactive". The V3–V5 waves, their
+> reasoning, and the four deferred decisions they closed are ledgered in
+> [TODO.md](TODO.md); the resulting shape is documented in
+> [ARCHITECTURE.md](ARCHITECTURE.md#android-app-appsandroid) and
+> [PRD.md](PRD.md). Read this file for the SYSTEM, those for the SHAPE.
+
 > **Lineage note (2026-08-15):** this filename previously held the 2026-08-06 Light-Dawn
 > spec (ref/-derived; the ONB-xx contract and the five-tab §6.1 ruling live there). That
 > document is preserved at [REDESIGN_V2_2026-08-06-lightdawn.md](REDESIGN_V2_2026-08-06-lightdawn.md);

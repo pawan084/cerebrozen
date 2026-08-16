@@ -32,6 +32,27 @@ Positioning: B2C first (Calm/Youper/Rosebud territory), B2B-ready later.
 
 ## 2. Feature inventory (by module, with status)
 
+### Android — companion-first shape (V3–V5, 2026-08-16)
+
+Triggered by the first outside tester ("relevant features, still cluttered; focus
+on chat; be proactive") and designed against the owner-supplied reference. The
+waves and their reasoning are ledgered in [TODO.md](TODO.md); the shape is
+described in [ARCHITECTURE.md](ARCHITECTURE.md#android-app-appsandroid).
+
+| Feature | Status | Notes |
+|---|---|---|
+| Three tabs — Home · Chat · Sleep; the app opens on Chat | ✅ | You lives behind the top-bar gear, Journal is a chat tool + a room doored from Home. Both keep their routes; pinned by `NavigationChromeTest` |
+| Companion speaks first (deterministic opener, no LLM key) | ✅ | Morning asks how you slept and **logs the night from chat** through the same `/sleep` API; then the mood ask, whose answer becomes a next-best-action card. Every card maps to an existing widget kind, so none is a dead end |
+| Proactive follow-ups on real events | ✅ | Opening a suggested activity arms a "how did it land?" for the next visit — the only place in the app that asks whether a suggestion helped. A ≥3h gap earns a welcome-back; anything else earns silence (`followUpOwed`, pinned) |
+| Quick replies + reply controls (ask again / this didn't help) | ✅ | Canned replies answered on-device; the composer is never the only way forward |
+| ＋ tools tray inside the conversation (8 tools + 2 thread actions) | ✅ | Browsing the Practices hub becomes the exception, not the path |
+| Live voice mode | ✅ | Full-screen session: elapsed time, reactive orb, a waveform driven by real mic amplitude, and **your own partial transcript** streamed back (on-device path; the cloud path transcribes the whole take, so it falls back to the companion's words). The tab pill yields to a live session as it does to the keyboard |
+| Escalation ladder in chat | ✅ | Normal reply → inline concern card (Tele-MANAS first, dismissible) → the server's crisis banner, which outranks and suppresses the middle rung. **Chat never blocks** — the ladder only adds support |
+| Notification quick actions + quick-log popup | ✅ | "Check in" writes a mood from a translucent dialog **without opening the app**; never renders over the lock screen (family-context privacy) |
+| One nudge a day + quiet hours | ✅ | Enforced in `Reminders.shouldPost` (window wraps midnight; same start/end = quiet all day). A suppressed nudge is dropped, not queued — the inbox keeps what was missed |
+| Mood **sparkline** | ⛔ **Deliberately refused** | Giving each mood a height claims "Anxious" sits below "Tired". Trends counts feelings instead ("counted, never scored"); the 1–5 ease line remains the server's own gap-broken measure. Reasoning in TODO.md |
+| Seeded demo journey for testing | ✅ | `pawan@cerebro.app` boots with a month of history so the design is visible; idempotent via a row marker, insert-only (TECHNICAL.md) |
+
 ### Onboarding
 | Feature | Status | Notes |
 |---|---|---|

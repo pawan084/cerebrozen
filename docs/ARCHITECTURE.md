@@ -36,12 +36,17 @@ offline with blank keys.
 ```
 cere/
   apps/ios/       SwiftUI iOS app (primary client) + XCUITests + fastlane
-  apps/android/   Kotlin + Compose: full client (2026-07-12 evidence-based redesign — see
-                  docs/REDESIGN.md): 5 tabs + ~37 routes, unified breathe engine, Toolkit hub,
-                  one Sounds hub (Player/SoundscapeMixer exclusivity via cross-stop), dual
-                  Light-Dawn/Night theme (theme-aware token getters in ui/theme, AppTheme
+  apps/android/   Kotlin + Compose: full client. **Companion-first since 2026-08-16 (V3–V5):
+                  THREE tabs — Home · Chat · Sleep — and the app OPENS ON CHAT**
+                  (`startDestination = Tab.Talk.route`). You lives behind the top-bar gear
+                  (`CereBroTopBar.onSettings`), Journal is a chat tool plus a room doored from
+                  Home; both keep their routes. ~40 routes, unified breathe engine, Practices
+                  hub, one Sounds hub (Player/SoundscapeMixer exclusivity via cross-stop),
+                  dual Light-Dawn/Night theme (theme-aware token getters in ui/theme, AppTheme
                   state, ContrastTest gate; Dawn is the default since the 2026-08 Light Dawn
-                  port), InfoBanner slot on Today, crisis ≤2 taps (Tele-MANAS-first)
+                  port), crisis ≤2 taps (Tele-MANAS-first).
+                  Design lineage: docs/REDESIGN.md (evidence base) → REDESIGN_V2.md (compact
+                  system) → the V3–V5 waves ledgered in docs/TODO.md
   apps/web/       Next.js 14 marketing site (port 3000)
   apps/admin/     Next.js 14 admin dashboard (port 3001)
   apps/app/       Next.js 14 authenticated web app (port 3002, app.cerebrozen.in)
@@ -340,6 +345,67 @@ region and companion style.
 | **Media-catalogue keys** (`GET /media/catalog`) | `seed.py` `_MEDIA` — the canonical key list (`ambience.*`, `breathe.*`, `game.*`, `chime.*`, `scene.*`), seeded above the demo-data guard because prod admins need the rows to upload into. Keys become filenames, so `services/media.valid_key` is the traversal guard | android `audio/MediaCatalog.Keys` (hand-mirrored) → `Sfx` (one-shots, SoundPool) / `ambientUri` (loops) / `SceneVideo` (video). iOS + web do not consume it yet |
 | **The empty-`url` contract** (media catalogue) | A catalogue row with `url == ""` is *valid and expected*, not a failure — it says "no server bytes for this key yet". Only `POST /admin/media/{id}/upload` fills it | Every client must answer an empty url with its bundled loop or synthesized tone, never with silence. Android: `SfxTones` (synth) + `res/raw` (loops). **This is what lets the app ship fully audible with an empty catalogue, and lets an admin hot-swap any sound with no app release — breaking it makes every un-uploaded sound go silent** |
 | Scene video (`video_url` on `/content` items) | `models/content.py` — optional looping decorative video; empty ⇒ clients render their generative artwork | android `SceneVideo` (muted, no audio focus, suppressed under Reduce Motion); falls back to `AuroraBackground`. We ship no video: none is licensed yet |
+
+## Android app (`apps/android`)
+
+Kotlin + Compose, single-activity, Navigation-Compose. Shares every backend
+contract in the table above; what follows is only what is Android-specific.
+
+**Shape (V3, owner-approved 2026-08-16 — the companion-first redesign).**
+Three tabs and the conversation is the front door:
+
+| | |
+|---|---|
+| **Tabs** | `Tab` enum in `ui/CereBroApp.kt` — **Home(`home`) · Chat(`talk`) · Sleep(`sleep`)**, pinned by `NavigationChromeTest.theTabsAreTheV3Three`. The constants keep the historic `home`/`talk` routes so deeplinks and saved back-stack entries survive |
+| **Start destination** | `Tab.Talk.route` — "chat first" is a ruling, not a default |
+| **You / Journal** | Routes without tabs. `you` opens from `CereBroTopBar.onSettings` (the gear) on every tab root; `journal` is a ＋-tray tool plus a permanent door on Home's care card (before 17:00; after that the evening write-prompt takes the slot). `you`/`reminders` are excluded from `shouldShowBottomBar` — a settings room is a full-screen push |
+| **Chrome rules** | `navVisible(route, imeOpen, voiceLive)` — the tab pill yields to the keyboard **and** to a live voice session (the session overlay is drawn inside Talk and cannot cover Scaffold chrome). Backed by `VoiceSessionState.active` |
+
+**Chat (`ui/screens/TalkScreen.kt`) — the flagship.**
+- **Proactive opener**, deterministic (no LLM key needed): on an empty thread the
+  companion speaks first — morning asks how you slept and **logs the night from
+  chat** through the same `/sleep` API the form uses, then asks the mood and
+  turns the answer into a next-best-action card (`moodNbaKind` → an existing
+  widget kind, so every card has a real destination).
+- **Follow-ups** (`followUpOwed`, pure): opening a suggested activity arms a
+  pref; the next visit asks how it landed. A ≥3h gap earns a welcome-back.
+  Anything else earns silence, and an empty thread stays the opener's job.
+- **Quick replies** answered on-device for the canned set; **reply controls**
+  (ask again / this didn't help) under any reply you asked for.
+- **Escalation ladder**: normal reply → inline concern card (`soundsHeavy`,
+  Tele-MANAS-first, dismissible) → the server's own crisis banner, which
+  outranks and suppresses the middle rung. **Chat never blocks** — the ladder
+  only ever *adds* support.
+- **＋ tools tray**: eight tools plus two thread actions (save to journal /
+  start fresh) that appear only once a conversation exists.
+- **Live voice** (`audio/VoiceEngine` on-device ↔ `audio/CloudVoice` when the
+  server has Deepgram+ElevenLabs keys): full-screen session with elapsed time,
+  reactive orb, a **waveform driven by real mic amplitude**, and **your own
+  partial transcript** streamed back (`VoiceEngine.partial`; empty on the cloud
+  path, which transcribes the whole take server-side).
+
+**Home (`ui/screens/TodayScreen.kt`)** — journey hero (greeting · presence
+sentence · program day · progress · Tonight), Today's care (progress ring, ≤3
+rows, the plan step with its honest provenance and `stepIcon(symbol, title)`),
+mood card, seven-slot sleep graph (missing nights are **null slots, never
+zero-height bars**), a quiet-days re-engagement card, and the journal door.
+
+**Proactive delivery (`notify/`)** — `Reminders` schedules one inexact daily
+alarm (no FCM needed) and `shouldPost` enforces the two promises the UI makes:
+**one nudge a day** and **quiet hours** (default 22–07, wraps midnight; same
+start/end = quiet all day). The notification's "Check in" action opens
+`QuickLogActivity`, a translucent dialog that writes a mood through the same
+`/moods` API **without opening the app**, and deliberately never renders over
+the lock screen (family-context privacy). `NotificationLog` keeps the inbox.
+
+**Theme** — `ui/theme` token getters resolve per `AppTheme.isNight`; screens
+read tokens only (raw hex in a screen is a review-blocking defect). The V3
+journey hero is themed both ways (`HeroPlum*`/`HeroInk*` in `Color.kt`): a warm
+peach→lilac pane with plum ink on Dawn, deep plum with pale ink on Night.
+
+**Gates** — `:app:check` runs the unit suite plus a **96% JaCoCo line-coverage
+gate over a declared logic scope** (`coverageIncludes`/`coverageExcludes` in
+`app/build.gradle.kts`, each exclusion stating why it cannot run hermetically).
 
 ## Web + App + Admin (`apps/web`, `apps/app`, `apps/admin`)
 
