@@ -1409,6 +1409,19 @@
     <string name="talk_tool_save_sub">यह बातचीत सहेजें</string>
     <string name="talk_tool_fresh_sub">नई बातचीत</string>
 
+    <string name="talk_fu_activity">आपने अभी वह आज़माया — कैसा लगा?</string>
+    <string name="talk_fu_back">वापस आने पर स्वागत है। वहीं से आगे बढ़ें, या कुछ नया शुरू करें?</string>
+    <string name="talk_fu_helped">मदद मिली</string>
+    <string name="talk_fu_notreally">ख़ास नहीं</string>
+    <string name="talk_fu_ack_helped">अच्छा — अगली बार के लिए याद रखूँगा।</string>
+    <string name="talk_fu_ack_notreally">यह जानना उपयोगी है। जब चाहें कुछ और आज़मा सकते हैं।</string>
+    <string name="talk_qr_more">और बताइए</string>
+    <string name="talk_qr_why">ऐसा क्यों?</string>
+    <string name="talk_qr_notnow">अभी नहीं</string>
+    <string name="talk_qr_why_answer">यह उसी से आया जो आपने अभी बताया, और जो पहले आपके काम आया — इससे ज़्यादा कुछ नहीं।</string>
+    <string name="talk_qr_notnow_answer">ठीक है। मन बदले तो यह यहीं रहेगा।</string>
+    <string name="talk_tip_tools">चेक-इन, साँस, आवाज़ें और बहुत कुछ के लिए ＋ दबाएँ — चैट छोड़े बिना।</string>
+
     <string name="talk_regen">फिर से पूछें</string>
     <string name="talk_didnt_help">इससे मदद नहीं मिली</string>
     <string name="talk_didnthelp_ack">ठीक है — कहने के लिए शुक्रिया। नीचे कुछ आज़माएँ, या बस बात करते रहें?</string>

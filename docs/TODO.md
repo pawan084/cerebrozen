@@ -309,8 +309,40 @@ measurement failure — copy written without checking the space it had:
   paying for it. (The label was inline deliberately, so a scroll fold couldn't
   strand a heading over nothing; removing it retires that problem too.)
 
-**Open after V3/V4**: the AppNotIdle Robolectric flake (see V2-f note above); the
-Play launch track; Hindi clinical review of the V3 safety-adjacent copy.
+### V5 (2026-08-16): the companion follows up, and the thread gets a face
+
+Owner: "still not perfect ui and ux, use more tips and tricks, also it should be
+proactive and user friendly." The proactive gap was real — the companion spoke
+first **only on an empty thread**, then went silent for the rest of the app's
+life, so every later visit opened on a dead transcript.
+
+- **Follow-ups on real events** (`followUpOwed`, pure + pinned). Opening a
+  suggested activity from chat sets a pref; on the way back the companion asks
+  **"you tried that a moment ago — how did it land?"** with one-tap replies —
+  the only place in the app that ever asks whether a suggestion helped. A gap
+  of ≥3h earns a **welcome-back** offer instead. Everything else earns silence:
+  a companion that greets you each time you glance at the tab is a nag, and an
+  empty thread stays the opener's job so a first run is never greeted twice.
+  Deterministic — no LLM key needed; an unparseable timestamp keeps it quiet
+  rather than guessing.
+- **Quick replies**: the canned ones ("it helped", "why that?", "not now") are
+  answered on-device — spending a network turn to get a vaguer version of the
+  honest answer would be worse. The composer is never the only way forward.
+  They obey the existing one-rail rule: the generic Try-together offers stand
+  down while quick replies are up.
+- **Avatars**: the companion's own brand orb beside the LAST bubble of each of
+  its runs (earlier bubbles keep the width via a spacer, so a three-bubble
+  answer doesn't stamp three faces down the margin). A first attempt drew a
+  two-colour tinted disc, which read as a broken image at 26dp — it uses the
+  real `BrandMark` now, the same orb as the top bar and the splash.
+- **"Start fresh" left the presence row** for the ＋ tray, where it already
+  lived beside "Save to journal" — four links edge to edge was the last chrome
+  above the thread.
+- **One dismissible tip** ("Tap ＋ for check-ins, breathing, sounds and more"),
+  once ever: the tray holds eight tools and nothing on screen said so.
+
+**Open after V3/V4/V5**: the AppNotIdle Robolectric flake (see V2-f note above);
+the Play launch track; Hindi clinical review of the V3 safety-adjacent copy.
 
 ## Open — V3 direction: chat-first + proactive (owner call, 2026-08-16)
 

@@ -108,6 +108,58 @@ class CompanionFirstTest {
 
     // ── quietDaysSince: the re-engagement card's honesty ──────────────────
 
+    // ── followUpOwed: proactive, but only about things that happened ──────
+
+    @Test
+    fun `an activity you opened is asked about when you come back`() {
+        // Nothing else in the app ever asks whether a suggestion helped.
+        assertEquals(
+            FollowUp.ACTIVITY,
+            followUpOwed(pendingActivity = true, minutesSinceLastMessage = 2, hasConversation = true),
+        )
+        // It outranks the time-gap follow-up: the specific question beats the
+        // general one.
+        assertEquals(
+            FollowUp.ACTIVITY,
+            followUpOwed(pendingActivity = true, minutesSinceLastMessage = 9000, hasConversation = true),
+        )
+    }
+
+    @Test
+    fun `a long gap earns a welcome back, a short one earns silence`() {
+        assertEquals(
+            FollowUp.RETURN,
+            followUpOwed(pendingActivity = false, minutesSinceLastMessage = 240, hasConversation = true),
+        )
+        // Glancing at the tab is not an event. A companion that greets you
+        // every time you look at it is a nag.
+        assertEquals(
+            FollowUp.NONE,
+            followUpOwed(pendingActivity = false, minutesSinceLastMessage = 5, hasConversation = true),
+        )
+    }
+
+    @Test
+    fun `an empty thread is the opener's job, not the follow-up's`() {
+        // Otherwise the companion would greet you twice on a first run.
+        assertEquals(
+            FollowUp.NONE,
+            followUpOwed(pendingActivity = false, minutesSinceLastMessage = null, hasConversation = false),
+        )
+        assertEquals(
+            FollowUp.NONE,
+            followUpOwed(pendingActivity = false, minutesSinceLastMessage = 9999, hasConversation = false),
+        )
+    }
+
+    @Test
+    fun `an unparseable timestamp keeps the companion quiet rather than guessing`() {
+        assertEquals(
+            FollowUp.NONE,
+            followUpOwed(pendingActivity = false, minutesSinceLastMessage = null, hasConversation = true),
+        )
+    }
+
     // ── stepIcon: an icon must carry information, not decorate ────────────
 
     @Test

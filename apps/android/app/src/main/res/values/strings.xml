@@ -2145,6 +2145,23 @@ everything.</string>
     <string name="talk_tool_save_sub">keep this conversation</string>
     <string name="talk_tool_fresh_sub">a new conversation</string>
 
+    <!-- V5 proactive follow-ups. The companion notices what you actually did
+         and asks about THAT — never a generic "how are you?" on a timer. All
+         deterministic: the triggers are real events (an activity opened, a gap
+         between visits), so this works with no LLM key. -->
+    <string name="talk_fu_activity">you tried that a moment ago — how did it land?</string>
+    <string name="talk_fu_back">welcome back. want to pick up where we left off, or start somewhere new?</string>
+    <string name="talk_fu_helped">it helped</string>
+    <string name="talk_fu_notreally">not really</string>
+    <string name="talk_fu_ack_helped">good — I\'ll keep that in mind for next time.</string>
+    <string name="talk_fu_ack_notreally">that\'s useful to know. we can try something different whenever you want.</string>
+    <string name="talk_qr_more">tell me more</string>
+    <string name="talk_qr_why">why that?</string>
+    <string name="talk_qr_notnow">not now</string>
+    <string name="talk_qr_why_answer">it comes from what you told me just now, plus what has helped you before — nothing more clever than that.</string>
+    <string name="talk_qr_notnow_answer">of course. it stays here if you change your mind.</string>
+    <string name="talk_tip_tools">Tap ＋ for check-ins, breathing, sounds and more — without leaving the chat.</string>
+
     <!-- V3-d Chat honesty + the middle escalation rung. The concern card sits
          BETWEEN a normal reply and the full crisis banner: warm, one pathway,
          never blocking — the server's crisis scan stays the authority above it. -->

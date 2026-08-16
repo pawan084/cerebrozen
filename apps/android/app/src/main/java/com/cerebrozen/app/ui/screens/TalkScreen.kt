@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
@@ -212,6 +213,33 @@ internal fun soundsHeavy(text: String): Boolean {
         "can't cope", "cant cope", "hopeless", "no point", "give up",
         "worthless", "hate myself", "can't do this anymore", "cant do this anymore",
     ).any { it in t }
+}
+
+/** What the companion owes you when you open the conversation again.
+ *
+ * Proactive, but only about things that actually happened:
+ *  - [ACTIVITY] you opened a suggested activity and came back — ask how it
+ *    landed, because nothing else in the app ever asks,
+ *  - [RETURN] it has been a while since the last exchange — offer to pick up
+ *    or start somewhere new, rather than pretending no time passed,
+ *  - [NONE] you were just here; silence is the polite answer.
+ *
+ * Deliberately NOT time-of-day driven: a companion that greets you every time
+ * you glance at the tab is a nag, and the daily opener already owns mornings.
+ * Pure + unit-tested.
+ */
+internal enum class FollowUp { ACTIVITY, RETURN, NONE }
+
+internal fun followUpOwed(
+    pendingActivity: Boolean,
+    minutesSinceLastMessage: Long?,
+    hasConversation: Boolean,
+): FollowUp = when {
+    pendingActivity -> FollowUp.ACTIVITY
+    !hasConversation -> FollowUp.NONE          // the opener handles an empty thread
+    minutesSinceLastMessage == null -> FollowUp.NONE
+    minutesSinceLastMessage >= 180 -> FollowUp.RETURN
+    else -> FollowUp.NONE
 }
 
 internal fun parseChat(rows: JSONArray): List<Msg> =
@@ -491,6 +519,18 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     var openerStage by rememberSaveable { mutableStateOf("idle") } // idle|sleep|mood|done
     var openerArmed by remember { mutableStateOf(false) }
     var showTools by remember { mutableStateOf(false) }
+    // V5: set when a suggested activity is opened FROM the chat, so the
+    // companion can ask about it on the way back. A pref, not composition
+    // state — leaving for a breathing screen tears this screen down.
+    var awaitingActivity by remember {
+        mutableStateOf(runCatching { Session.prefGet("talk_activity_pending") == "1" }.getOrDefault(false))
+    }
+    // Quick replies under the newest companion message — a chat should never
+    // hand you a blank composer as the only way forward.
+    var quickReplies by remember { mutableStateOf(listOf<String>()) }
+    var tipDismissed by remember {
+        mutableStateOf(runCatching { Session.prefGet("talk_tip_tools") == "1" }.getOrDefault(false))
+    }
     // V3-d: reply controls show only under a reply the user actually asked for
     // (never under opener bubbles), and the concern card shows once per thread.
     var lastWasSend by remember { mutableStateOf(false) }
@@ -504,6 +544,17 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             else -> R.string.talk_op_hello_evening
         },
     )
+    val fuActivity = stringResource(R.string.talk_fu_activity)
+    val fuBack = stringResource(R.string.talk_fu_back)
+    val fuHelped = stringResource(R.string.talk_fu_helped)
+    val fuNotReally = stringResource(R.string.talk_fu_notreally)
+    val fuAckHelped = stringResource(R.string.talk_fu_ack_helped)
+    val fuAckNot = stringResource(R.string.talk_fu_ack_notreally)
+    val qrMore = stringResource(R.string.talk_qr_more)
+    val qrWhy = stringResource(R.string.talk_qr_why)
+    val qrNotNow = stringResource(R.string.talk_qr_notnow)
+    val qrWhyAnswer = stringResource(R.string.talk_qr_why_answer)
+    val qrNotNowAnswer = stringResource(R.string.talk_qr_notnow_answer)
     val journalEntryTitle = stringResource(R.string.talk_journal_entry_title)
     val savedStatus = stringResource(R.string.talk_saved_status)
     val saveFailed = stringResource(R.string.talk_save_failed)
@@ -596,6 +647,28 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             }
             messages = greet + messages
             openerArmed = true
+        }
+        // V5: a returning visit gets a follow-up instead of silence.
+        val lastStamp = messages.lastOrNull { it.createdAt.isNotBlank() }?.createdAt
+        val minutesSince = lastStamp?.let {
+            runCatching {
+                java.time.Duration.between(
+                    java.time.OffsetDateTime.parse(it), java.time.OffsetDateTime.now(),
+                ).toMinutes()
+            }.getOrNull()
+        }
+        when (followUpOwed(awaitingActivity, minutesSince, messages.isNotEmpty())) {
+            FollowUp.ACTIVITY -> {
+                messages = messages + Msg("assistant", fuActivity)
+                quickReplies = listOf(fuHelped, fuNotReally)
+                awaitingActivity = false
+                runCatching { Session.prefPut("talk_activity_pending", "0") }
+            }
+            FollowUp.RETURN -> {
+                messages = messages + Msg("assistant", fuBack)
+                quickReplies = listOf(qrMore, qrNotNow)
+            }
+            FollowUp.NONE -> Unit
         }
     }
 
@@ -815,6 +888,27 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         openerStage = "idle"
         status = freshMsg
         scope.launch { runCatching { starters = parseStarters(Api.starters()) } }
+    }
+
+    /** A quick reply. The canned ones are answered on-device — asking the
+     * server "why that?" would spend a network turn to get a vaguer version of
+     * the honest answer we can already give. Anything else is a real message. */
+    fun onQuickReply(label: String) {
+        quickReplies = emptyList()
+        messages = messages + Msg("user", label)
+        val canned = when (label) {
+            fuHelped -> fuAckHelped
+            fuNotReally -> fuAckNot
+            qrWhy -> qrWhyAnswer
+            qrNotNow -> qrNotNowAnswer
+            else -> null
+        }
+        if (canned != null) {
+            messages = messages + Msg("assistant", canned)
+            com.cerebrozen.app.ui.Haptics.tap()
+        } else {
+            send(label, echo = false)
+        }
     }
 
     fun endSession() {
@@ -1110,18 +1204,23 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                         .padding(vertical = 4.dp),
                 )
             }
-            // V4: "Start fresh" is also in the tray; this stays as the quick
-            // reach for anyone already looking at the header.
-            if (messages.isNotEmpty()) {
-                Text(
-                    stringResource(R.string.talk_start_fresh),
-                    style = MaterialTheme.typography.labelSmall, color = TextMuted,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { startFresh() }
-                        .padding(vertical = 4.dp),
-                )
-            }
+            // V5: "Start fresh" left this row for the ＋ tray, where it lives
+            // beside "Save to journal" as the other thing you do TO a
+            // conversation. Four links running edge to edge was the last piece
+            // of chrome above the thread, and this one had a home already.
+        }
+
+        // V5: one dismissible line, once ever — the ＋ tray holds eight tools
+        // and nothing on screen said so.
+        if (!tipDismissed && messages.isNotEmpty()) {
+            InfoBanner(
+                icon = Icons.Outlined.Spa,
+                text = stringResource(R.string.talk_tip_tools),
+                onDismiss = {
+                    tipDismissed = true
+                    runCatching { Session.prefPut("talk_tip_tools", "1") }
+                },
+            )
         }
 
         if (crisis) {
@@ -1381,7 +1480,12 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                             WidgetCard(
                                 w, onOpen,
                                 opened = (windowStart + i) in openedWidgets,
-                                onOpened = { openedWidgets = openedWidgets + (windowStart + i) },
+                                onOpened = {
+                                    openedWidgets = openedWidgets + (windowStart + i)
+                                    // Ask how it went when they come back.
+                                    awaitingActivity = true
+                                    runCatching { Session.prefPut("talk_activity_pending", "1") }
+                                },
                             )
                         }
                     }
@@ -1430,6 +1534,19 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                 // One rail, one source at a time: when the server sent chips
                 // they lead; Try-together fills the quiet turns (two stacked
                 // chip rows from different sources read as chip soup).
+                // V5: quick replies — one tap to keep going, so the composer is
+                // never the only way forward. They clear the moment one is used.
+                if (quickReplies.isNotEmpty() && !busy && streamText.isBlank()) {
+                    Row(
+                        Modifier.bleed(pageHorizontalPadding()).horizontalScroll(rememberScrollState())
+                            .padding(horizontal = pageHorizontalPadding()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        quickReplies.forEach { label ->
+                            PickChip(selected = false, label = label) { onQuickReply(label) }
+                        }
+                    }
+                }
                 // V3-c: the opener's answer chips — sleep words first thing in
                 // the morning, then the six wire moods. Answers append real
                 // bubbles; the rows retire the moment their question is done.
@@ -1499,7 +1616,12 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                         }
                     }
                 }
-                if (chips.isEmpty() && openerStage !in setOf("sleep", "mood") &&
+                // One rail, one source at a time (the rule the server-chip
+                // branch already followed): quick replies answer the question
+                // just asked, so the generic offers stand down while they are
+                // up — two stacked chip rows read as chip soup.
+                if (chips.isEmpty() && quickReplies.isEmpty() &&
+                    openerStage !in setOf("sleep", "mood") &&
                     showTryTogether(messages.size, messages.lastOrNull()?.role, busy, streamText.isNotBlank())
                 ) {
                     TryTogetherRow(
@@ -1992,7 +2114,25 @@ private fun ChatBubble(
     Row(
         Modifier.fillMaxWidth().then(entrance),
         horizontalArrangement = if (user) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.Bottom,
     ) {
+        // V5: the companion's face beside the LAST bubble of each of its runs
+        // (the reference's avatar). On a long thread the two voices were told
+        // apart by alignment and fill alone; a run now has an owner. Only the
+        // tail carries it, so a three-bubble answer doesn't stamp three faces
+        // down the margin — the rest keep the width via a matching spacer.
+        if (!user) {
+            if (tail) {
+                // The real brand mark, not a tinted disc: a two-colour circle
+                // read as a broken image at 26dp. This is the same orb the top
+                // bar and the splash draw, so the face beside a reply is
+                // recognisably the app's own.
+                com.cerebrozen.app.ui.BrandMark(size = 26.dp, showGlow = false)
+            } else {
+                Spacer(Modifier.size(26.dp))
+            }
+            Spacer(Modifier.width(8.dp))
+        }
         Surface(
             color = if (user) Periwinkle.copy(alpha = 0.20f) else CardFill,
             shape = RoundedCornerShape(
