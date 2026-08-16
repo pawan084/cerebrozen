@@ -1355,6 +1355,9 @@
          the concern-card copy is safety-adjacent and shares the standing
          clinical-review flag at the top of the crisis section. ══ -->
     <string name="home_hero_day">दिन</string>
+    <string name="home_hero_just_checked">आपने थोड़ी देर पहले चेक-इन किया — आज का हो गया।</string>
+    <string name="home_hero_step_done">आज एक चीज़ पूरी हुई। यह मायने रखता है।</string>
+    <string name="home_hero_quiet">कुछ दिन शांत रहे — पूरा करने को कुछ नहीं है।</string>
     <string name="home_care_eyebrow">आज की देखभाल</string>
     <string name="home_care_details">विवरण</string>
     <string name="home_care_done">%2$d में से %1$d पूरे</string>

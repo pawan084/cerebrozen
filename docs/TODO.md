@@ -341,6 +341,29 @@ life, so every later visit opened on a dead transcript.
 - **One dismissible tip** ("Tap ＋ for check-ins, breathing, sounds and more"),
   once ever: the tray holds eight tools and nothing on screen said so.
 
+### V5 follow-through (2026-08-16): Home gets the same proactive treatment
+
+- **Home's hero notices what you just did** (`heroLineFor`, pure + pinned). It
+  said one thing forever — the week's presence count — whether you had checked
+  in ten minutes ago or not opened the app in a fortnight. Now, in order:
+  offline → a check-in in the last 90 minutes → **a plan step finished today**
+  → several quiet days → the week → the honest empty line. Presence framing
+  throughout: every branch names something that happened, never something that
+  didn't, and a first run is never told it has been "quiet".
+- **Backend: `PlanStepOut.done_at` is now serialized.** Writing the branch above
+  exposed that the field was dead on arrival — `PATCH /plans/steps/{id}` has
+  always written the column, but the schema never returned it, so
+  `stepsDoneToday` could only ever count zero. Additive and null-safe (null when
+  not done, and for rows ticked before it shipped); un-ticking clears it, so a
+  re-done step is dated by its new completion. Pinned by
+  `test_data_flows.py::test_a_step_reports_when_it_was_done_not_just_that_it_was`;
+  recorded in ARCHITECTURE's route table.
+- **The suggested-activity card stopped shouting.** It was an accent pane with a
+  full-bleed deep-plum CTA sitting directly under the companion's own words —
+  the loudest thing on a screen whose primary action is *talking*. Badge,
+  eyebrow and title now share one row, the description is bodySmall, and the
+  CTA is a wrap-width pill: an offer, not a demand.
+
 **Open after V3/V4/V5**: the AppNotIdle Robolectric flake (see V2-f note above);
 the Play launch track; Hindi clinical review of the V3 safety-adjacent copy.
 

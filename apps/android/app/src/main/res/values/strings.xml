@@ -2088,6 +2088,12 @@ everything.</string>
     <!-- V3-b Home (companion-first): journey hero + Today's care + mood card +
          sleep sentence. Chat is the primary check-in now; Home summarises. -->
     <string name="home_hero_day">Day</string>
+    <!-- V5: the hero notices what you just did instead of repeating a weekly
+         average forever. Presence framing — each of these names something that
+         happened, never something that didn't. -->
+    <string name="home_hero_just_checked">You checked in a little while ago — today\'s held.</string>
+    <string name="home_hero_step_done">One thing done today. That counts.</string>
+    <string name="home_hero_quiet">It\'s been a few quiet days — nothing to catch up on.</string>
     <string name="home_care_eyebrow">Today\'s care</string>
     <string name="home_care_details">Details</string>
     <string name="home_care_done">%1$d of %2$d done</string>

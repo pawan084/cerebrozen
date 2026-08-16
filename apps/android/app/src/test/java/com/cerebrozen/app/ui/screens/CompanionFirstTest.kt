@@ -108,6 +108,66 @@ class CompanionFirstTest {
 
     // ── quietDaysSince: the re-engagement card's honesty ──────────────────
 
+    // ── heroLineFor: Home notices what you just did ───────────────────────
+
+    @Test
+    fun `the hero says what you most recently did, not a weekly average`() {
+        // A check-in minutes ago outranks everything but the offline truth.
+        assertEquals(
+            HeroLine.JUST_CHECKED_IN,
+            heroLineFor(offline = false, minutesSinceCheckIn = 12, stepsDoneToday = 0, quietDays = 0, daysPresent = 5),
+        )
+        // A finished step beats the week count too.
+        assertEquals(
+            HeroLine.STEP_DONE,
+            heroLineFor(offline = false, minutesSinceCheckIn = 600, stepsDoneToday = 1, quietDays = 0, daysPresent = 5),
+        )
+        // Otherwise the week's presence.
+        assertEquals(
+            HeroLine.WEEK,
+            heroLineFor(offline = false, minutesSinceCheckIn = 600, stepsDoneToday = 0, quietDays = 0, daysPresent = 5),
+        )
+    }
+
+    @Test
+    fun `offline always wins, because it is the only line that changes what works`() {
+        assertEquals(
+            HeroLine.OFFLINE,
+            heroLineFor(offline = true, minutesSinceCheckIn = 2, stepsDoneToday = 3, quietDays = 0, daysPresent = 7),
+        )
+    }
+
+    @Test
+    fun `quiet days are named kindly, and a blank first run is not called quiet`() {
+        assertEquals(
+            HeroLine.QUIET,
+            heroLineFor(offline = false, minutesSinceCheckIn = null, stepsDoneToday = 0, quietDays = 4, daysPresent = 0),
+        )
+        // Never checked in at all: quietDays is null, so this is EMPTY — a
+        // first run must not be told it has been quiet.
+        assertEquals(
+            HeroLine.EMPTY,
+            heroLineFor(offline = false, minutesSinceCheckIn = null, stepsDoneToday = 0, quietDays = null, daysPresent = 0),
+        )
+    }
+
+    @Test
+    fun `a step ticked last week is not today's win`() {
+        val today = LocalDate.parse("2026-08-16")
+        fun step(done: Boolean, doneAt: String?) = JSONObject()
+            .put("done", done).apply { doneAt?.let { put("done_at", it) } }
+        val plan = JSONObject().put(
+            "steps",
+            JSONArray()
+                .put(step(true, "2026-08-16T09:00:00Z"))
+                .put(step(true, "2026-08-09T09:00:00Z"))   // last week
+                .put(step(true, null))                      // no stamp: not assumed
+                .put(step(false, "2026-08-16T09:00:00Z")),  // not done
+        )
+        assertEquals(1, stepsDoneToday(plan, today))
+        assertEquals(0, stepsDoneToday(null, today))
+    }
+
     // ── followUpOwed: proactive, but only about things that happened ──────
 
     @Test

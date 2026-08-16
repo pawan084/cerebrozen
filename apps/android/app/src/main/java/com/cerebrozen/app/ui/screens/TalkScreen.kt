@@ -2032,39 +2032,47 @@ private fun WidgetCard(
     // a solid 40dp icon badge, the serif title, and ONE full-width primary
     // pill — the suggested step is the loudest thing in the thread, exactly
     // once. The old form was a quiet bordered row with a text link.
+    // V5 volume pass: this is an OFFER inside a conversation, so it stops
+    // shouting. The badge and title stay (identity and what it is), but the
+    // call to action is a wrap-width pill rather than a full-bleed deep-plum
+    // bar — full width read as the screen's primary action when the primary
+    // action is talking, and it sat directly under the companion's own words.
+    // The card also aligns to the bubbles' left edge instead of the page.
     Column(
         Modifier.fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(com.cerebrozen.app.ui.theme.AccentSoft)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(11.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                Modifier.size(40.dp).clip(RoundedCornerShape(13.dp)).background(Periwinkle),
+                Modifier.size(32.dp).clip(RoundedCornerShape(11.dp)).background(Periwinkle),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     widgetIcon(w.kind), contentDescription = null,
-                    tint = OnPrimary, modifier = Modifier.size(19.dp),
+                    tint = OnPrimary, modifier = Modifier.size(16.dp),
                 )
             }
-            Text(stringResource(R.string.talk_suggested_activity), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.talk_suggested_activity), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
+                Text(
+                    w.title,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontFamily = androidx.compose.ui.text.font.FontFamily(
+                            androidx.compose.ui.text.font.Font(R.font.newsreader),
+                        ),
+                    ),
+                    color = com.cerebrozen.app.ui.theme.TextPrimary,
+                )
+            }
         }
-        Text(
-            w.title,
-            style = MaterialTheme.typography.titleLarge.copy(
-                fontFamily = androidx.compose.ui.text.font.FontFamily(
-                    androidx.compose.ui.text.font.Font(R.font.newsreader),
-                ),
-            ),
-            color = com.cerebrozen.app.ui.theme.TextPrimary,
-        )
-        Text(w.description, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+        Text(w.description, style = MaterialTheme.typography.bodySmall, color = TextMuted)
         if (route != null) {
             PrimaryButton(
                 stringResource(R.string.common_open),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.padding(top = 2.dp),
             ) { onOpened?.invoke(); onOpen(route) }
         } else {
             Text(stringResource(R.string.talk_ios_only), style = MaterialTheme.typography.bodySmall, color = TextMuted2)

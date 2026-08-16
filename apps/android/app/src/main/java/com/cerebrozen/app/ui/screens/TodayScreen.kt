@@ -936,6 +936,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
         // HeroPlum*), exactly as the reference draws it.
         val hourNow = LocalTime.now().hour
         val daysPresent = week.count { it.second }
+        val doneToday = stepsDoneToday(plan, LocalDate.now())
         Column(
             Modifier.fillMaxWidth()
                 .clip(RoundedCornerShape(Radius.hero))
@@ -957,11 +958,31 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                 ),
                 color = HeroInk, maxLines = 3,
             )
+            // V5: the hero notices what you actually just did (heroLineFor).
+            val minutesSinceCheckIn = recent.firstOrNull()?.createdAt?.let {
+                runCatching {
+                    java.time.Duration.between(
+                        java.time.OffsetDateTime.parse(it), java.time.OffsetDateTime.now(),
+                    ).toMinutes()
+                }.getOrNull()
+            }
+            val quietDaysHero = quietDaysSince(recent.firstOrNull()?.createdAt, java.time.OffsetDateTime.now())
             Text(
-                when {
-                    Session.servedStale -> stringResource(R.string.today_banner_offline)
-                    daysPresent > 0 -> stringResource(R.string.today_week_sentence, daysPresent)
-                    else -> stringResource(R.string.today_presence_empty)
+                when (
+                    heroLineFor(
+                        offline = Session.servedStale,
+                        minutesSinceCheckIn = minutesSinceCheckIn,
+                        stepsDoneToday = doneToday,
+                        quietDays = quietDaysHero,
+                        daysPresent = daysPresent,
+                    )
+                ) {
+                    HeroLine.OFFLINE -> stringResource(R.string.today_banner_offline)
+                    HeroLine.JUST_CHECKED_IN -> stringResource(R.string.home_hero_just_checked)
+                    HeroLine.STEP_DONE -> stringResource(R.string.home_hero_step_done)
+                    HeroLine.QUIET -> stringResource(R.string.home_hero_quiet)
+                    HeroLine.WEEK -> stringResource(R.string.today_week_sentence, daysPresent)
+                    HeroLine.EMPTY -> stringResource(R.string.today_presence_empty)
                 },
                 style = MaterialTheme.typography.bodyMedium, color = HeroInkMuted,
             )
@@ -2114,6 +2135,57 @@ internal fun sleepBarsFrom(logs: JSONArray, today: LocalDate): List<Pair<String,
         d.dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, Locale.getDefault()) to
             byDate[d.toString()]
     }
+}
+
+/**
+ * What Home's hero says under the greeting.
+ *
+ * It used to say one thing forever — the week's presence count — whether you
+ * had checked in ten minutes ago or not opened the app in a fortnight. A line
+ * that never changes stops being read, and a companion that doesn't notice you
+ * just did something isn't much of a companion.
+ *
+ * Ordered by what the person most recently DID, because that is the thing they
+ * know to be true and will judge the app against:
+ *  1. offline — the honest state always wins,
+ *  2. a check-in in the last ~90 minutes — say it landed,
+ *  3. a plan step finished today — say that instead of a weekly average,
+ *  4. several quiet days — name it kindly and ask nothing,
+ *  5. otherwise the week's presence, or the honest empty line.
+ *
+ * Presence framing throughout: it counts what happened, never what didn't.
+ * Pure + unit-tested.
+ */
+internal enum class HeroLine { OFFLINE, JUST_CHECKED_IN, STEP_DONE, QUIET, WEEK, EMPTY }
+
+/** How many plan steps were finished TODAY — `done` alone would keep saying
+ * "one step done today" about something ticked last Tuesday. A step without a
+ * usable `done_at` is not counted rather than assumed to be today's. Pure. */
+internal fun stepsDoneToday(plan: JSONObject?, today: LocalDate): Int {
+    val steps = plan?.optJSONArray("steps") ?: return 0
+    return (0 until steps.length()).count { i ->
+        val step = steps.optJSONObject(i) ?: return@count false
+        if (!step.optBoolean("done")) return@count false
+        runCatching {
+            java.time.OffsetDateTime.parse(step.optString("done_at"))
+                .atZoneSameInstant(java.time.ZoneId.systemDefault()).toLocalDate() == today
+        }.getOrDefault(false)
+    }
+}
+
+internal fun heroLineFor(
+    offline: Boolean,
+    minutesSinceCheckIn: Long?,
+    stepsDoneToday: Int,
+    quietDays: Int?,
+    daysPresent: Int,
+): HeroLine = when {
+    offline -> HeroLine.OFFLINE
+    minutesSinceCheckIn != null && minutesSinceCheckIn <= 90 -> HeroLine.JUST_CHECKED_IN
+    stepsDoneToday > 0 -> HeroLine.STEP_DONE
+    quietDays != null && quietDays >= 3 -> HeroLine.QUIET
+    daysPresent > 0 -> HeroLine.WEEK
+    else -> HeroLine.EMPTY
 }
 
 /** Whole days since the newest check-in; null when there has never been one
