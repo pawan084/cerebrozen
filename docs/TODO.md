@@ -1576,12 +1576,18 @@ less time than any of them. **A grep that finds nothing is evidence about the gr
       the lock is secure — `KEYCODE_WAKEUP` turns the screen on but does not dismiss the
       keyguard, and `screencap` on a lock screen returns an empty file rather than an error.
       Unlock it by hand before running the connected suite
-- [ ] **Not wired into CI yet.** The two reasons to wait are now gone: the animation hook
-      landed, and the suite can no longer hang on a locked device. What remains is purely
-      infrastructural — CI has no handset, so this needs Gradle Managed Devices or
-      `reactivecircus/android-emulator-runner` (both boot unlocked, so the keyguard guard is
-      a no-op there). Until then it runs on demand: `:app:connectedDebugAndroidTest` with the
-      phone attached and unlocked
+- [x] **Wired into CI 2026-08-17 — and it is green.** New `android-device` job in
+      `.github/workflows/ci.yml`: `reactivecircus/android-emulator-runner`, API 34 /
+      `google_apis` / x86_64 with KVM enabled on the runner, running
+      `:app:connectedDebugAndroidTest`. **Verified on the actual run** (`cab40c89`):
+      `Starting 3 tests on emulator-5554 - 14 … Tests 3/3 completed. (0 skipped) (0 failed)`,
+      whole job under four minutes. So CI now checks the thing no JVM suite can: that this
+      APK starts on an Android.
+      Blocking, like the unit-test job beside it — this repo already learned what
+      `continue-on-error` does to an Android job. The backstop for the failure mode that
+      justified waiting (a hang) is `timeout-minutes: 25`, so it costs 25 minutes once
+      rather than wedging the queue. On a real handset it still runs on demand:
+      `:app:connectedDebugAndroidTest` with the phone attached **and unlocked**
 
 ## Open — merged from `v2` (Abhimanyu, 2026-08-13)
 
