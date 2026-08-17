@@ -125,8 +125,13 @@ internal object DeviceE2E {
 internal fun ComposeTestRule.awaitText(text: String, timeoutMs: Long = 25_000): Boolean {
     val deadline = System.currentTimeMillis() + timeoutMs
     while (System.currentTimeMillis() < deadline) {
+        // Text OR content description, for the same reason the tapper checks
+        // both: an icon-only control carries its label in its description and
+        // nowhere else. Checking only text made this wait out the full timeout
+        // on the chat's ＋ button, whose visible glyph is not its label.
         val found = runCatching {
-            onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
+            onAllNodes(hasText(text, substring = true) or hasContentDescription(text, substring = true))
+                .fetchSemanticsNodes().isNotEmpty()
         }.getOrDefault(false)
         if (found) return true
         // Drive the composition's own clock forward, not just wall time. The

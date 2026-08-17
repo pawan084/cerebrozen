@@ -1593,7 +1593,18 @@ less time than any of them. **A grep that finds nothing is evidence about the gr
         regulator under DPDP §6, and it is exactly what a UI can quietly break (a default-on
         switch, a pre-selected "recommended" card) with every unit test still green. Six, not
         three: a category with no switch is one the user never saw.
-      **Six tests, green twice, on CPH2681.** Four things had to be learned to get there, all
+      `GuestAppE2ETest` then covers the state most first users are actually in — no account,
+      so every server call is a 401 by design, which is exactly what makes these walks
+      backend-free and worth having:
+      - **A guest's check-in is answered, not errored.** The regression guard for the worst
+        defect the first device walk found: the 401 escaped, the card never became the step,
+        and the answer was lost with nothing on screen to say why. The JVM tests supply a fake
+        API, so the very 401 that broke it never happens there.
+      - **A pushed room trades the tab pill for a Back button.** `NavigationChromeTest` pins
+        the rule; this pins that the rule reaches the screen, walked the way the app offers
+        it (chat → tools tray → All tools → Practices). It is the assertion that would have
+        caught You/Settings shipping with neither.
+      **Eight tests, green twice, on CPH2681.** Four things had to be learned to get there, all
       recorded in `DeviceE2E`: the OEM install scanner owns the screen (so `am instrument`
       against an already-installed pair beats `connectedDebugAndroidTest` on this handset, and
       Back-pressing to clear it walks the app out to the launcher); `fetchSemanticsNodes`
