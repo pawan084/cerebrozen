@@ -635,7 +635,8 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
             // The derived fact the steppers are FOR: how long that night was.
             Text(
                 stringResource(R.string.sleep_duration_preview, minutesLabel(nightLengthMinutes(bed, wake))),
-                style = MaterialTheme.typography.labelSmall, color = PeriwinkleSoft,
+                // Same fix as the time value below: themed card, themed accent.
+                style = MaterialTheme.typography.labelSmall, color = Periwinkle,
             )
             // Editing an older night (via the diary): say so, and offer the
             // way back to logging tonight.
@@ -1482,7 +1483,12 @@ private fun TimeRow(label: String, minutes: Int, onChange: (Int) -> Unit) {
         Text(
             hhmm(minutes),
             style = MaterialTheme.typography.bodyMedium,
-            color = PeriwinkleSoft,
+            // Periwinkle, not PeriwinkleSoft: the latter is a FIXED light plum
+            // for dark art (its own comment says so), and this row sits on the
+            // themed card. In Dawn it put the time — the value the row exists
+            // to show — at 1.88:1 on cream, while the -30m/+30m controls beside
+            // it read crisp. The control was more legible than the data.
+            color = Periwinkle,
             textAlign = TextAlign.Center,
             maxLines = 1,
             modifier = Modifier
