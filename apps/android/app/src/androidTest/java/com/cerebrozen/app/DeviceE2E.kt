@@ -12,6 +12,9 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.printToLog
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.isToggleable
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -194,14 +197,25 @@ internal fun ComposeTestRule.tapText(text: String, exact: Boolean = false): Sema
         (hasText(text, substring = !exact) or hasContentDescription(text, substring = !exact)) and
             hasClickAction(),
     )
-    val node = if (clickable.fetchSemanticsNodes().isNotEmpty()) {
-        clickable[0]
-    } else if (exact) {
-        onNodeWithText(text, substring = false)
-    } else {
-        onAllNodesWithText(text, substring = true)[0]
+    // Prefer a node that is actually on screen. `performClick` dispatches at the
+    // node's centre, so a match that sits outside the viewport is a tap into
+    // nowhere — which is how the same walk passed on a 720x1604 handset and
+    // missed on a taller emulator, twice, with nothing but "the next screen
+    // never arrived" to show for it.
+    val displayed = clickable.fetchSemanticsNodes().indexOfFirst {
+        runCatching { clickable[clickable.fetchSemanticsNodes().indexOf(it)].assertIsDisplayed(); true }
+            .getOrDefault(false)
+    }
+    val node = when {
+        clickable.fetchSemanticsNodes().isEmpty() && exact -> onNodeWithText(text, substring = false)
+        clickable.fetchSemanticsNodes().isEmpty() -> onAllNodesWithText(text, substring = true)[0]
+        displayed >= 0 -> clickable[displayed]
+        else -> clickable[0]
     }
     return node.also {
+        // Bring it into view when it lives in a scrollable; a control below the
+        // fold is a legitimate target, not a missing one.
+        runCatching { it.performScrollTo() }
         it.performClick()
         // Let the click's recomposition (and any transition it starts) actually
         // run before the next assertion looks at the screen.
@@ -234,7 +248,9 @@ internal fun ComposeTestRule.tapWhenEnabled(text: String, exact: Boolean = true,
                 .any { !it.config.contains(SemanticsProperties.Disabled) }
         }.getOrDefault(false)
         if (enabled) {
-            onAllNodes(matcher and !isNotEnabled())[0].performClick()
+            val target = onAllNodes(matcher and !isNotEnabled())[0]
+            runCatching { target.performScrollTo() }
+            target.performClick()
             runCatching { mainClock.advanceTimeBy(400) }
             runCatching { waitForIdle() }
             return
@@ -242,5 +258,17 @@ internal fun ComposeTestRule.tapWhenEnabled(text: String, exact: Boolean = true,
         runCatching { mainClock.advanceTimeBy(250) }
         Thread.sleep(100)
     }
-    assertTrue("\"$text\" never became enabled", false)
+    // Say what was matched. "Never became enabled" alone cannot distinguish a
+    // gate that stayed shut from a gate whose opener was never tapped, and on a
+    // remote runner there is no screen to look at.
+    val matched = runCatching { onAllNodes(matcher).fetchSemanticsNodes().size }.getOrDefault(-1)
+    val toggles = runCatching {
+        onAllNodes(isToggleable()).fetchSemanticsNodes()
+            .map { it.config.getOrNull(SemanticsProperties.ToggleableState).toString() }
+    }.getOrDefault(listOf("<unreadable>"))
+    assertTrue(
+        "\"$text\" never became enabled ($matched clickable nodes matched it; " +
+            "toggles on screen: $toggles)",
+        false,
+    )
 }
