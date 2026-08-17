@@ -1758,19 +1758,21 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
     }
 
     // Ref LIVE VOICE SESSION: an immersive overlay that stays up across turns.
-    // A quiet top scrim so scrolled content fades under the system clock
-    // (Home and Sleep already have it).
-    val topInset = with(androidx.compose.ui.platform.LocalDensity.current) {
-        androidx.compose.foundation.layout.WindowInsets.statusBars.getTop(this).toDp()
-    }
-    Box(
-        Modifier.align(Alignment.TopCenter).fillMaxWidth().height(topInset + 18.dp)
-            .background(
-                Brush.verticalGradient(
-                    listOf(Night.copy(alpha = 0.88f), Night.copy(alpha = 0f)),
-                ),
-            ),
-    )
+    //
+    // The status-bar scrim that used to sit here is gone. It never covered the
+    // status bar: this Box is laid out inside the Scaffold's content, which
+    // already excludes that inset, so its top edge is the top edge of the APP
+    // BAR — and `Night` is a theme-aware token, meaning in Dawn it painted 88%
+    // cream straight over the bar's title, gear, shield and brand mark, fading
+    // all four together.
+    //
+    // Measured on glass, Dawn: the Chat title read 2.97:1 against its own
+    // background, under the 3:1 floor for large text, while the identical bar on
+    // Home read 16.28:1. Shrinking the scrim to the inset height only halved it
+    // (4.57:1); removing it entirely puts the title at exactly Home's ink,
+    // (33,29,32). Nothing is lost — `Page` applies `statusBarsPadding`, so
+    // content never reaches the status bar, and the bar itself has been opaque
+    // since the density pass.
 
     // Reading history? One tap back to the newest reply — a long thread had no
     // way down but scrolling.

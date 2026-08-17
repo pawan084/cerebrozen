@@ -1,0 +1,162 @@
+name: Android release
+
+# Builds the shippable artifacts for the lead client and, when the Play
+# credentials exist, uploads them to a closed track.
+#
+# Everything here follows the repo's "degrades without keys" rule, because the
+# alternative is a release pipeline nobody can run until an external account
+# arrives (WORLD_CLASS §0.8: the upload keystore and Play Console are still
+# outstanding). So:
+#   * no keystore secret  → the AAB/APK build anyway, UNSIGNED, and the summary
+#     says so. That is a real artifact for internal testing, not a failure.
+#   * no Play secret      → the upload step is skipped, not failed.
+# What never degrades is the gate: `:app:check` runs first, so a build that
+# cannot pass the suite is never published.
+#
+# Repo secrets, all optional:
+#   ANDROID_KEYSTORE_BASE64   base64 of the upload keystore (.jks)
+#   ANDROID_KEYSTORE_PASSWORD store password
+#   ANDROID_KEY_ALIAS         key alias
+#   ANDROID_KEY_PASSWORD      key password
+#   PLAY_SERVICE_ACCOUNT_JSON Play Developer API service-account JSON
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      track:
+        description: "Play track to upload to (only used when PLAY_SERVICE_ACCOUNT_JSON is set)"
+        required: false
+        default: internal
+        type: choice
+        options: [internal, alpha, beta, production]
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build (+ publish when credentialed)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+
+      # A tag names the release; a manual run is identified by its run number so
+      # two dispatches can never collide on a versionCode Play has already seen.
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            name="${GITHUB_REF_NAME#v}"
+          else
+            name="0.0.0-dev.${GITHUB_RUN_NUMBER}"
+          fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          # Monotonic by construction: GitHub's run number only increases.
+          echo "code=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "Building versionName=$name versionCode=${GITHUB_RUN_NUMBER}"
+
+      # Written outside the repo so a keystore can never be committed by a later
+      # step, and removed in a step that runs even when the build fails.
+      - name: Materialise the upload keystore
+        id: keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          # Presence is decided ONCE, here, and every later step branches on the
+          # boolean rather than on the secret. Secrets read cleanly in `env` but
+          # are awkward and inconsistent inside `if:` expressions, and a secret
+          # interpolated into a `run:` block is a secret one typo away from the
+          # log.
+          PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Unsigned build::No ANDROID_KEYSTORE_BASE64 secret; building unsigned artifacts."
+          else
+            printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -z "$PLAY_JSON" ]; then
+            echo "play=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=No Play upload::No PLAY_SERVICE_ACCOUNT_JSON secret; artifacts stay on this run."
+          else
+            echo "play=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Gate — unit tests, lint, coverage floor
+        working-directory: apps/android
+        run: ./gradlew :app:check --no-daemon --stacktrace
+
+      - name: Build AAB + APK
+        working-directory: apps/android
+        env:
+          KEYSTORE_FILE: ${{ steps.keystore.outputs.signed == 'true' && format('{0}/upload.jks', runner.temp) || '' }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          ./gradlew :app:bundleRelease :app:assembleRelease :app:lintVitalRelease \
+            -PversionName='${{ steps.version.outputs.name }}' \
+            -PversionCode=${{ steps.version.outputs.code }} \
+            --no-daemon --stacktrace
+
+      - name: Remove the keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ steps.version.outputs.name }}
+          path: |
+            apps/android/app/build/outputs/bundle/release/*.aab
+            apps/android/app/build/outputs/apk/release/*.apk
+            apps/android/app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: error
+
+      # The mapping file is the only way to read a production crash from an R8
+      # build, and it is generated per build — losing it makes every future
+      # stack trace from this version unreadable.
+      - name: Attach to the GitHub release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            apps/android/app/build/outputs/bundle/release/*.aab
+            apps/android/app/build/outputs/apk/release/*.apk
+            apps/android/app/build/outputs/mapping/release/mapping.txt
+          fail_on_unmatched_files: true
+
+      - name: Upload to Play
+        if: steps.keystore.outputs.signed == 'true' && steps.keystore.outputs.play == 'true'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.cerebrozen.app
+          releaseFiles: apps/android/app/build/outputs/bundle/release/app-release.aab
+          track: ${{ inputs.track || 'internal' }}
+          status: completed
+          mappingFile: apps/android/app/build/outputs/mapping/release/mapping.txt
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Android ${{ steps.version.outputs.name }} (code ${{ steps.version.outputs.code }})"
+            if [ "${{ steps.keystore.outputs.signed }}" = "true" ]; then
+              echo "- Signed with the upload keystore."
+            else
+              echo "- **Unsigned** — no \`ANDROID_KEYSTORE_BASE64\` secret. Installable for testing, not publishable."
+            fi
+            if [ "${{ steps.keystore.outputs.play }}" != "true" ]; then
+              echo "- Play upload skipped — no \`PLAY_SERVICE_ACCOUNT_JSON\` secret."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

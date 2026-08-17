@@ -67,8 +67,13 @@ android {
         applicationId = "com.cerebrozen.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        // Overridable by the release pipeline: `-PversionCode=… -PversionName=…`
+        // (or the same names in local.properties / the environment). Play refuses
+        // a second upload with a versionCode it has already seen, so a release
+        // that cannot renumber itself can only ever be shipped once. The literals
+        // stay as the defaults every local and CI build gets.
+        versionCode = secret("versionCode").toIntOrNull() ?: 1
+        versionName = secret("versionName").ifBlank { "1.0.0" }
 
         // Instrumented tests. Until 2026-08-14 this app had none at all — 49 JVM
         // test files and nothing that had ever rendered a screen on hardware.
