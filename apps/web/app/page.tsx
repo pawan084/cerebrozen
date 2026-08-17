@@ -446,7 +446,8 @@ export default async function Home() {
               </div>
               <p>
                 You stay free to switch, skip or stop. CereBro adapts without
-                streak pressure — a missed day dims, it never resets.
+                streak pressure — a missed day is forgiven, and nothing counts
+                your misses.
               </p>
             </div>
             <div className="steps reveal">

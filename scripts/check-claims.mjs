@@ -98,6 +98,17 @@ const CAPABILITY = [
   // untrue on the one screen whose whole job is explaining that scan.
   "never shares your writing",
   "shares your writing",
+  // A forgiveness guarantee about the streak / presence ring. `metrics.user_streak`
+  // forgives ONE missed day and then the run does end, and the browser app —
+  // which is where this page's doors actually lead — renders that count.
+  //
+  // It is here because fixing it once was not enough. The comparison table was
+  // corrected to "A day missed is forgiven, never counted against you", with a
+  // comment saying why; the identical claim survived 300 lines further down the
+  // same file, in the How-it-works standfirst, and shipped. CLAIMS_MAP already
+  // listed the phrase as untrue — nothing enforced it. Now something does.
+  "it never resets",
+  "never resets",
 ];
 
 // 4. Cognitive-training claims. A ten-round tap game does not train a named
