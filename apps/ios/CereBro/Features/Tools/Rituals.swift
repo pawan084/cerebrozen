@@ -71,7 +71,13 @@ func sanitizeRitual(_ stored: [String],
 
 /// Total minutes for a chosen order — the honest "about N min" on the card.
 func ritualMinutes(_ order: [String]) -> Int {
-    order.reduce(0) { $0 + (ritualBlocks.first { $0.id == $1 }?.minutes ?? 0) }
+    // Named parameters, because shorthand arguments do not nest: inside
+    // `first`, `$0` is the block being tested, so the outer running total was
+    // unreachable and `$1` read as a second argument to a one-argument
+    // predicate. Swift reported it as both closures having the wrong arity.
+    order.reduce(0) { total, id in
+        total + (ritualBlocks.first { $0.id == id }?.minutes ?? 0)
+    }
 }
 
 /// The personal ritual: which blocks, in which order, and the cue it hangs off.
