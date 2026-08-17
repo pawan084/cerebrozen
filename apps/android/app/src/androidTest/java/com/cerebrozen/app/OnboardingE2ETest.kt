@@ -101,11 +101,7 @@ class OnboardingE2ETest {
             // the handset and not on the emulator, and a switch that silently
             // stays off is indistinguishable from a gate that refuses to open —
             // the CI failure said only "Continue never became enabled".
-            val ageAttest = compose.onNode(
-                isToggleable() and hasContentDescription(s(R.string.ob_age_confirm)),
-            )
-            ageAttest.performScrollTo().performClick()
-            ageAttest.assertIsOn()
+            compose.turnOn(isToggleable() and hasContentDescription(s(R.string.ob_age_confirm)))
             compose.tapWhenEnabled(s(R.string.ob_disclosure_cta))
 
             // 2 — Consent. Every switch off, every time.

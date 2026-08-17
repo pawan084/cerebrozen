@@ -15,6 +15,8 @@ import androidx.compose.ui.test.printToLog
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -226,6 +228,34 @@ internal fun ComposeTestRule.tapText(text: String, exact: Boolean = false): Sema
 
 /** Tap a node whose text matches exactly — for labels that are substrings of others. */
 internal fun ComposeTestRule.tapExactText(text: String): SemanticsNodeInteraction = tapText(text, exact = true)
+
+/**
+ * Switch [matcher]'s toggle on, and wait for it to actually read as on.
+ *
+ * A click and the state it produces are two different frames. Asserting the
+ * toggle immediately after `performClick` reads the composition before the
+ * recomposition the click caused: the handset happened to have re-run by then
+ * and the CI emulator had not, so the same switch was On in one place and Off
+ * in the other with the click identical in both. Clicked once, then waited for
+ * — never clicked again in the loop, which would toggle it back off.
+ */
+internal fun ComposeTestRule.turnOn(matcher: SemanticsMatcher, timeoutMs: Long = 10_000) {
+    val node = onNode(matcher)
+    runCatching { node.performScrollTo() }
+    fun state() = runCatching {
+        node.fetchSemanticsNode().config.getOrNull(SemanticsProperties.ToggleableState)
+    }.getOrNull()
+    if (state() == ToggleableState.On) return
+    node.performClick()
+    val deadline = System.currentTimeMillis() + timeoutMs
+    while (System.currentTimeMillis() < deadline) {
+        runCatching { mainClock.advanceTimeBy(250) }
+        runCatching { waitForIdle() }
+        if (state() == ToggleableState.On) return
+        Thread.sleep(100)
+    }
+    assertTrue("the toggle never read as On after being clicked (state: ${state()})", false)
+}
 
 /**
  * Wait for a gated control to actually enable, then tap it.
