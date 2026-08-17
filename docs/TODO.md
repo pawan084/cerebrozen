@@ -1576,6 +1576,32 @@ less time than any of them. **A grep that finds nothing is evidence about the gr
       the lock is secure — `KEYCODE_WAKEUP` turns the screen on but does not dismiss the
       keyguard, and `screencap` on a lock screen returns an empty file rather than an error.
       Unlock it by hand before running the connected suite
+- [x] **Android e2e: the first run is walked end to end on hardware (2026-08-17).**
+      `OnboardingE2ETest` clears both stores (`cerebro` and the encrypted `cerebro_secure` —
+      the session lives in two, and clearing one leaves a signed-in app that skips the funnel
+      under test), then walks a fresh install to a usable app: Welcome → disclosure → consent
+      → state check → guest → the companion's composer, asserting `Session.guestMode` at the
+      end so the funnel cannot silently run again.
+      Three assertions are the point, and none of them can be made off-device:
+      - **Crisis support is on the disclosure step**, before terms are accepted or an age is
+        confirmed. The rule is that safety never waits on consent; here it is read off the
+        first screen a new user meets.
+      - **Continue is `[Disabled]` until the 18+ attestation** — the gate *is* the compliance
+        surface, so the test asserts the gate before satisfying it.
+      - **All six consent switches render and every one is OFF.** "Nothing is remembered
+        unless you allow it" is a claim on the landing page, in the privacy notice and to a
+        regulator under DPDP §6, and it is exactly what a UI can quietly break (a default-on
+        switch, a pre-selected "recommended" card) with every unit test still green. Six, not
+        three: a category with no switch is one the user never saw.
+      **Six tests, green twice, on CPH2681.** Four things had to be learned to get there, all
+      recorded in `DeviceE2E`: the OEM install scanner owns the screen (so `am instrument`
+      against an already-installed pair beats `connectedDebugAndroidTest` on this handset, and
+      Back-pressing to clear it walks the app out to the launcher); `fetchSemanticsNodes`
+      throws before `setContent`; the splash hides itself from a `LaunchedEffect { delay }`
+      that is **virtual** under the Compose clock, so a real-time poll watches the splash until
+      it times out; and a label is not always text — the 18+ attestation is a Switch whose
+      label lives only in its `contentDescription`, so a text-only matcher clicked the
+      sentence beside it and the gate never opened.
 - [x] **The suite stopped being only a smoke test (2026-08-17).** `DeviceSmokeTest` proves
       the APK starts; it never opened a screen. `CrisisPathDeviceTest` opens the one where a
       defect is measured in human harm, and asserts the two things the existing gates
