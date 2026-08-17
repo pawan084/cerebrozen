@@ -11,9 +11,60 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ── What changed? ─────────────────────────────────────────────────────
+  # Every job below runs only when its own stack moved. Before this, an
+  # Android-only commit paid for backend pytest, Playwright AND a 38-minute
+  # macOS iOS suite — which is also why a long-standing iOS failure kept every
+  # unrelated commit red, and a pipeline nobody can trust is worse than a slow
+  # one.
+  #
+  # Two couplings are deliberate and NOT filtered away:
+  #   · the `web` job runs the cross-stack gates (check-claims across 207 files,
+  #     crisis-line ordering, design tokens, prices), so ANY client change has to
+  #     trigger it — that is the whole point of keeping one repo.
+  #   · `e2e` needs the backend, so backend changes trigger it too.
+  changes:
+    name: Changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.f.outputs.backend }}
+      web: ${{ steps.f.outputs.web }}
+      clients: ${{ steps.f.outputs.clients }}
+      android: ${{ steps.f.outputs.android }}
+      ios: ${{ steps.f.outputs.ios }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: f
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'docker-compose*.yml'
+              - '.github/workflows/ci.yml'
+            web:
+              - 'apps/web/**'
+              - 'apps/admin/**'
+              - 'apps/app/**'
+              - 'scripts/**'
+              - '.github/workflows/ci.yml'
+            clients:
+              - 'apps/**'
+              - 'scripts/**'
+              - 'docs/CLAIMS_MAP.md'
+              - '.github/workflows/ci.yml'
+            android:
+              - 'apps/android/**'
+              - '.github/workflows/ci.yml'
+            ios:
+              - 'apps/ios/**'
+              - '.github/workflows/ci.yml'
+
   # ── Backend: FastAPI + Postgres (pytest) ──────────────────────────────
   backend:
     name: Backend (pytest)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -88,6 +139,8 @@ jobs:
   # ── Web + Admin: Playwright e2e (isolated docker stack) ───────────────
   e2e:
     name: Web + Admin (Playwright e2e)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -112,6 +165,8 @@ jobs:
   # ── Web + Admin: TypeScript typecheck + ESLint (no services needed) ───
   web:
     name: Web + Admin + App (typecheck + lint)
+    needs: changes
+    if: needs.changes.outputs.clients == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -197,6 +252,8 @@ jobs:
   # here because no API is running on the macOS runner; the other 8 run fully.
   ios:
     name: iOS (XCUITests)
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -235,6 +292,8 @@ jobs:
   # Blocking now: this job is the only thing that compiles the lead client.
   android:
     name: Android (build + unit tests)
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -284,6 +343,8 @@ jobs:
   # is the backstop instead — a hang costs 25 minutes once, not a stuck queue.
   android-device:
     name: Android (instrumented, emulator)
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
