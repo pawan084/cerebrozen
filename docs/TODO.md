@@ -1616,7 +1616,25 @@ less time than any of them. **A grep that finds nothing is evidence about the gr
       rather than queues) takes the acknowledgement back instead of leaving "noted" over a
       check-in that is nowhere. Verified on the handset with the tunnel cut, which reproduces
       the CI condition.
-      **Eight tests, green twice, on CPH2681 — online and with the backend link cut.** Four things had to be learned to get there, all
+      **Eight tests green on BOTH the handset and the CI emulator (2026-08-17).** Getting the
+      two to agree was the work, and the disagreements were the value:
+      - **One product defect.** Home acknowledged a check-in only after the network attempt
+        returned. The phone refuses `localhost:8000` instantly so it looked fine; a runner
+        with nothing to reach *hangs*, which is what a weak connection actually feels like.
+      - **Three test defects**, each the same mistake in a different disguise — a tap outside
+        the viewport (`performClick` dispatches at the node's centre), a gated button read
+        before it enabled, and a toggle read one frame after its click. On real hardware "I
+        did the thing" and "the thing has happened" are different instants, and a test that
+        conflates them passes on whichever device is fast enough.
+      - **One emulator artifact worth knowing**: the CI AVD reports 160dpi, so the app lays
+        out as if the screen were ~1080dp wide and a coordinate tap on the attestation Switch
+        hits nothing. `turnOn` drives the control's own `OnClick` action and falls back to a
+        tap; it still asserts the switch reads On, so a genuinely broken switch still fails.
+        What this walk no longer proves is that the control is reachable by *finger* at every
+        layout — that is a 48dp touch-target audit's job, not this one's.
+      Run it on the handset with `adb shell am instrument -w com.cerebrozen.app.test/androidx.test.runner.AndroidJUnitRunner`
+      against an already-installed pair (~22s); `connectedDebugAndroidTest` re-triggers the
+      OEM scanner and uninstalls the app afterwards, taking the session with it. Four things had to be learned to get there, all
       recorded in `DeviceE2E`: the OEM install scanner owns the screen (so `am instrument`
       against an already-installed pair beats `connectedDebugAndroidTest` on this handset, and
       Back-pressing to clear it walks the app out to the launcher); `fetchSemanticsNodes`
