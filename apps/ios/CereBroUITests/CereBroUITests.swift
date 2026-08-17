@@ -1094,33 +1094,34 @@ final class CereBroUITests: XCTestCase {
         _ = ob.buttons["Try a 2-minute reset"].waitForExistence(timeout: 10)
         try capture(ob, "onboarding-01-welcome")
         tap(ob, "Try a 2-minute reset")
-        expectStep(ob, "A quick check", shot: "ob-age")
-        tap(ob, "I am 18 or older")
-        try capture(ob, "onboarding-02-age-gate")
-        tapExact(ob, "Continue")
+        // Mirrors `testOnboardingSequencedFlow`, which passes and is therefore
+        // the record of what the funnel actually does. This tour still walked
+        // the pre-trim ten steps: a separate "A quick check" age gate, which is
+        // now the affirmative tap *inside* the disclosure that gates Continue,
+        // and a "First Plan" preview that was deleted when the real plan moved
+        // to Home. Both were unreachable, and every capture after them was a
+        // screenshot of whatever happened to be on screen.
         expectStep(ob, "What CereBro is — and isn't", shot: "ob-disclosure")
-        try capture(ob, "onboarding-03-disclosure")
+        try capture(ob, "onboarding-02-disclosure")
+        tap(ob, "I am 18 or older")
         tapExact(ob, "Continue")
         expectStep(ob, "Language", shot: "ob-language")
-        try capture(ob, "onboarding-04-language")
+        try capture(ob, "onboarding-03-language")
         tapExact(ob, "Continue")
         expectStep(ob, "What feels most true right now?", shot: "ob-state")
-        try capture(ob, "onboarding-05-state-check")
+        try capture(ob, "onboarding-04-state-check")
         tap(ob, "Doubting myself")                          // auto-advances
         expectStep(ob, "Let's steady your body", shot: "ob-reset")
-        try capture(ob, "onboarding-06-first-reset")
+        try capture(ob, "onboarding-05-first-reset")
         tapExact(ob, "Skip for now")
-        expectStep(ob, "First Plan", shot: "ob-plan")
-        try capture(ob, "onboarding-07-first-plan")
-        tapExact(ob, "Keep going")
         expectStep(ob, "Save your space", shot: "ob-signup")
-        try capture(ob, "onboarding-08-signup")
+        try capture(ob, "onboarding-06-signup")
         tapExact(ob, "Maybe later")
         expectStep(ob, "What CereBro remembers", shot: "ob-consent")
-        try capture(ob, "onboarding-09-consent")
+        try capture(ob, "onboarding-07-consent")
         tapExact(ob, "Continue")
         expectStep(ob, "Notifications", shot: "ob-notifications")
-        try capture(ob, "onboarding-10-notifications")
+        try capture(ob, "onboarding-08-notifications")
         ob.terminate()
 
         // Part 2 — the main app: tab roots, then every pushed surface.
@@ -1130,14 +1131,21 @@ final class CereBroUITests: XCTestCase {
             openTab(app, tab)
             try capture(app, tab.lowercased())
         }
+        // Two entries were describing an app that no longer exists — the first
+        // run of this suite in CI (2026-08-17) is what surfaced it, because
+        // nothing had compiled iOS in this repo before that. "Calm games" was
+        // the Games hub, folded into one ToolkitView when the Games+Tools split
+        // went ("the gamecontroller framing is gone"); the label appears nowhere
+        // in the sources now. "How did you sleep?" moved to Sleep, so asking for
+        // it *from Home* could only ever fail.
         let pushed: [(from: String, via: String, name: String)] = [
             ("Home", "Sounds", "sounds"),
             ("Home", "Insights", "insights"),
             ("Home", "Check how you feel", "mood-check-in"),
-            ("Home", "How did you sleep?", "sleep-check-in"),
+            ("Sleep", "How did you sleep?", "sleep-check-in"),
             ("Home", "Today's plan", "daily-plan"),
             ("Home", "Programs", "programs"),
-            ("Home", "Calm games", "games"),
+            ("Home", "Toolkit", "toolkit"),
             ("Home", "Search", "search"),
             ("Sleep", "Rain over quiet hills", "player"),
             ("Sleep", "Sleep diary", "sleep-diary"),
@@ -1153,11 +1161,19 @@ final class CereBroUITests: XCTestCase {
         ]
         for page in pushed {
             openTab(app, page.from)
+            // Return the tab to its top before hunting for a row. `tap` scrolls
+            // DOWN to reach an element, so a tab left scrolled by the previous
+            // capture put anything above the current position permanently out
+            // of reach — which is why Sounds, Insights, Programs and "Check how
+            // you feel" failed while "Today's plan" and "Search", lower on the
+            // same screen, passed.
+            for _ in 0..<3 { app.swipeDown() }
             var reached = tap(app, page.via)
             if !reached {
                 // The tab bar can still be settling from the previous capture —
                 // re-anchor on the tab once before declaring the page missing.
                 openTab(app, page.from)
+                for _ in 0..<3 { app.swipeDown() }
                 reached = tap(app, page.via)
             }
             guard reached else {
