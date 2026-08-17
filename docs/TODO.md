@@ -1604,7 +1604,19 @@ less time than any of them. **A grep that finds nothing is evidence about the gr
         the rule; this pins that the rule reaches the screen, walked the way the app offers
         it (chat → tools tray → All tools → Practices). It is the assertion that would have
         caught You/Settings shipping with neither.
-      **Eight tests, green twice, on CPH2681.** Four things had to be learned to get there, all
+      **The emulator then found a defect the handset could not.** Both check-in walks passed
+      on the phone and failed in CI, because the phone's `localhost:8000` refuses instantly
+      while a runner with nothing to reach makes the connection *hang*. The card only morphed
+      after `Api.checkIn` returned — so on a connection that hangs rather than refuses, a tap
+      looked ignored for as long as the socket took, on the one control the whole screen is
+      built around. `Outbox.send` had documented the right behaviour all along ("the caller
+      shows the entry optimistically either way"); the caller just waited for the verdict
+      first. Home now says it back immediately and reconciles after: `queued` is only claimed
+      once the attempt has actually answered, and a genuine 4xx (which `Outbox` rethrows
+      rather than queues) takes the acknowledgement back instead of leaving "noted" over a
+      check-in that is nowhere. Verified on the handset with the tunnel cut, which reproduces
+      the CI condition.
+      **Eight tests, green twice, on CPH2681 — online and with the backend link cut.** Four things had to be learned to get there, all
       recorded in `DeviceE2E`: the OEM install scanner owns the screen (so `am instrument`
       against an already-installed pair beats `connectedDebugAndroidTest` on this handset, and
       Back-pressing to clear it walks the app out to the launcher); `fetchSemanticsNodes`

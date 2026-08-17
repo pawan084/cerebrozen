@@ -1226,29 +1226,46 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                                 ) {
                                     if (busy) return@MoodTile
                                     busy = true; status = null
+                                    // Say it back NOW, then send. `Outbox.send`
+                                    // documents that "the caller shows the entry
+                                    // optimistically either way" — but the card
+                                    // only morphed once the socket had resolved,
+                                    // so on a connection that hangs rather than
+                                    // refuses, a tap looked ignored for as long
+                                    // as the timeout took. Found by the e2e walk
+                                    // failing on a CI emulator with no host to
+                                    // reach, while the handset (instant
+                                    // ECONNREFUSED) looked fine.
+                                    Haptics.success()
+                                    if (!reduceMotion) bloom++
+                                    loggedId = null
+                                    loggedQueued = false
+                                    loggedMood = mood
+                                    reAsk = false
                                     scope.launch {
                                         try {
                                             val row2 = Api.checkIn(mood.name, mood.note, mood.symbol, mood.intensity)
-                                            Haptics.success()
-                                            if (!reduceMotion) bloom++
                                             loggedId = row2?.optString("id").orEmpty()
+                                            // Only now can the line honestly say
+                                            // "queued": before the attempt returns
+                                            // nobody knows which it will be.
                                             loggedQueued = row2 == null
-                                            loggedMood = mood
-                                            reAsk = false
                                             reload()
                                         } catch (e: Exception) {
-                                            if (e.isGuestGate()) {
-                                                // Walk defect (2026-08-15): a guest's
-                                                // answer still counts on-device; only
-                                                // the ROW needs an account.
-                                                Haptics.success()
-                                                if (!reduceMotion) bloom++
+                                            // A guest's 401 is an account state, not a
+                                            // failure (walk defect, 2026-08-15): the
+                                            // answer still counts on this device, so the
+                                            // acknowledgement above stands.
+                                            if (!e.isGuestGate()) {
+                                                // A real refusal — a 4xx `Outbox` rethrew
+                                                // rather than queued. Take the
+                                                // acknowledgement back rather than leave
+                                                // "noted" over a check-in that is nowhere.
+                                                loggedMood = null
                                                 loggedId = null
                                                 loggedQueued = false
-                                                loggedMood = mood
-                                                reAsk = false
+                                                status = e.userMessage(checkinFailed)
                                             }
-                                            status = e.userMessage(checkinFailed)
                                         } finally {
                                             busy = false
                                         }
