@@ -51,6 +51,11 @@ import androidx.compose.material.icons.outlined.MonitorHeart
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Spa
+import androidx.compose.material.icons.outlined.SentimentDissatisfied
+import androidx.compose.material.icons.outlined.SentimentNeutral
+import androidx.compose.material.icons.outlined.SentimentSatisfied
+import androidx.compose.material.icons.outlined.SentimentVeryDissatisfied
+import androidx.compose.material.icons.outlined.SentimentVerySatisfied
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
@@ -494,7 +499,7 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
             eyebrow = stringResource(R.string.sleep_hero_eyebrow),
             title = calmerNight,
             subtitle = stringResource(R.string.sleep_hero_subtitle),
-            height = 220.dp,
+            height = 184.dp,
             alive = true,   // W24: hero stars twinkle, imperceptibly slow
         ) {
             // A "TONIGHT" badge + a prominent play pill — the richer hero look, on
@@ -505,10 +510,15 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
             ) {
                 // Plain eyebrow, not a chip: the bordered pill styling read as
                 // a button and it was inert.
+                //
+                // SleepHeroMeta, not ArtTextSoft: this hero is THEMED (Dawn
+                // paints it a pale wash), and the on-always-dark-art constant
+                // put pale lilac on pale lilac — on glass the badge read as a
+                // rendering artifact beside the Play pill, not a word.
                 Text(
                     stringResource(R.string.sleep_tonight_badge),
                     style = MaterialTheme.typography.labelSmall,
-                    color = com.cerebrozen.app.ui.theme.ArtTextSoft,
+                    color = SleepHeroMeta,
                 )
                 val playCd = stringResource(R.string.sleep_play_cd)
                 val heroPlaying = Player.nowPlaying == calmerNight && Player.isPlaying
@@ -600,34 +610,25 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
                 )
             }
             Text(stringResource(R.string.sleep_checkin_subtitle), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-            // Edge-bled chip rail: the last chip is cut by the SCREEN, not the
-            // card padding — the only reliable "there's more this way".
+            // Five complete choices beat a clipped horizontal rail here. On a
+            // real 360dp-wide device the fifth answer looked broken rather
+            // than discoverable, and required an unnecessary swipe.
             Row(
-                Modifier.bleed(20.dp).horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 // W10: the quality chips rise in with the shared staggered entrance
                 // (instant under Reduce Motion — handled inside appear).
                 sleepWords().forEachIndexed { i, word ->
-                    Box(Modifier.appear(i, rise = 10f)) {
-                        SleepMoodChip(index = i, label = word, selected = quality == i + 1) { quality = i + 1 }
+                    Box(Modifier.weight(1f).appear(i, rise = 10f)) {
+                        SleepMoodChip(
+                            index = i,
+                            label = word,
+                            selected = quality == i + 1,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { quality = i + 1 }
                     }
                 }
-            }
-            // Health Connect prefill sits ABOVE the times it prefills and BELOW
-            // the quality chips (audit I#23): it prefills bed/wake, never the
-            // rested feeling, yet its seven-line consent hint sat between "How
-            // rested do you feel?" and the chips that answer it. The earlier
-            // decision stands too — it must not interrupt between the inputs
-            // and Save, and its boundary text stays unclamped (owner call).
-            if (hcAvailable) {
-                HealthConnectCard(onClick = {
-                    scope.launch {
-                        if (com.cerebrozen.app.health.HealthConnectSleep.hasPermission(context)) applyHealthConnect()
-                        else hcLauncher.launch(com.cerebrozen.app.health.HealthConnectSleep.permissions)
-                    }
-                })
             }
             TimeRow(stringResource(R.string.sleep_inbed_label), bed, { bed = it })
             TimeRow(stringResource(R.string.sleep_wake_label), wake, { wake = it })
@@ -692,6 +693,16 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
                     stringResource(R.string.sleep_save_hint),
                     style = MaterialTheme.typography.labelSmall, color = TextMuted,
                 )
+            }
+            // Optional import follows the manual path instead of interrupting
+            // the core question → time → save flow.
+            if (hcAvailable) {
+                HealthConnectCard(onClick = {
+                    scope.launch {
+                        if (com.cerebrozen.app.health.HealthConnectSleep.hasPermission(context)) applyHealthConnect()
+                        else hcLauncher.launch(com.cerebrozen.app.health.HealthConnectSleep.permissions)
+                    }
+                })
             }
             }
             status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
@@ -1149,16 +1160,16 @@ private fun PremiumWindDownHero(
         Box(
             Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 22.dp, end = 24.dp)
-                .size(104.dp)
+                .padding(top = 16.dp, end = 18.dp)
+                .size(80.dp)
                 .graphicsLayer { translationY = if (reduceMotion || !alive) 0f else moonY.dp.toPx() }
                 .background(Brush.radialGradient(listOf(SleepHeroMoonGlow, Color.Transparent))),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Outlined.DarkMode, contentDescription = null, tint = SleepHeroMoon, modifier = Modifier.size(58.dp))
+            Icon(Icons.Outlined.DarkMode, contentDescription = null, tint = SleepHeroMoon, modifier = Modifier.size(44.dp))
         }
         Column(
-            Modifier.fillMaxSize().padding(22.dp),
+            Modifier.fillMaxSize().padding(18.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1197,14 +1208,29 @@ private fun SleepGlassCard(
 }
 
 @Composable
-private fun SleepMoodChip(index: Int, label: String, selected: Boolean, onClick: () -> Unit) {
-    val emojis = listOf("😴", "😟", "😐", "🙂", "😊")
+private fun SleepMoodChip(
+    index: Int,
+    label: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    // Vector faces stay visually consistent across OEMs. The old emoji scale
+    // changed shape, weight and colour with the device font and looked like a
+    // foreign control beside the app's outlined icon language.
+    val icons = listOf(
+        Icons.Outlined.SentimentVeryDissatisfied,
+        Icons.Outlined.SentimentDissatisfied,
+        Icons.Outlined.SentimentNeutral,
+        Icons.Outlined.SentimentSatisfied,
+        Icons.Outlined.SentimentVerySatisfied,
+    )
     val shape = RoundedCornerShape(24.dp)
     val fill by animateColorAsState(if (selected) Periwinkle.copy(alpha = 0.22f) else CardFill, label = "moodFill")
     val stroke by animateColorAsState(if (selected) Periwinkle else LineStroke, label = "moodStroke")
     Column(
-        Modifier
-            .height(78.dp)
+        modifier
+            .height(76.dp)
             .clip(shape)
             .background(fill)
             .border(1.dp, stroke, shape)
@@ -1213,14 +1239,19 @@ private fun SleepMoodChip(index: Int, label: String, selected: Boolean, onClick:
             .semantics(mergeDescendants = true) {
                 role = androidx.compose.ui.semantics.Role.Button
             }
-            .padding(horizontal = 15.dp, vertical = 9.dp),
+            .padding(horizontal = 3.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(emojis.getOrElse(index) { "🙂" }, style = MaterialTheme.typography.titleLarge)
+        Icon(
+            icons.getOrElse(index) { Icons.Outlined.SentimentNeutral },
+            contentDescription = null,
+            tint = if (selected) Periwinkle else TextMuted,
+            modifier = Modifier.size(24.dp),
+        )
         // One line, never wrapped: the chip widens to fit ("Rested" used to
         // wrap inside the fixed-height chip and clip to "Reste…").
-        Text(label, style = MaterialTheme.typography.labelSmall, color = TextPrimary,
+        Text(label, style = MaterialTheme.typography.bodySmall, color = TextPrimary,
             maxLines = 1, softWrap = false)
     }
 }
@@ -1249,7 +1280,11 @@ private fun HealthConnectCard(onClick: () -> Unit) {
             Text(stringResource(R.string.sleep_hc_prefill), style = MaterialTheme.typography.titleSmall, color = TextPrimary)
             // Unclamped: the consent boundary is an owner decision — cutting it
             // mid-sentence ("nothing is saved until…") undermined it.
-            Text(stringResource(R.string.sleep_hc_boundary_hint), style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            Text(
+                stringResource(R.string.sleep_hc_boundary_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = TextMuted,
+            )
         }
         Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Cyan)
     }

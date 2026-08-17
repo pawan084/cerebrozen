@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.LocalFlorist
 import androidx.compose.material.icons.outlined.PersonAddAlt
 import androidx.compose.material.icons.outlined.Psychology
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -89,37 +90,16 @@ fun PracticeLibraryScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
             Brush.verticalGradient(listOf(CardFill, Night)),
         ),
     ) {
-        Row(
-            Modifier.fillMaxWidth().height(76.dp).background(CardFill.copy(alpha = .94f))
-                .border(.5.dp, LineStroke.copy(alpha = .65f)).padding(horizontal = 13.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(11.dp),
-        ) {
-            CircleAction(FieldFill, onBack) {
-                Icon(Icons.Outlined.ArrowBack, "Back", tint = Color(0xFF6E376B), modifier = Modifier.size(23.dp))
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-                Text(
-                    stringResource(R.string.practicelib_title), maxLines = 1,
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontFamily = serif, fontWeight = FontWeight.SemiBold, lineHeight = 25.sp,
-                    ),
-                    color = TextPrimary,
-                )
-                Text(
-                    stringResource(R.string.practicelib_subtitle), maxLines = 1,
-                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 15.sp),
-                    color = TextMuted,
-                )
-            }
-            CircleAction(DangerSoft, { onOpen("crisis") }) {
-                Icon(Icons.Outlined.HealthAndSafety, "Urgent support", tint = Color(0xFFE34B4B), modifier = Modifier.size(23.dp))
-            }
-        }
+        CereBroTopBar(
+            title = stringResource(R.string.practicelib_title),
+            subtitle = stringResource(R.string.practicelib_subtitle),
+            onBack = onBack,
+            onUrgent = { onOpen("crisis") },
+        )
 
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                .padding(horizontal = 14.dp).padding(top = 15.dp, bottom = 20.dp),
+                .padding(horizontal = 16.dp).padding(top = 14.dp, bottom = 20.dp),
         ) {
             Text(
                 stringResource(R.string.practicelib_eyebrow),
@@ -129,14 +109,14 @@ fun PracticeLibraryScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
             Text(
                 stringResource(R.string.practicelib_hero),
                 modifier = Modifier.padding(top = 7.dp),
-                style = MaterialTheme.typography.displayLarge.copy(
-                    fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 43.sp, lineHeight = 39.sp,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 32.sp, lineHeight = 34.sp,
                 ),
                 color = TextPrimary,
             )
             Text(
                 stringResource(R.string.practicelib_intro),
-                modifier = Modifier.padding(top = 14.dp, bottom = 16.dp),
+                modifier = Modifier.padding(top = 9.dp, bottom = 13.dp),
                 style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 23.sp),
                 color = TextMuted,
             )
@@ -609,20 +589,20 @@ private fun PracticeFamilyRow(
     onClick: () -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().height(77.dp)
-            .shadow(9.dp, RoundedCornerShape(23.dp), ambientColor = Color.Black.copy(alpha = .08f))
-            .clip(RoundedCornerShape(23.dp)).background(CardFill)
-            .clickable(onClick = onClick).padding(horizontal = 16.dp),
+        Modifier.fillMaxWidth().height(68.dp)
+            .clip(RoundedCornerShape(18.dp)).background(CardFill)
+            .border(1.dp, LineStroke.copy(alpha = .62f), RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick).padding(horizontal = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(13.dp),
     ) {
-        Box(Modifier.size(43.dp).clip(CircleShape).background(iconFill), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = iconTint, modifier = Modifier.size(22.dp))
+        Box(Modifier.size(38.dp).clip(CircleShape).background(iconFill), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = iconTint, modifier = Modifier.size(20.dp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color(0xFF776E6E), maxLines = 1)
         }
-        Text("›", style = MaterialTheme.typography.titleLarge, color = Color(0xFF955386))
+        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Color(0xFF955386), modifier = Modifier.size(19.dp))
     }
 }

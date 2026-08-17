@@ -261,17 +261,9 @@ val SleepHeroSpark: Color get() = if (AppTheme.isNight) NightPalette.textPrimary
 val SleepHeroMoonGlow: Color get() = if (AppTheme.isNight) Color(0x66D9ACDE) else Color(0x4D5A2B5C)
 val SleepHeroMoon: Color get() = if (AppTheme.isNight) Color(0xFFE9CDEC) else Color(0xFF4A2350)
 
-/** The featured billboard paints generative art, then a scrim. Night sinks it
- * with the page ground; Dawn lifts it with paper, so the same artwork reads as a
- * pastel wash under ink text instead of a dark tile. */
-val FeaturedScrim: Color get() = if (AppTheme.isNight) NightPalette.night else DawnPalette.cardFill
-val FeaturedEdge: Color get() = if (AppTheme.isNight) Color(0x66D9ACDE) else Color(0x665A2B5C)
-val FeaturedInk: Color get() = TextPrimary
-val FeaturedInkSoft: Color get() = TextSoft
-/** The "FEATURED EXERCISE" pill riding on the art. */
-val FeaturedPillFill: Color get() = if (AppTheme.isNight) Color(0x38FFFFFF) else Color(0x1A211D20)
-val FeaturedPillEdge: Color get() = if (AppTheme.isNight) Color(0x4DFFFFFF) else Color(0x38211D20)
-val FeaturedPillInk: Color get() = if (AppTheme.isNight) Cream else DawnPalette.textPrimary
+// The featured-billboard tokens (FeaturedScrim/Edge/Ink/Pill*) left with the
+// billboard itself: the Toolkit density pass demoted its one placement to a
+// plain exercise row, and a palette entry with no surface is just a claim.
 
 // Component tokens.
 /** PrimaryButton label — `--on-accent` on the accent pill, in both themes. */

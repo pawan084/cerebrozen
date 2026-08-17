@@ -91,6 +91,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
@@ -1042,19 +1043,16 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             // are already in. Tapping it opens the full sheet.
             Text(
                 stringResource(R.string.talk_disclosure_pill),
-                style = MaterialTheme.typography.labelSmall, color = TextMuted2,
+                style = MaterialTheme.typography.bodySmall, color = TextMuted2,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
                     .clickable { showDisclosure = true }
                     .padding(vertical = 4.dp),
             )
-            // Chat can't queue offline (a conversation needs its other half) —
-            // say so where the typing happens, not only in the top banner.
-            if (Session.servedStale) {
-                Text(stringResource(R.string.talk_offline_compose),
-                    style = MaterialTheme.typography.labelSmall, color = TextMuted)
-            }
+            // The persistent banner already explains the offline state and
+            // points to Toolkit. Repeating it here made the composer feel like
+            // an error panel and put the same message on screen three times.
             // The same honesty for a guest, BEFORE they type (audit I#13): the
             // composer was fully enabled for an account state in which every
             // send is refused by design — the truth arrived only after the
@@ -1176,7 +1174,6 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             // "offline") — at rest the persona stands alone, so the crowded
             // header row never ellipsizes the interesting part.
             val stateRes = when {
-                Session.servedStale -> R.string.talk_presence_offline
                 transcribing -> R.string.talk_presence_hearing
                 busy || streamText.isNotBlank() -> R.string.talk_presence_thinking
                 voice.speaking || cloud.speaking -> R.string.talk_presence_speaking
@@ -1186,7 +1183,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
             Text(
                 if (stateRes == null) persona
                 else stringResource(R.string.talk_presence_line, persona, stringResource(stateRes)),
-                style = MaterialTheme.typography.labelSmall, color = TextMuted,
+                style = MaterialTheme.typography.bodySmall, color = TextMuted,
                 maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 modifier = Modifier
                     .weight(1f)
@@ -1319,7 +1316,9 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     Text(stringResource(R.string.talk_disclosure_dialog_body) + memoryLine)
                 },
                 confirmButton = {
-                    TextButton(onClick = { showDisclosure = false }) { Text(stringResource(R.string.talk_disclosure_ok)) }
+                    Button(onClick = { showDisclosure = false }) {
+                        Text(stringResource(R.string.talk_disclosure_ok))
+                    }
                 },
                 dismissButton = {
                     TextButton(onClick = { showDisclosure = false; onOpen("crisis") }) {
@@ -1366,29 +1365,6 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         }
 
         if (messages.isEmpty()) {
-            SectionCard {
-                // No EmptyStateArt here (audit I#11, reversing W24 for this one
-                // card): at 56dp the generative motif rendered as an empty dark
-                // square — a broken image — beneath the orb that already IS the
-                // art. Icon audit: what earns the slot instead is a plain
-                // 44dp icon well in the app's row language, cheap and unambiguous.
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(13.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        Modifier.size(44.dp).clip(CircleShape).background(Cyan.copy(alpha = 0.11f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = null, tint = Cyan, modifier = Modifier.size(22.dp))
-                    }
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(stringResource(R.string.talk_empty_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                        Text(stringResource(R.string.talk_empty_subtitle), style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-                    }
-                }
-            }
             if (starters.isNotEmpty() || todayMoodTalk != null) {
                 Text(stringResource(R.string.talk_starters_header), style = MaterialTheme.typography.labelSmall, color = Periwinkle)
                 // Bleed to the screen edge so a clipped chip reads as "scrolls",
@@ -1721,16 +1697,16 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     add(TrayTool(Icons.Outlined.Refresh, R.string.talk_start_fresh, R.string.talk_tool_fresh_sub, "@fresh"))
                 }
             }
-            val tools = threadTools + listOf(
+            val wellbeingTools = listOf(
                 TrayTool(Icons.Outlined.Favorite, R.string.talk_tool_checkin, R.string.talk_tool_checkin_sub, "checkin"),
                 TrayTool(Icons.Outlined.SelfImprovement, R.string.talk_tool_breathe, R.string.talk_tool_breathe_sub, "breathe/reset"),
                 TrayTool(Icons.Outlined.Spa, R.string.talk_tool_ground, R.string.talk_tool_ground_sub, "ground"),
                 TrayTool(Icons.Outlined.Edit, R.string.talk_tool_journal, R.string.talk_tool_journal_sub, "journal/new"),
-                TrayTool(Icons.Outlined.Headphones, R.string.talk_tool_sounds, R.string.talk_tool_sounds_sub, "sounds"),
-                TrayTool(Icons.Outlined.NotificationsNone, R.string.talk_tool_reminder, R.string.talk_tool_reminder_sub, "reminders"),
-                TrayTool(Icons.Outlined.Mic, R.string.talk_tool_voice, R.string.talk_tool_voice_sub, ""),
-                TrayTool(Icons.Outlined.Extension, R.string.talk_tool_game, R.string.talk_tool_game_sub, "games"),
             )
+            // Four choices is enough to scan. In an active thread its two
+            // thread actions lead, followed by the two quickest practices;
+            // everything else stays reachable through one explicit door.
+            val tools = (threadTools + wellbeingTools).take(4)
             tools.chunked(2).forEach { pair ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     pair.forEach { tool ->
@@ -1763,6 +1739,20 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     }
                     if (pair.size == 1) Box(Modifier.weight(1f))
                 }
+            }
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                    .clickable { showTools = false; onOpen("toolkit") }
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Outlined.Extension, contentDescription = null, tint = Periwinkle, modifier = Modifier.size(20.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.talk_all_tools), style = MaterialTheme.typography.titleSmall, color = TextSoft)
+                    Text(stringResource(R.string.talk_all_tools_sub), style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                }
+                Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -2275,11 +2265,14 @@ private fun VoiceOrb(
      * half the viewport. Voice activity always restores the full stage. */
     compact: Boolean = false,
 ) {
-    val stage = if (compact) 96.dp else 210.dp
-    val orbSize = if (compact) 64.dp else 150.dp
-    val haloSize = if (compact) 100.dp else 230.dp
-    val highlight = if (compact) 24.dp else 56.dp
-    val highlightOffset = if (compact) (-10).dp else (-24).dp
+    val orbCd = stringResource(
+        if (listening) R.string.talk_orb_stop_cd else R.string.talk_orb_talk_cd,
+    )
+    val stage = if (compact) 96.dp else 150.dp
+    val orbSize = if (compact) 64.dp else 112.dp
+    val haloSize = if (compact) 100.dp else 170.dp
+    val highlight = if (compact) 24.dp else 40.dp
+    val highlightOffset = if (compact) (-10).dp else (-17).dp
     val active = listening || speaking || thinking
     val reduceMotion = rememberReduceMotion()
     // Phase tint: thinking = iris, voice active = cyan, resting = lavender.
@@ -2333,6 +2326,7 @@ private fun VoiceOrb(
         Box(
             Modifier.size(orbSize).scale(pulse).clip(CircleShape)
                 .background(Brush.radialGradient(listOf(Color.White, core, PeriwinkleDeep)))
+                .semantics { contentDescription = orbCd }
                 .clickable(
                     onClickLabel = if (listening) stringResource(R.string.talk_orb_stop_cd)
                     else stringResource(R.string.talk_orb_talk_cd),

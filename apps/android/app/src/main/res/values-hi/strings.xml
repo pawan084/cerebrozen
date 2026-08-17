@@ -89,8 +89,6 @@
     <string name="talk_hint_listening_stop">सुन रहे हैं… रोकने के लिए टैप करें</string>
     <string name="talk_hint_orb_studio">बात करने के लिए ऑर्ब टैप करें</string>
     <string name="talk_hint_orb">बात करने के लिए ऑर्ब टैप करें</string>
-    <string name="talk_empty_title">मन में क्या चल रहा है?</string>
-    <string name="talk_empty_subtitle">बोलें या लिखें — छोटी-छोटी चिंताएँ भी कह सकते हैं।</string>
     <string name="talk_starters_header">या यहीं से शुरू करें</string>
     <string name="talk_save_journal">यह बातचीत मेरे जर्नल में सहेजें</string>
     <string name="talk_journal_entry_title">बातचीत की झलक</string>
@@ -143,8 +141,6 @@
     <string name="talk_memory_on">याद रखता है · प्राइवेसी</string>
     <string name="talk_memory_off">मेमोरी बंद · बस इसी पल में</string>
     <string name="talk_starter_mood">पहले मैंने %1$s महसूस किया — वहीं से शुरू करें?</string>
-    <string name="talk_presence_offline">ऑफ़लाइन — टूलकिट फिर भी काम करता है</string>
-    <string name="talk_offline_compose">आप ऑफ़लाइन हैं — बातचीत के लिए कनेक्शन चाहिए। टूलकिट बिना कनेक्शन काम करता है।</string>
     <string name="talk_show_earlier">पहले के संदेश देखें</string>
     <string name="talk_fresh_started">नई शुरुआत हुई — आपका इतिहास आपके रिकॉर्ड में सुरक्षित है।</string>
     <string name="talk_crisis_call">%1$s पर कॉल करें</string>
@@ -226,11 +222,11 @@
     <string name="today_recent_title">हाल के चेक-इन</string>
 
     <!-- ── Sleep ───────────────────────────────────────────────────────── -->
-    <string name="sleep_eyebrow">रात-दर-रात, बेहतर नींद</string>
+    <string name="sleep_eyebrow">शांत होकर बेहतर सोएँ</string>
     <string name="sleep_title">नींद</string>
     <string name="sleep_hero_eyebrow">शांत शाम</string>
     <string name="sleep_hero_title">एक शांत रात</string>
-    <string name="sleep_hero_subtitle">धीमी शाम से सुबह नरम हो जाती है।</string>
+    <string name="sleep_hero_subtitle">आज रात के लिए धीमे हो जाएँ।</string>
     <string name="sleep_tonight_badge">आज रात</string>
     <string name="sleep_play_cd">एंबिएंट ध्वनि चलाएँ</string>
     <string name="sleep_checkin_title">सुबह का चेक-इन</string>
@@ -459,6 +455,7 @@
     <string name="toolkit_header_breathe">साँस</string>
     <string name="toolkit_header_settle">ठहराव</string>
     <string name="toolkit_grounding_intro">5-4-3-2-1 ग्राउंडिंग — अपनी इंद्रियों के सहारे वर्तमान में लौटें।</string>
+    <string name="toolkit_grounding_card_sub">अपनी इंद्रियों के सहारे वर्तमान में लौटें।</string>
     <string name="toolkit_zen_title">ज़ेन लहरें</string>
     <string name="toolkit_zen_subtitle">पानी को छुएँ, लहर को फैलने दें</string>
     <string name="toolkit_bubble_title">बबल पॉप</string>
@@ -531,6 +528,16 @@
 
     <!-- ── Insights ────────────────────────────────────────────────────── -->
     <string name="insights_eyebrow">इनसाइट · इस हफ़्ते</string>
+    <string name="insights_heading">आपका हफ़्ता, संदर्भ के साथ</string>
+    <string name="insights_heading_sub">पैटर्न संकेत हैं, नतीजे नहीं।</string>
+    <string name="insights_row_trends">रुझान</string>
+    <string name="insights_row_trends_sub">हफ़्ता, महीना और तीन महीने</string>
+    <string name="insights_row_patterns">पैटर्न</string>
+    <string name="insights_row_patterns_sub">प्रमाण, सीमाएँ और सुझाए गए कदम</string>
+    <string name="insights_row_goals">लक्ष्य और योजना</string>
+    <string name="insights_row_goals_sub">बिना स्ट्रीक के लचीली प्रगति</string>
+    <string name="insights_row_baseline">व्यक्तिगत आधार</string>
+    <string name="insights_row_baseline_sub">अपना शुरुआती बिंदु अपडेट करें</string>
     <string name="insights_default_headline">आपका हफ़्ता</string>
     <string name="insights_error_fallback">आपका हफ़्ता लोड नहीं हो पाया — थोड़ी देर में फिर कोशिश करें।</string>
     <string name="insights_loading">आपका हफ़्ता पढ़ रहे हैं…</string>
@@ -610,7 +617,7 @@
     <string name="language_crisis_note">हेल्पलाइन के नाम और नंबर हर भाषा में जस के तस रहते हैं।</string>
     <string name="appearance_eyebrow">रात या भोर</string>
     <string name="appearance_title">रूप-रंग</string>
-    <string name="appearance_intro">भोर एक हल्का, गर्म रूप है जो दिन की रोशनी में पढ़ने में आसान है। आपकी पसंद हर जगह लागू होती है — रात में शांत होने के लिए नाइट चुनें।</string>
+    <string name="appearance_intro">चुनें कि CereBro कैसा दिखे।</string>
     <string name="theme_system_title">सिस्टम डिफ़ॉल्ट</string>
     <string name="theme_system_hint">आपके फ़ोन की लाइट/डार्क सेटिंग के अनुसार</string>
     <string name="theme_night_title">हमेशा रात</string>
@@ -1260,7 +1267,7 @@
     <string name="today_hero_chip_no_score">कोई स्कोर नहीं</string>
     <string name="today_hero_why_rule">आपके लक्ष्य, हाल के चेक-इन और नींद की डायरी से चुना गया। आपकी जर्नल नहीं पढ़ी गई।</string>
     <string name="today_hero_why_ai">आपके लक्ष्य, हाल के चेक-इन, नींद की डायरी और जर्नल के शीर्षकों से बना। प्रविष्टियाँ स्वयं नहीं पढ़ी गईं।</string>
-    <string name="today_hero_why_fallback">आज के लिए अभी कुछ तय नहीं है, इसलिए यह बस सबसे छोटा शांत विकल्प है। आपकी जर्नल नहीं पढ़ी गई।</string>
+    <string name="today_hero_why_fallback">अभी कोई योजना नहीं। यह तीन मिनट का ग्राउंडिंग अभ्यास आज़माएँ।</string>
     <string name="today_hero_done_title">आज जो आपने तय किया था, वह सब हो गया।</string>
     <string name="today_hero_done_why">यहाँ से ख़ाली जगह बस ख़ाली है — बनाए रखने को कुछ बाक़ी नहीं।</string>
     <string name="today_hero_begin">यह क़दम शुरू करें</string>
@@ -1328,7 +1335,7 @@
     <string name="today_reminder_ask">रोज़ एक हल्का रिमाइंडर चाहेंगे? कोई स्ट्रीक नहीं, कोई दबाव नहीं।</string>
     <string name="today_reminder_ask_action">सेट करें</string>
     <!-- V2-e part 2 -->
-    <string name="language_intro_short">जिस भाषा में जवाब आते हैं</string>
+    <string name="language_intro_short">जवाब की भाषा बदलें</string>
     <string name="you_appearance_lang_title">रूप और भाषा</string>
     <!-- V2-f: sleep insights -->
     <string name="si_title">नींद की इनसाइट्स</string>
@@ -1393,6 +1400,8 @@
     <string name="talk_tools_cd">टूल — बातचीत में जो-जो हो सकता है</string>
     <string name="talk_tools_eyebrow">इस बातचीत के टूल</string>
     <string name="talk_tools_title">अभी क्या मदद करेगा?</string>
+    <string name="talk_all_tools">सभी टूल</string>
+    <string name="talk_all_tools_sub">हर अभ्यास देखें</string>
     <string name="talk_tool_checkin">चेक-इन</string>
     <string name="talk_tool_checkin_sub">मूड और एक नोट</string>
     <string name="talk_tool_breathe">साँस</string>
@@ -1401,14 +1410,6 @@
     <string name="talk_tool_ground_sub">5-4-3-2-1, यहीं</string>
     <string name="talk_tool_journal">एक पंक्ति</string>
     <string name="talk_tool_journal_sub">डायरी में एक एंट्री</string>
-    <string name="talk_tool_sounds">आवाज़ें</string>
-    <string name="talk_tool_sounds_sub">बारिश, हवा, शांत मिक्स</string>
-    <string name="talk_tool_reminder">रिमाइंडर</string>
-    <string name="talk_tool_reminder_sub">एक कोमल दैनिक याद</string>
-    <string name="talk_tool_voice">आवाज़ से</string>
-    <string name="talk_tool_voice_sub">टाइप की जगह बोलें</string>
-    <string name="talk_tool_game">एक शांत खेल</string>
-    <string name="talk_tool_game_sub">एक सजग मिनट</string>
     <string name="talk_tool_save_sub">यह बातचीत सहेजें</string>
     <string name="talk_tool_fresh_sub">नई बातचीत</string>
 
@@ -1445,8 +1446,6 @@
     <string name="reminders_once_a_day">दिन में ज़्यादा से ज़्यादा एक नज, और कुछ भी रीसेट नहीं होता।</string>
     <string name="today_journal_title">आपकी डायरी</string>
     <string name="today_journal_sub">जो आपने लिखा है, और लिखने की जगह</string>
-    <string name="you_month_title">आपका महीना</string>
-    <string name="you_month_sentence">इस महीने आप %1$d दिन आए।</string>
     <string name="trends_moods_title">कौन-सी भावनाएँ आईं</string>
     <string name="trends_moods_total">पिछले %2$d दिनों में %1$d चेक-इन — गिने गए, आँके नहीं गए।</string>
 </resources>

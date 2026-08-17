@@ -181,12 +181,10 @@ internal fun shouldShowBottomBar(route: String?): Boolean =
     // V2-d: `sleep` is a tab root again; `explore` is the pushed screen now
     // (deeplink-only), so it leaves this set for the same reason sleep once
     // did — a pill with five unlit tabs says nothing about where you are.
-    // V2-e: the talk/live, talk/chat and dailyplan aliases left the graph.
-    // V3-a: `you` and `reminders` leave the set — the settings family is a
-    // full-screen push behind the gear now, and a pill under a settings room
-    // would light nothing. `journal` keeps the pill and lights Home (it is a
-    // content room doored from Home, like gratitude).
-    route in setOf("home", "sleep", "practice-library", "gratitude", "sleepinsights", "talk", "journal", "groundingintro", "checkin", "notifications", "insights", "trends", "patterns", "goals", "baseline")
+    // Only true roots keep the tab pill. Journal has no back affordance in its
+    // home mode, so it retains Home navigation; every other pushed room owns a
+    // Back button and must not simultaneously pretend to be a selected tab.
+    route in setOf("home", "talk", "sleep", "journal")
 
 /**
  * Resolve a notification deeplink to an in-app route, or null to stay Home.
@@ -729,7 +727,7 @@ fun CereBroApp() {
             composable("journal") { JournalScreen(onOpen = open) }
             // The Home check-in's "Say more" bridge lands in the composer, not the hub.
             composable("journal/new") { JournalScreen(startInEntry = true, onOpen = open, onExit = back) }
-            composable("you") { YouScreen(onOpen = open) }
+            composable("you") { YouScreen(onOpen = open, onBack = back) }
             // Guest mode is a real app shell, so authentication must be
             // reachable without signing the local session out first.
             composable("auth") {

@@ -158,14 +158,6 @@ internal fun ContentArt(
 internal fun HeroArt(kind: String, title: String, modifier: Modifier = Modifier, alive: Boolean = false) =
     ContentArt(title = title, kind = kind, modifier = modifier, motifScale = 1.35f, alive = alive)
 
-/** Modifier form for surfaces that paint art behind their own children
- * (FeaturedGameCard) — same drawing, drawn behind the content. */
-internal fun Modifier.contentArtBackground(
-    title: String,
-    kind: String,
-    motifScale: Float = 1.35f,
-): Modifier = drawBehind { drawContentArt(title, kind, motifScale) }
-
 // The living-art loop, expressed as pure phase curves (phase ∈ 0..1 over 22s,
 // RepeatMode.Restart; null = static art, byte-identical to pre-W24) — every
 // term uses an INTEGER number of sine cycles so the wrap at 1→0 is seamless.

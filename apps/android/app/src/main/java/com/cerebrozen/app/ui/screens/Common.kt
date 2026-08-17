@@ -187,9 +187,9 @@ internal fun pageHorizontalPadding() = when {
 
 @Composable
 internal fun cardPadding() = when {
-    LocalConfiguration.current.screenWidthDp < 360 -> 16.dp
-    LocalConfiguration.current.screenWidthDp < 420 -> 18.dp
-    else -> 20.dp
+    LocalConfiguration.current.screenWidthDp < 360 -> 14.dp
+    LocalConfiguration.current.screenWidthDp < 420 -> 16.dp
+    else -> 18.dp
 }
 
 /** The one section break. [Page] spaces its children by [Space.item] (12dp), so a
@@ -993,8 +993,11 @@ internal fun CereBroTopBar(
     Row(
         modifier
             .fillMaxWidth()
-            .height(66.dp)
-            .background(CardFill.copy(alpha = .96f))
+            .height(60.dp)
+            // Fixed bars must be fully opaque. At 96% the high-contrast hero
+            // and progress rows remained visibly ghosted behind the title on
+            // a 720px ColorOS device, making both layers harder to read.
+            .background(CardFill)
             .drawBehind {
                 if (edge > 0f) {
                     drawLine(
@@ -1005,7 +1008,7 @@ internal fun CereBroTopBar(
                     )
                 }
             }
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1018,7 +1021,7 @@ internal fun CereBroTopBar(
                 onClick = onBack,
             )
         } else {
-            BrandMark(size = 36.dp, showGlow = true)
+            BrandMark(size = 32.dp, showGlow = true)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
             Text(

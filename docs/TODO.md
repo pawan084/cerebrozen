@@ -385,6 +385,97 @@ and the orb; what it lacked was motion where movement *means* something.
   state is hoisted for this); screens whose bar scrolls with the body leave it
   false.
 
+### V6 density + honesty pass (2026-08-16, uncommitted) — walked on the OnePlus
+
+A whole-app pass on the two things a 720px phone punishes: **space** (padding,
+type and hero heights tuned for a mock, not a handset) and **claims the UI could
+not back**. Gated `:app:check :app:assembleDebug :app:lintVitalRelease`
+REAL_EXIT:0, coverage 96.15%, claims gate green across 207 files, and walked on
+the OnePlus CPH2681 against a live backend on the demo account.
+
+- **Chrome and density**: top bar 66→60dp and **fully opaque** (at 96% the hero
+  ghosted through it — that closes audit-K's "hero/app-bar ghosting"), card
+  padding down one step at every width, Practice library adopted `CereBroTopBar`
+  instead of its own hand-rolled 76dp bar, Toolkit/PremiumNavRow/Settings rows
+  tightened, hero heights 220→184dp, the voice orb 150→112dp.
+- **Nav chrome tells the truth**: `shouldShowBottomBar` is now the four true
+  roots (`home`, `talk`, `sleep`, `journal`). Every other room owns a Back
+  button and no longer pretends to be a selected tab. Test re-pinned over the
+  full pushed set.
+- **Sleep**: the five quality answers are equal-width and complete (a clipped
+  fifth chip read as broken, not scrollable), **vector faces replace the emoji
+  scale** (OEM emoji changed shape/weight with the device font), and the Health
+  Connect import moved **below** the manual path it optionally replaces.
+- **Honesty**: Home's "picked with you, not for you" provenance line now renders
+  **only for a real server plan** — the local offline fallback names its own
+  reason and must not inherit a personalization claim. An offline session also
+  stops waiting for a plan that cannot arrive (`planLoaded || servedStale`), so
+  the most important card no longer shimmers blank until the network times out.
+  Home's hero progress bar only draws when a **named programme** gives it
+  context (it used to fall back to "days present this week", a week bar wearing
+  a programme's clothes).
+- **Chat**: the ＋ tray carries **four** tools plus one explicit "All tools →
+  Browse every practice" door (eight tiles was a catalogue, not a choice), the
+  duplicate offline line under the composer went (the banner already says it,
+  three times on one screen), and the empty-state card went (the orb is the art).
+- **Insights**: the four-tab strip that navigated away on tap became four
+  labelled rows; heading and the four row labels moved into resources (they were
+  **English literals in Kotlin — invisible to translation**, not merely
+  untranslated), EN + HI.
+- **Dead weight removed**, since deleting a placement without deleting the thing
+  is how cruft starts: 15 orphaned strings across EN + HI, the `FeaturedGameCard`
+  billboard and its seven palette tokens + `contentArtBackground` (its one
+  placement became a plain exercise row), and the You screen's month-presence
+  grid **with its `Api.moods()` fetch** — that call was still costing every open
+  of Settings a round-trip nothing drew. `presenceMonth` stays (pure, tested).
+
+**Six defects the walk found, all fixed and re-verified on glass:**
+1. **Sleep's TONIGHT badge was invisible in Dawn** — it used `ArtTextSoft`, the
+   constant for text over *always-dark* art, on a hero that is themed. Pale
+   lilac on pale lilac, beside the Play pill: it read as a rendering artifact.
+   Now `SleepHeroMeta`.
+2. **You/Settings had no way out.** Dropping its tab pill was right, but the
+   screen kept `PremiumPage` (the *root/tab* frame) — no pill, no back arrow,
+   and a gear in the corner that had already been used to get in. Gesture-back
+   worked; nothing on screen said so. Now `PremiumSubPage(onBack)`.
+3. **Insights' third stat tile overflowed its own tile and the card** — the
+   server sends both `8` and `7h 41m avg` into a ~55dp tile at one type size.
+   The long form steps down now.
+4. The ＋ coach-mark promised "check-ins, breathing, **sounds** and more —
+   without leaving the chat"; after the tray trim, sounds lives behind the All
+   tools door, which *does* leave the chat. Wrong twice; reworded.
+5. The Toolkit's grounding card repeated its own title in its subtitle and then
+   truncated mid-word ("…through you…") — its own card string now.
+6. `String.format("%.1f", …)` without a locale in Trends (a Hindi/`hi-IN` locale
+   renders Devanagari digits into an English sentence).
+
+**CLOSED — the rooms behind the unreachable screen.** `PracticeLibraryScreen`
+was reached only from `ExploreScreen`, and `explore` has been deeplink-only
+since V2-d — so in-app nothing could open it. It looked like a duplicate of the
+Toolkit; it is not. It is the **only** door to `breathing-intro`, `bodyscan`,
+`guidedimagery` and `gratitude`, because V2-e deliberately took those cards out
+of the Toolkit and delegated them to it ("Calm-now doors bodyscan and
+gratitude", still in the comment there). Two deliberate decisions, one wave
+apart, left four finished rooms with no way in. `search` was stranded the same
+way — Explore's header was its only caller.
+
+Both now have doors, placed where the thing they open belongs:
+- **Toolkit → "Practice library · Seven clear families"**, a `PremiumNavRow`
+  before the support card. A row, not an exercise card: it is a door, not a
+  practice, and the Toolkit stays V2-e's curated short list.
+- **Sounds (Library pane) → "Search · The whole library"**. `SEARCH_KINDS` is
+  soundscape/sleep/meditation/program/wind_down — exactly this hub's catalogue,
+  so the catalogue's owner carries the search of it.
+
+**And the test that missed it now catches it.** `RouteReachabilityTest` asked
+"does anything navigate here?" — every stranded route passed, because something
+did: a screen that was itself unreachable. New case, `a deliberately unreachable
+screen is never the only door to something`, walks the excuse list, finds each
+excused screen's file (only whole-file islands count, so a file that also holds
+a reachable screen raises no false alarm), and fails if a route is doored from
+an island and nowhere else. Verified by removing both doors and watching it
+fail with exactly `[practice-library, search]` before restoring them.
+
 ### Positioning research (2026-08-16)
 
 [POSITIONING.md](POSITIONING.md) — market map, USP in four pillars, and the

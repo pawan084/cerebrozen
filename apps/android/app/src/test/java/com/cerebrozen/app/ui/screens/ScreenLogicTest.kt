@@ -5,6 +5,7 @@ import com.cerebrozen.app.R
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -978,5 +979,29 @@ class ScreenLogicTest {
         // crash BUG-01 was about.
         assertNull(planStepRoute("sparkles"))
         assertNull(planStepRoute(""))
+    }
+
+    // ── The care card's personalization claim ───────────────────────
+    // "picked with you, not for you" is true of a plan the SERVER built from
+    // this account's signals, and of nothing else (CLAIMS_MAP §3). The line
+    // used to sit outside the branch, so the identical-for-everyone fallback
+    // printed it too.
+    @Test
+    fun only_a_real_plan_claims_it_was_picked_with_you() {
+        assertTrue(showsCarePlanProvenance(HeroKind.PLAN_STEP))
+        assertTrue(showsCarePlanProvenance(HeroKind.PLAN_DONE))
+        assertFalse(showsCarePlanProvenance(HeroKind.FALLBACK))
+        assertFalse(showsCarePlanProvenance(HeroKind.LOADING))
+    }
+
+    @Test
+    fun an_offline_session_falls_back_instead_of_shimmering_for_a_plan_that_cannot_arrive() {
+        // planLoaded is passed as `planLoaded || servedStale`: offline, the
+        // request will never answer, and LOADING would leave a blank shimmer
+        // in the most important card on Home.
+        assertEquals(HeroKind.LOADING, heroKindFor(planLoaded = false, hasPlan = false, hasNextStep = false))
+        assertEquals(HeroKind.FALLBACK, heroKindFor(planLoaded = true, hasPlan = false, hasNextStep = false))
+        assertEquals(HeroKind.PLAN_STEP, heroKindFor(planLoaded = true, hasPlan = true, hasNextStep = true))
+        assertEquals(HeroKind.PLAN_DONE, heroKindFor(planLoaded = true, hasPlan = true, hasNextStep = false))
     }
 }

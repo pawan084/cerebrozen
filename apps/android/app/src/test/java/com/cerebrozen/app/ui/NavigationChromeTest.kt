@@ -14,7 +14,12 @@ class NavigationChromeTest {
         }
         // V3-a: the settings family is a full-screen push behind the gear now —
         // a pill under a settings room would light nothing.
-        listOf("you", "reminders", "tools", "games", "mindfulgame/{gameId}", "guidedimagery", "player", "explore", null).forEach {
+        listOf(
+            "you", "reminders", "tools", "games", "mindfulgame/{gameId}",
+            "guidedimagery", "player", "explore", "practice-library", "gratitude",
+            "sleepinsights", "groundingintro", "checkin", "notifications",
+            "insights", "trends", "patterns", "goals", "baseline", null,
+        ).forEach {
             assertFalse(it ?: "null", shouldShowBottomBar(it))
         }
     }

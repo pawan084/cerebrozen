@@ -10,6 +10,8 @@ import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
@@ -135,7 +137,7 @@ private fun SelectableRow(title: String, subtitle: String, selected: Boolean, on
                 .background(if (selected) PickRowSelectedFill else PickRowFill)
                 .border(1.dp, PickRowStroke, shape)
                 .clickable { Haptics.selection(); onClick() }
-                .padding(horizontal = 18.dp, vertical = 15.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -424,8 +426,14 @@ fun PrivacyScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
         // English or an Eighth-Schedule language, which is what this is for).
         Text(stringResource(R.string.privacy_notice_language_label),
             style = MaterialTheme.typography.bodySmall, color = TextMuted)
-        ChipWrap(NOTICE_CODES.map { noticeFor(it).nativeName }, notice.nativeName) { picked ->
-            noticeLang = NOTICE_CODES.first { noticeFor(it).nativeName == picked }
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            NOTICE_CODES.forEach { code ->
+                val name = noticeFor(code).nativeName
+                PickChip(selected = code == noticeLang, label = name) { noticeLang = code }
+            }
         }
         if (!loaded) {
             Text(stringResource(R.string.privacy_loading), style = MaterialTheme.typography.bodyMedium, color = TextMuted)

@@ -708,6 +708,19 @@ internal fun heroKindFor(planLoaded: Boolean, hasPlan: Boolean, hasNextStep: Boo
     else -> HeroKind.PLAN_DONE
 }
 
+/**
+ * Whether the care card may claim "picked with you, not for you"
+ * (`home_care_provenance`).
+ *
+ * Only a plan the SERVER built from this account's own signals was picked with
+ * anyone. The offline/no-plan fallback is the same three-minute grounding
+ * practice for everyone — it names its own reason in the row itself, and must
+ * not inherit a personalization claim it cannot support. The line used to sit
+ * outside the branch and so was printed under the fallback too (CLAIMS_MAP §3).
+ */
+internal fun showsCarePlanProvenance(kind: HeroKind): Boolean =
+    kind == HeroKind.PLAN_STEP || kind == HeroKind.PLAN_DONE
+
 /** Routes that genuinely run on the device with no network — the only ones the
  * hero may claim work offline.
  *
@@ -944,7 +957,7 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             Modifier.fillMaxWidth()
                 .clip(RoundedCornerShape(Radius.hero))
                 .background(Brush.linearGradient(listOf(HeroPlumTop, HeroPlumBottom)))
-                .padding(20.dp),
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(Space.item),
         ) {
             val friend = stringResource(R.string.today_friend)
@@ -957,9 +970,9 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                     // the one flourish its light face allows itself. Night
                     // stays upright (italic on the dark pane read as slant).
                     fontStyle = if (AppTheme.isNight) FontStyle.Normal else FontStyle.Italic,
-                    fontSize = 26.sp, lineHeight = 31.sp,
+                    fontSize = 24.sp, lineHeight = 27.sp,
                 ),
-                color = HeroInk, maxLines = 3,
+                color = HeroInk, maxLines = 2,
             )
             // V5: the hero notices what you actually just did (heroLineFor).
             val minutesSinceCheckIn = recent.firstOrNull()?.createdAt?.let {
@@ -1005,13 +1018,13 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                     }
                 }
             }
-            // Program progress when enrolled; the week's presence otherwise.
-            val heroFraction = program?.let { p ->
+            // Only show progress when a named programme gives it context.
+            program?.let { p ->
                 val days = p.optInt("days").coerceAtLeast(1)
-                p.optInt("day").coerceIn(0, days) / days.toFloat()
-            } ?: (daysPresent / 7f)
-            Box(Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(99.dp)).background(HeroInk.copy(alpha = .16f))) {
-                Box(Modifier.fillMaxWidth(heroFraction).fillMaxHeight().clip(RoundedCornerShape(99.dp)).background(HeroPale))
+                val fraction = p.optInt("day").coerceIn(0, days) / days.toFloat()
+                Box(Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(99.dp)).background(HeroInk.copy(alpha = .16f))) {
+                    Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().clip(RoundedCornerShape(99.dp)).background(HeroPale))
+                }
             }
             val tonightCd = stringResource(R.string.today_tonight_title)
             Row(
@@ -1078,7 +1091,14 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             done = stepObjs.map { it.optBoolean("done") },
             hour = hourNow,
         )?.let { stepObjs[it] }
-        val heroKind = heroKindFor(planLoaded, plan != null && stepCount > 0, nextStep != null)
+        // An offline session already knows a live plan cannot arrive. Waiting
+        // for the network timeout left a blank shimmer in the most important
+        // Home card even though the local grounding fallback is ready now.
+        val heroKind = heroKindFor(
+            planLoaded = planLoaded || Session.servedStale,
+            hasPlan = plan != null && stepCount > 0,
+            hasNextStep = nextStep != null,
+        )
         Column(
             Modifier.fillMaxWidth().quiet(RoundedCornerShape(Radius.card)).padding(cardPadding()),
             verticalArrangement = Arrangement.spacedBy(Space.item),
@@ -1153,7 +1173,13 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                     actionLabel = null,
                 ) { onOpen("journal") }
             }
-            Text(stringResource(R.string.home_care_provenance), style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            if (showsCarePlanProvenance(heroKind)) {
+                Text(
+                    stringResource(R.string.home_care_provenance),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextMuted,
+                )
+            }
         }
 
         // ── V3-b HOW ARE YOU TODAY ───────────────────────────────────────
@@ -1302,17 +1328,17 @@ fun TodayScreen(onOpen: (String) -> Unit) {
                     }
                 } else {
                     // An earlier check-in today, said back, with a re-ask door.
-                    Row(
+                    Column(
                         Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         Text(
                             recent.firstOrNull()?.let { stringResource(R.string.today_earlier_line, displayCheckInLine(it)) }.orEmpty(),
                             style = MaterialTheme.typography.bodySmall, color = TextMuted,
-                            maxLines = 2, modifier = Modifier.weight(1f),
+                            maxLines = 2,
                         )
                         TextButton(
+                            modifier = Modifier.align(Alignment.End),
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp),
                             onClick = { reAsk = true },
                         ) { Text(stringResource(R.string.home_mood_again), color = Periwinkle, maxLines = 1) }
@@ -1789,7 +1815,6 @@ fun CheckInDetailScreen(
 
 @Composable
 fun WeeklyInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
-    var tab by rememberSaveable { mutableStateOf("Summary") }
     var metrics by remember { mutableStateOf<JSONArray?>(null) }
     var loading by remember { mutableStateOf(true) }
     var loadError by remember { mutableStateOf<String?>(null) }
@@ -1818,37 +1843,16 @@ fun WeeklyInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                 .padding(horizontal = 24.dp, vertical = 14.dp).padding(bottom = 20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("INSIGHTS", style = MaterialTheme.typography.labelSmall, color = Warm)
+            Text(stringResource(R.string.insights_eyebrow), style = MaterialTheme.typography.labelSmall, color = Warm)
             Text(
-                "Understand\nwithout\nbeing judged.",
-                style = MaterialTheme.typography.displayMedium.copy(fontFamily = FontFamily(Font(R.font.newsreader))),
+                stringResource(R.string.insights_heading),
+                style = MaterialTheme.typography.headlineMedium.copy(fontFamily = FontFamily(Font(R.font.newsreader))),
                 color = TextPrimary,
             )
             Text(
-                "Understand patterns cautiously without diagnosis or causal claims.",
-                style = MaterialTheme.typography.bodyLarge, color = TextSoft,
+                stringResource(R.string.insights_heading_sub),
+                style = MaterialTheme.typography.bodyMedium, color = TextSoft,
             )
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf("Summary", "Trends", "Patterns", "Plan").forEach { label ->
-                    val active = tab == label
-                    Text(
-                        label,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = if (active) Color.White else TextMuted,
-                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(99.dp))
-                            .background(if (active) Periwinkle else CardFill)
-                            .clickable {
-                                tab = label
-                                when (label) {
-                                    "Trends" -> onOpen("trends")
-                                    "Patterns" -> onOpen("patterns")
-                                    "Plan" -> onOpen("plan")
-                                }
-                            }.padding(vertical = 13.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    )
-                }
-            }
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(CardFill).padding(14.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1878,13 +1882,26 @@ fun WeeklyInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                     )
                     else -> (0 until minOf(3, weekly.length())).forEach { index ->
                         val metric = weekly.getJSONObject(index)
+                        val value = metric.optString("value", "—")
                         Column(
-                            Modifier.weight(1f).height(66.dp).clip(RoundedCornerShape(17.dp))
-                                .background(FieldFill),
+                            Modifier.weight(1f).height(78.dp).clip(RoundedCornerShape(17.dp))
+                                .background(FieldFill).padding(horizontal = 5.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
                         ) {
-                            Text(metric.optString("value", "—"), style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
+                            // The server sends both "8" and "7h 41m avg" into the
+                            // same ~55dp-wide tile. One type size cannot serve
+                            // both: at headlineSmall the long form broke its line
+                            // and spilled out of the tile AND the card. The long
+                            // form steps down instead of overflowing.
+                            Text(
+                                value,
+                                style = if (value.length > 5) MaterialTheme.typography.titleSmall
+                                        else MaterialTheme.typography.headlineSmall,
+                                color = TextPrimary,
+                                maxLines = 2,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            )
                             Text(
                                 localizedInsightMetricLabel(metric.optString("label")),
                                 style = MaterialTheme.typography.labelSmall,
@@ -1896,10 +1913,22 @@ fun WeeklyInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                     }
                 }
             }
-            ReferenceDayRow(Icons.Outlined.ShowChart, "Trends", "Week, month and three months", Ok) { onOpen("trends") }
-            ReferenceDayRow(Icons.Outlined.Insights, "Patterns", "Evidence, limits and suggested actions", Warm) { onOpen("patterns") }
-            ReferenceDayRow(Icons.Outlined.Flag, "Goals and plan", "Flexible progress without streaks", Warm) { onOpen("goals") }
-            ReferenceDayRow(Icons.Outlined.SelfImprovement, "Personal baseline", "Update your starting point", Ok) { onOpen("baseline") }
+            ReferenceDayRow(
+                Icons.Outlined.ShowChart, stringResource(R.string.insights_row_trends),
+                stringResource(R.string.insights_row_trends_sub), Ok,
+            ) { onOpen("trends") }
+            ReferenceDayRow(
+                Icons.Outlined.Insights, stringResource(R.string.insights_row_patterns),
+                stringResource(R.string.insights_row_patterns_sub), Warm,
+            ) { onOpen("patterns") }
+            ReferenceDayRow(
+                Icons.Outlined.Flag, stringResource(R.string.insights_row_goals),
+                stringResource(R.string.insights_row_goals_sub), Warm,
+            ) { onOpen("goals") }
+            ReferenceDayRow(
+                Icons.Outlined.SelfImprovement, stringResource(R.string.insights_row_baseline),
+                stringResource(R.string.insights_row_baseline_sub), Ok,
+            ) { onOpen("baseline") }
         }
     }
 }
@@ -2103,18 +2132,21 @@ private fun CareRow(
             Modifier.size(38.dp).clip(CircleShape).background(AccentSoft),
             contentAlignment = Alignment.Center,
         ) { Icon(icon, contentDescription = null, tint = Periwinkle, modifier = Modifier.size(18.dp)) }
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, color = TextPrimary, maxLines = 2)
-            Text(sub, style = MaterialTheme.typography.bodySmall, color = TextMuted, maxLines = 2)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+            Text(sub, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            if (actionLabel != null) {
+                Text(
+                    actionLabel,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Periwinkle,
+                    modifier = Modifier.padding(top = 4.dp).clip(RoundedCornerShape(99.dp))
+                        .background(Periwinkle.copy(alpha = .10f))
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                )
+            }
         }
-        if (actionLabel != null) {
-            Text(
-                actionLabel,
-                style = MaterialTheme.typography.labelLarge, color = Periwinkle,
-                modifier = Modifier.clip(RoundedCornerShape(99.dp)).background(Periwinkle.copy(alpha = .10f))
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-            )
-        } else {
+        if (actionLabel == null) {
             Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
         }
     }

@@ -27,7 +27,6 @@ import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.ShowChart
 import androidx.compose.material.icons.outlined.Public
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.WorkOutline
@@ -70,9 +69,16 @@ import com.cerebrozen.app.ui.theme.TextSoft
 import com.cerebrozen.app.ui.theme.Warm
 
 /** You: the iOS ProfileView hub — a profile header + nav-row settings list
- * routing to sub-screens, then legal/account actions and sign out. */
+ * routing to sub-screens, then legal/account actions and sign out.
+ *
+ * V3-c: it takes an [onBack] because it stopped being a tab. The nav rule that
+ * drops the tab pill here ("a pill under a settings room would light nothing")
+ * only holds if the room carries its own way out — and on glass this screen had
+ * neither: no pill, no back arrow, a gear in the corner that had already been
+ * used to get in. Gesture-back worked; nothing on screen said so.
+ */
 @Composable
-fun YouScreen(onOpen: (String) -> Unit) {
+fun YouScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
     var name by remember { mutableStateOf("") }
     var companion by remember { mutableStateOf("") }
     var language by remember { mutableStateOf("") }
@@ -85,8 +91,6 @@ fun YouScreen(onOpen: (String) -> Unit) {
     // that opens it does not promise an upsell the screen will not deliver.
     var tier by remember { mutableStateOf(Session.cachedTier()) }
     var sponsored by remember { mutableStateOf(Session.cachedSponsored()) }
-    // V3 presence grid: one flag per day of the last 30, oldest first.
-    var monthDays by remember { mutableStateOf<List<Boolean>>(emptyList()) }
 
     LaunchedEffect(Session.signedIn) {
         if (!Session.signedIn) return@LaunchedEffect
@@ -106,12 +110,13 @@ fun YouScreen(onOpen: (String) -> Unit) {
                 who.takeIf { it.isNotBlank() }
             }
         }
-        // A failed read leaves the grid hidden rather than drawing 30 empty
-        // dots, which would read as "you were absent all month".
-        runCatching { monthDays = presenceMonth(Api.moods(), java.time.LocalDate.now()) }
+        // The month presence grid left this screen with the V3-c density pass —
+        // and its mood fetch left with it, rather than costing every open of
+        // Settings a round-trip nothing draws. `presenceMonth` stays (pure,
+        // tested) for whichever surface earns the grid next.
     }
 
-    PremiumPage(stringResource(R.string.you_eyebrow), stringResource(R.string.you_title), trailing = Icons.Outlined.Settings) {
+    PremiumSubPage(stringResource(R.string.you_eyebrow), stringResource(R.string.you_title), onBack = onBack) {
         // The profile row was the page's one dead card — it now opens the
         // companion/language settings (the closest thing to a profile editor)
         // and wears the same initial-letter avatar Home's header uses.
@@ -162,34 +167,6 @@ fun YouScreen(onOpen: (String) -> Unit) {
                     contentDescription = null,
                     tint = TextMuted2,
                     modifier = Modifier.size(22.dp),
-                )
-            }
-        }
-
-        // V3: "Your month" — a presence grid, the last deferred visual from the
-        // V2 walk. Thirty-odd dots, one per day, lit for the days you showed
-        // up. It counts presence and NOTHING else: no streak, no percentage,
-        // no gap called out, nothing that resets. A month is the right window
-        // here because Home already answers "this week".
-        if (!isGuest && monthDays.isNotEmpty()) {
-            SectionCard {
-                Text(stringResource(R.string.you_month_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
-                @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-                androidx.compose.foundation.layout.FlowRow(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    monthDays.forEach { present ->
-                        Box(
-                            Modifier.size(14.dp).clip(CircleShape)
-                                .background(if (present) Periwinkle else Periwinkle.copy(alpha = .13f)),
-                        )
-                    }
-                }
-                Text(
-                    stringResource(R.string.you_month_sentence, monthDays.count { it }),
-                    style = MaterialTheme.typography.bodyMedium, color = TextMuted,
                 )
             }
         }

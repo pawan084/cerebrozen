@@ -122,7 +122,7 @@ internal fun PremiumNavRow(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val accent = if (emphasis) Cyan else Periwinkle
-    val shape = RoundedCornerShape(22.dp)
+    val shape = RoundedCornerShape(18.dp)
     Row(
         Modifier.fillMaxWidth().pressScale(pressed, down = 0.975f)
             .background(CardFill, shape)
@@ -133,21 +133,21 @@ internal fun PremiumNavRow(
                 onClickLabel = title,
                 onClick = onClick,
             )
-            .padding(15.dp)
-            .heightIn(min = 70.dp),
-        horizontalArrangement = Arrangement.spacedBy(13.dp),
+            .padding(horizontal = 13.dp, vertical = 11.dp)
+            .heightIn(min = 60.dp),
+        horizontalArrangement = Arrangement.spacedBy(11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
             Box(
-                Modifier.size(44.dp).background(accent.copy(alpha = 0.11f), CircleShape),
+                Modifier.size(38.dp).background(accent.copy(alpha = 0.11f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(24.dp))
+                Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
             }
         }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, color = TextPrimary)
             Text(
                 subtitle,
                 style = MaterialTheme.typography.bodySmall,

@@ -96,6 +96,63 @@ class RouteReachabilityTest {
         assertTrue("knownUnreachable names routes that no longer exist: $stale", stale.isEmpty())
     }
 
+    /** Route → the composable the graph puts behind it. */
+    private fun screenForRoute(): Map<String, String> =
+        Regex("""composable\("([^"{]+)"\)\s*\{\s*([A-Z]\w+)\s*\(""")
+            .findAll(appFile.readText())
+            .associate { it.groupValues[1] to it.groupValues[2] }
+
+    private fun fileDeclaring(composable: String): File? =
+        uiRoot.walkTopDown().firstOrNull {
+            it.isFile && it.extension == "kt" &&
+                Regex("""fun\s+$composable\s*\(""").containsMatchIn(it.readText())
+        }
+
+    @Test
+    fun `a deliberately unreachable screen is never the only door to something`() {
+        // The hole the test above could not see. `explore` is excused: it is
+        // deeplink-only by decision. But its Calm-now card was the ONLY caller
+        // of `practice-library`, and that library is the only caller of
+        // breathing-intro, bodyscan, guidedimagery and gratitude — so four
+        // finished rooms were reachable solely from a screen no one can open.
+        // Every route above passed `every registered route can be reached`,
+        // because something did navigate to each of them. That something just
+        // happened to be unreachable itself.
+        val screens = screenForRoute()
+        // Only whole-file islands count: a file whose every registered screen is
+        // excused. A file that also holds a reachable screen doors things from
+        // that screen too, and attributing those here would be a false alarm.
+        val islands = knownUnreachable.keys
+            .mapNotNull { route -> screens[route]?.let { fileDeclaring(it) } }
+            .distinctBy { it.path }
+            .filter { file ->
+                val text = file.readText()
+                val declared = screens.filterValues { Regex("""fun\s+$it\s*\(""").containsMatchIn(text) }
+                declared.isNotEmpty() && declared.keys.all { it in knownUnreachable }
+            }
+        assertTrue(
+            "expected ExploreScreen.kt to be an island — did the excuse list or the graph move?",
+            islands.any { it.name == "ExploreScreen.kt" },
+        )
+
+        val islandPaths = islands.map { it.path }.toSet()
+        val mainland = uiRoot.walkTopDown()
+            .filter { it.isFile && it.extension == "kt" && it.path !in islandPaths }
+            .joinToString("\n") { it.readText() }
+        val stranded = islands
+            .flatMap { island ->
+                val text = island.readText()
+                registeredRoutes().filter { navigatesTo(it, text) && !navigatesTo(it, mainland) }
+            }
+            .filterNot { it in knownUnreachable }
+            .distinct()
+        assertTrue(
+            "these routes are doored ONLY from a screen that is itself unreachable, so " +
+                "nothing in the running app can open them: $stranded",
+            stranded.isEmpty(),
+        )
+    }
+
     @Test
     fun `guidedimagery has a door`() {
         // The specific regression this suite was written for, named so a failure

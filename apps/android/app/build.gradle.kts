@@ -54,6 +54,15 @@ android {
     namespace = "com.cerebrozen.app"
     compileSdk = 35
 
+    // The app changes language at runtime. Keep every shipped translation in
+    // the base APK/AAB; Play's default language splits can otherwise remove a
+    // language before the in-app picker asks for it.
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
+
     defaultConfig {
         applicationId = "com.cerebrozen.app"
         minSdk = 26

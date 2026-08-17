@@ -253,8 +253,6 @@
     <string name="talk_retry">Try sending again</string>
     <string name="talk_copied">Copied</string>
     <string name="talk_field_followup">Message CereBro…</string>
-    <string name="talk_empty_title">What\'s on your mind?</string>
-    <string name="talk_empty_subtitle">Speak or type — small worries welcome.</string>
     <string name="talk_starters_header">Or start from where you are</string>
     <string name="talk_save_journal">Save this conversation to my journal</string>
     <string name="talk_save_journal_short">Save to Journal</string>
@@ -327,8 +325,6 @@
     <string name="talk_memory_on">Remembers · Privacy</string>
     <string name="talk_memory_off">Memory off · in the moment</string>
     <string name="talk_starter_mood">Earlier I felt %1$s — can we start there?</string>
-    <string name="talk_presence_offline">offline — Toolkit still works</string>
-    <string name="talk_offline_compose">You\'re offline — a conversation needs a connection. The Toolkit works without one.</string>
     <string name="talk_show_earlier">Show earlier</string>
     <string name="talk_fresh_started">Started fresh — your history stays in your record.</string>
     <string name="talk_crisis_call">Call %1$s</string>
@@ -451,12 +447,12 @@
     <string name="today_time_days">%1$dd ago</string>
 
     <!-- ── Sleep (SleepScreen.kt) ──────────────────────────────────────── -->
-    <string name="sleep_eyebrow">Improve your sleep, night by night</string>
+    <string name="sleep_eyebrow">Wind down and sleep better</string>
     <string name="sleep_title">Sleep</string>
-    <string name="sleep_premium_subtitle">Improve your sleep, night by night.</string>
+    <string name="sleep_premium_subtitle">Wind down and sleep better</string>
     <string name="sleep_hero_eyebrow">Wind down</string>
     <string name="sleep_hero_title">A calmer night</string>
-    <string name="sleep_hero_subtitle">A slower evening makes for a softer morning.</string>
+    <string name="sleep_hero_subtitle">Slow down for tonight.</string>
     <string name="sleep_tonight_badge">TONIGHT</string>
     <string name="sleep_estimated_duration">Plays as long as you need — timer optional</string>
     <string name="sleep_sounds_empty">No sleep sounds downloaded yet.</string>
@@ -510,7 +506,7 @@
     <string name="sleep_programs_nav_title">Programs</string>
     <string name="sleep_programs_nav_subtitle">Guided multi-day journeys — start with Sleep Reset</string>
     <string name="sleep_hc_prefill">Pre-fill from Health Connect</string>
-    <string name="sleep_hc_boundary_hint">Uses your Health Connect permission to read last night on this phone — nothing is saved until you tap Save night. The Sleep history switch in Privacy &amp; memory controls what CereBro remembers.</string>
+    <string name="sleep_hc_boundary_hint">Reads last night from this phone. Nothing is saved until you tap Save night.</string>
     <string name="sleep_hc_done">Pre-filled from last night\'s sleep.</string>
     <string name="sleep_hc_none">No recent sleep found in Health Connect.</string>
     <string name="sleep_save_cta">Save night</string>
@@ -812,6 +808,10 @@
     <string name="toolkit_header_reframe">Reframe</string>
     <string name="toolkit_header_settle">Settle</string>
     <string name="toolkit_grounding_intro">5-4-3-2-1 grounding — come back to the present through your senses.</string>
+    <!-- The card subtitle, under a title that already says "5-4-3-2-1
+         grounding": the intro line above repeated the name and then truncated
+         mid-word ("…through you…") in the row's two lines. -->
+    <string name="toolkit_grounding_card_sub">Come back to the present through your senses.</string>
     <string name="toolkit_zen_title">Zen ripples</string>
     <string name="toolkit_zen_subtitle">Tap the water, let it widen</string>
     <string name="toolkit_bubble_title">Bubble pop</string>
@@ -852,7 +852,6 @@
     <string name="toolkit_level_gentle">Gentle</string>
     <string name="toolkit_level_easy">Easy</string>
     <string name="toolkit_level_guided">Guided</string>
-    <string name="toolkit_featured">FEATURED EXERCISE</string>
     <string name="toolkit_begin">Begin</string>
 
     <!-- ── Grounding stepper (Extras.kt) ───────────────────────────────── -->
@@ -933,6 +932,18 @@
     <string name="insights_error_title">Your insights are taking a moment</string>
     <string name="insights_error_fallback">Couldn\'t load your week — try again shortly.</string>
     <string name="insights_loading">Reading your week…</string>
+    <string name="insights_heading">Your week, in context</string>
+    <string name="insights_heading_sub">Patterns are clues, not conclusions.</string>
+    <!-- The four doors off Insights. They were English literals in Kotlin —
+         invisible to translation entirely, not merely untranslated. -->
+    <string name="insights_row_trends">Trends</string>
+    <string name="insights_row_trends_sub">Week, month and three months</string>
+    <string name="insights_row_patterns">Patterns</string>
+    <string name="insights_row_patterns_sub">Evidence, limits and suggested actions</string>
+    <string name="insights_row_goals">Goals and plan</string>
+    <string name="insights_row_goals_sub">Flexible progress without streaks</string>
+    <string name="insights_row_baseline">Personal baseline</string>
+    <string name="insights_row_baseline_sub">Update your starting point</string>
     <string name="insights_hero_eyebrow">This week</string>
     <string name="insights_baseline_title">Your starting point</string>
     <string name="insights_baseline_summary">Stress %1$s (%2$d/5) · sleep %3$s (%4$d/5)</string>
@@ -1015,7 +1026,7 @@
     <string name="language_crisis_note">Helpline names and numbers stay exactly as published, in every language.</string>
     <string name="appearance_eyebrow">Night or dawn</string>
     <string name="appearance_title">Appearance</string>
-    <string name="appearance_intro">Dawn is a light, warm look that\'s easier to read in daylight. Your choice applies everywhere — pick Night for winding down with the lights off.</string>
+    <string name="appearance_intro">Choose how CereBro looks.</string>
     <string name="theme_system_title">System default</string>
     <string name="theme_system_hint">Follows your phone\'s light/dark setting</string>
     <string name="theme_night_title">Always night</string>
@@ -1950,7 +1961,7 @@
     <string name="today_hero_chip_no_score">Nothing to score</string>
     <string name="today_hero_why_rule">Chosen from your goal, your recent check-ins and your sleep diary. It did not read your journal.</string>
     <string name="today_hero_why_ai">Shaped from your goal, your recent check-ins, your sleep diary and your journal titles. It did not read the entries themselves.</string>
-    <string name="today_hero_why_fallback">Nothing is planned for today yet, so this is simply the shortest steady option. It did not read your journal.</string>
+    <string name="today_hero_why_fallback">No plan yet. Try this three-minute grounding practice.</string>
     <string name="today_hero_done_title">Everything you planned for today is done.</string>
     <string name="today_hero_done_why">Blank space from here is simply blank — there is nothing left to keep up.</string>
     <string name="today_hero_begin">Begin grounding</string>
@@ -1960,7 +1971,7 @@
          from your recent evening check-in" — false on any session with no
          check-in, and always false in guest mode (audit I#1). The fallback is
          the same for everyone, and now says so. -->
-    <string name="today_hero_fallback_title">Make room around loud thoughts</string>
+    <string name="today_hero_fallback_title">Settle loud thoughts</string>
     <string name="today_hero_fallback_sub">A three-minute grounding practice — brief, steady, and the same for everyone.</string>
     <string name="today_hero_chip_3min">3 min</string>
     <string name="today_hero_open_day">Look at your day</string>
@@ -2132,6 +2143,8 @@ everything.</string>
     <string name="talk_tools_cd">Tools — everything the conversation can do</string>
     <string name="talk_tools_eyebrow">Tools in this conversation</string>
     <string name="talk_tools_title">What would help now?</string>
+    <string name="talk_all_tools">All tools</string>
+    <string name="talk_all_tools_sub">Browse every practice</string>
     <string name="talk_tool_checkin">Check in</string>
     <string name="talk_tool_checkin_sub">mood and a note</string>
     <string name="talk_tool_breathe">Breathe</string>
@@ -2140,14 +2153,6 @@ everything.</string>
     <string name="talk_tool_ground_sub">5-4-3-2-1, right here</string>
     <string name="talk_tool_journal">One line</string>
     <string name="talk_tool_journal_sub">a journal entry</string>
-    <string name="talk_tool_sounds">Sounds</string>
-    <string name="talk_tool_sounds_sub">rain, wind, quiet mixes</string>
-    <string name="talk_tool_reminder">Reminder</string>
-    <string name="talk_tool_reminder_sub">a gentle daily nudge</string>
-    <string name="talk_tool_voice">Voice</string>
-    <string name="talk_tool_voice_sub">talk instead of type</string>
-    <string name="talk_tool_game">A quiet game</string>
-    <string name="talk_tool_game_sub">one mindful minute</string>
     <string name="talk_tool_save_sub">keep this conversation</string>
     <string name="talk_tool_fresh_sub">a new conversation</string>
 
@@ -2166,7 +2171,10 @@ everything.</string>
     <string name="talk_qr_notnow">not now</string>
     <string name="talk_qr_why_answer">it comes from what you told me just now, plus what has helped you before — nothing more clever than that.</string>
     <string name="talk_qr_notnow_answer">of course. it stays here if you change your mind.</string>
-    <string name="talk_tip_tools">Tap ＋ for check-ins, breathing, sounds and more — without leaving the chat.</string>
+    <!-- The tray carries four tools since the density pass; naming "sounds"
+         here promised something the tray no longer shows (it lives behind All
+         tools, which leaves the chat — so "without leaving" was wrong twice). -->
+    <string name="talk_tip_tools">Tap ＋ to check in, breathe or ground — without leaving the chat.</string>
 
     <!-- V3-d Chat honesty + the middle escalation rung. The concern card sits
          BETWEEN a normal reply and the full crisis banner: warm, one pathway,
@@ -2194,8 +2202,6 @@ everything.</string>
     <string name="reminders_once_a_day">At most one nudge a day, and nothing ever resets.</string>
     <string name="today_journal_title">Your journal</string>
     <string name="today_journal_sub">What you\'ve written, and a place to write</string>
-    <string name="you_month_title">Your month</string>
-    <string name="you_month_sentence">You showed up on %1$d days this month.</string>
     <string name="trends_moods_title">Which feelings showed up</string>
     <string name="trends_moods_total">%1$d check-ins in the last %2$d days — counted, never scored.</string>
 
@@ -2207,7 +2213,7 @@ everything.</string>
     <string name="today_reminder_ask">Want a gentle daily reminder? No streaks, no guilt.</string>
     <string name="today_reminder_ask_action">Set one</string>
     <!-- V2-e part 2: You merges -->
-    <string name="language_intro_short">The language replies come back in</string>
+    <string name="language_intro_short">Change reply language</string>
     <string name="you_appearance_lang_title">Appearance &amp; language</string>
     <!-- V2-f: sleep insights localized (was 34 hardcoded English literals) -->
     <string name="si_title">Sleep insights</string>

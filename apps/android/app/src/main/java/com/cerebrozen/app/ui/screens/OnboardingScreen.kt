@@ -215,7 +215,7 @@ internal fun funnelProgress(step: OStep): Float = when (step) {
     OStep.Disclosure -> 0.25f
     OStep.Consent -> 0.5f
     OStep.State -> 0.75f
-    OStep.Guest, OStep.SignUp -> 0.9f
+    OStep.Guest, OStep.SignUp -> 1f
     OStep.Under18 -> 0f
 }
 

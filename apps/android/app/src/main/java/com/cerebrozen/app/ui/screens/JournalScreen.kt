@@ -657,7 +657,7 @@ fun JournalScreen(
             title = if (tuned != null) stringResource(tuned.title) else prompts[promptIdx],
             subtitle = if (tuned != null) stringResource(tuned.prompt)
                        else stringResource(R.string.journal_hero_subtitle),
-            height = 220.dp,
+            height = 184.dp,
             // The prompt is an invitation — tapping it accepts: the composer
             // opens with the prompt as the title (never overwriting a draft).
             onClick = {

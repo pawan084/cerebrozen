@@ -75,6 +75,7 @@ import androidx.compose.material.icons.outlined.QueryStats
 import androidx.compose.material.icons.outlined.FactCheck
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.SelfImprovement
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.Waves
@@ -160,13 +161,6 @@ import com.cerebrozen.app.ui.theme.Iris
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.NightMid
-import com.cerebrozen.app.ui.theme.FeaturedEdge
-import com.cerebrozen.app.ui.theme.FeaturedInk
-import com.cerebrozen.app.ui.theme.FeaturedInkSoft
-import com.cerebrozen.app.ui.theme.FeaturedPillEdge
-import com.cerebrozen.app.ui.theme.FeaturedPillFill
-import com.cerebrozen.app.ui.theme.FeaturedPillInk
-import com.cerebrozen.app.ui.theme.FeaturedScrim
 import com.cerebrozen.app.ui.theme.MixerHeroBottom
 import com.cerebrozen.app.ui.theme.MixerHeroEdge
 import com.cerebrozen.app.ui.theme.MixerHeroEyebrow
@@ -1008,12 +1002,16 @@ fun ProgramsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
             }
         }
 
-        if (rows.isNotEmpty()) {
+        // One journey at a time means one journey on screen. Showing every
+        // alternative and a Start action below an active path turned the daily
+        // experience back into a catalogue. Selection returns after leaving or
+        // completing the active journey.
+        if (active == null && !activeUnknown && rows.isNotEmpty()) {
             Text(stringResource(R.string.programs_start_new_header), style = MaterialTheme.typography.titleMedium, color = TextSoft)
         }
         val enrolledStatus = stringResource(R.string.programs_enrolled_status)
         val enrollFailed = stringResource(R.string.programs_enroll_error)
-        rows.forEach { (id, title, subtitle) ->
+        if (active == null && !activeUnknown) rows.forEach { (id, title, subtitle) ->
             // B87: match by content id — two programs sharing a title used to
             // BOTH render as enrolled. Title stays only as a legacy fallback.
             val activeContentId = active?.optString("content_id").orEmpty()
@@ -1159,6 +1157,15 @@ fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}, startInMixer
         }
         Text(stringResource(R.string.sounds_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+        // Search covers exactly this hub's catalogue (soundscapes, sleep
+        // stories, meditations, wind-downs, programmes), and its only door was
+        // Explore's header — a screen that has been deeplink-only since V2-d.
+        // The catalogue owner carries the search of it.
+        PremiumNavRow(
+            stringResource(R.string.search_title),
+            stringResource(R.string.search_eyebrow),
+            icon = Icons.Outlined.Search,
+        ) { onOpen("search") }
         if (favs.isNotEmpty()) {
             Text(stringResource(R.string.sounds_favourites_header), style = MaterialTheme.typography.titleMedium, color = TextSoft)
             favs.sorted().forEach { title ->
@@ -2158,8 +2165,8 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
         }
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 22.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             ToolkitHeroHeader(onBack)
             // Returning users mostly come back for one tool — the chip
@@ -2180,11 +2187,15 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
             // The 5-4-3-2-1 practice moved to its own screen (a guided exercise
             // ran INLINE here, restarting silently mid-scroll every visit).
             ToolkitExerciseCard(
-                stringResource(R.string.toolkit_ground_title), stringResource(R.string.toolkit_grounding_intro),
+                stringResource(R.string.toolkit_ground_title), stringResource(R.string.toolkit_grounding_card_sub),
                 stringResource(R.string.toolkit_duration_3), stringResource(R.string.toolkit_level_guided),
                 Icons.Outlined.Grain, Ok, 0,
             ) { openTool("ground") }
-            FeaturedGameCard(stringResource(R.string.toolkit_bubble_title), stringResource(R.string.toolkit_bubble_subtitle)) { openTool("bubblepop") }
+            ToolkitExerciseCard(
+                stringResource(R.string.toolkit_bubble_title), stringResource(R.string.toolkit_bubble_subtitle),
+                stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_easy),
+                Icons.Outlined.SportsEsports, Ok, 1,
+            ) { openTool("bubblepop") }
             // The door to the twelve offline games. It was orphaned for a day:
             // the only onOpen("games") lived in the retired legacy Toolkit, so
             // a whole shipped hub (engine, registry, tests) was unreachable
@@ -2238,6 +2249,18 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_guided),
                 Icons.Outlined.AutoAwesome, Accent2, 7,
             ) { openTool("ritual") }
+            // The door to the seven practice families — bodyscan, gratitude,
+            // guided imagery and the breathing/grounding intros live behind it
+            // and behind NOTHING else. The comment above has said "Calm-now
+            // doors them" since V2-e, but V2-d had already made `explore` (the
+            // only screen with a Calm-now card) deeplink-only, so between two
+            // deliberate decisions four finished rooms quietly lost their last
+            // way in. A row, not an exercise card: it is a door, not a practice.
+            PremiumNavRow(
+                stringResource(R.string.practicelib_title),
+                stringResource(R.string.practicelib_subtitle),
+                icon = Icons.Outlined.Spa,
+            ) { onOpen("practice-library") }
             // Region-aware subtitle: the card names the user's actual crisis
             // line (CrisisDirectory), not a hardcoded India number.
             val toolkitSupportLine = primaryCrisisLine(rememberCrisisRegion().value)
@@ -2304,19 +2327,19 @@ private fun ToolkitHeroHeader(onBack: () -> Unit) {
 @Composable
 private fun ToolkitSectionHeader(label: String, description: String, icon: ImageVector, accent: Color) {
     Row(
-        Modifier.fillMaxWidth().padding(top = 8.dp),
+        Modifier.fillMaxWidth().padding(top = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(13.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(accent.copy(alpha = 0.09f))
+            Modifier.size(36.dp).clip(RoundedCornerShape(12.dp)).background(accent.copy(alpha = 0.09f))
                 .border(1.dp, LineStroke, RoundedCornerShape(14.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(23.dp))
+            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(19.dp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(label, style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
+            Text(label, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
             Text(description, style = MaterialTheme.typography.bodySmall, color = TextMuted)
             Box(Modifier.fillMaxWidth().padding(top = 5.dp).height(1.dp).background(LineStroke))
         }
@@ -2385,79 +2408,6 @@ private fun ToolkitExerciseCard(
             contentAlignment = Alignment.Center,
         ) {
             Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = TextMuted, modifier = Modifier.size(20.dp))
-        }
-    }
-}
-
-@Composable
-private fun FeaturedGameCard(title: String, subtitle: String, onOpen: () -> Unit) {
-    val reduceMotion = rememberReduceMotion()
-    // B26: same gate-the-clock fix as the hero and the hub ambient.
-    val drift = restingFloat(reduceMotion, still = 4f, initial = -7f, target = 8f,
-        spec = infiniteRepeatable(tween(2_900, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "bubbleDrift")
-    val pulse = restingFloat(reduceMotion, still = 1f, initial = 0.92f, target = 1.08f,
-        spec = infiniteRepeatable(tween(2_100, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "bubblePulse")
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val shape = RoundedCornerShape(32.dp)
-    val playCd = stringResource(R.string.common_play_cd, title)
-    Box(
-        Modifier.fillMaxWidth().height(236.dp).pressScale(pressed, down = 0.98f).clip(shape)
-            .contentArtBackground(title, kind = "game")
-            // Settle the art's bright top so the Cream title/badge keep their
-            // contrast (same constant-dark treatment as the hero scrims).
-            // Owner call 2026-08-05: the billboard follows the theme. The
-            // generative art underneath is unchanged; only the scrim over it
-            // flips — Night sinks the art, Dawn lifts it to a pastel wash so
-            // ink text reads on top.
-            .background(FeaturedScrim.copy(alpha = 0.18f))
-            .background(Brush.verticalGradient(listOf(Color.Transparent, FeaturedScrim.copy(alpha = 0.50f))))
-            .border(1.dp, FeaturedEdge, shape)
-            .clickable(interactionSource = interaction, indication = null, onClick = onOpen)
-            .semantics { contentDescription = playCd }
-            .padding(22.dp),
-    ) {
-        Box(
-            Modifier.clip(RoundedCornerShape(50))
-                .background(FeaturedPillFill)
-                .border(1.dp, FeaturedPillEdge, RoundedCornerShape(50))
-                .padding(horizontal = 14.dp, vertical = 6.dp),
-        ) {
-            Text(stringResource(R.string.toolkit_featured), style = MaterialTheme.typography.labelSmall, color = FeaturedPillInk)
-        }
-        // A couple of drifting bubbles as quiet ornamentation.
-        Box(
-            Modifier.align(Alignment.TopEnd).offset(x = (-10).dp, y = drift.dp)
-                .size(76.dp).scale(pulse).clip(CircleShape)
-                .background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.9f), Periwinkle))),
-        )
-        Box(
-            Modifier.align(Alignment.CenterEnd).offset(x = (-70).dp, y = (if (reduceMotion) 0f else -drift).dp)
-                .size(38.dp).clip(CircleShape)
-                .background(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.9f), Cyan))),
-        )
-        Column(
-            Modifier.align(Alignment.BottomStart),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(title, style = MaterialTheme.typography.headlineSmall, color = FeaturedInk)
-            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = FeaturedInkSoft, modifier = Modifier.fillMaxWidth(0.72f))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier.height(44.dp).clip(CircleShape)
-                        .background(Brush.horizontalGradient(listOf(Periwinkle, Accent2)))
-                        .padding(horizontal = 16.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = OnPrimary, modifier = Modifier.size(20.dp))
-                        Text(stringResource(R.string.toolkit_begin), style = MaterialTheme.typography.labelMedium, color = OnPrimary)
-                    }
-                }
-                Text(stringResource(R.string.toolkit_duration_2), style = MaterialTheme.typography.labelMedium, color = FeaturedInkSoft)
-            }
         }
     }
 }

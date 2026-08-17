@@ -295,7 +295,11 @@ internal fun TrendsScreen(onBack: () -> Unit) {
                     // steady week look dramatic.
                     range = 1f to 5f,
                     summary = data.mood.summary?.let {
-                        stringResource(R.string.trends_mood_summary, String.format("%.1f", it), data.mood.logged)
+                        stringResource(
+                            R.string.trends_mood_summary,
+                            String.format(java.util.Locale.getDefault(), "%.1f", it),
+                            data.mood.logged,
+                        )
                     },
                     notEnough = stringResource(R.string.trends_mood_not_enough, data.mood.logged),
                 )
