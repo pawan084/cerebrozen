@@ -1543,22 +1543,30 @@ less time than any of them. **A grep that finds nothing is evidence about the gr
       is the natural seam: it already observes `ANIMATOR_DURATION_SCALE`, so give it a
       test-only override (instrumentation argument or a debug `BuildConfig` flag) and both
       tests should settle. Until then the launch tests are written but not runnable unattended
-- [ ] **`ActivityScenario` cannot bring `MainActivity` to RESUMED on CPH2681, and says
-      nothing about why.** This is the real remaining blocker, and it is *not* the hang: both
-      launch tests now return a verdict in ~0.8s and both **fail with an empty failure body**,
-      so they carry `@Ignore` in `DeviceSmokeTest` — written and visible rather than deleted or
-      left red, so the suite can be wired into CI while the gap stays on the page.
-      Next step is to run them from Android Studio, where the instrumentation failure detail is
-      readable, or to install a crash handler that surfaces the cause. Worth checking first
-      whether the launch trips something the walk never did — a `MainActivity` that expects an
-      intent extra, or first-run state the manual walk had already satisfied.
-      **Blocked on the handset**: the phone is not attached (`adb devices` is empty as of this
-      entry) and the emulator on this machine crashes on `opengl32sw`, so this needs a device
-      session, not a code session
-- [ ] **Not wired into CI yet, deliberately.** A suite that hangs would turn a 10-minute job
-      into a timeout and teach everyone to ignore it. Wire it once the animation hook lands —
-      and note CI has no device, so it needs Gradle Managed Devices or
-      `reactivecircus/android-emulator-runner`, not the phone
+- [x] **`ActivityScenario` cannot bring `MainActivity` to RESUMED on CPH2681 — SOLVED
+      2026-08-17, and it was never the app.** The phone was **locked**. A keyguard blocks
+      every activity launch, so both tests were unrunnable, and the instrumentation said so
+      only by having nothing to say. Unlocked, on the same handset, both pass: three
+      consecutive `connectedDebugAndroidTest` runs, **3 tests / 0 failures / 0 skipped in
+      ~6.6s**. The `@Ignore`s are gone — the launch and the configuration-change tests are
+      live, which is the first time this app's start-up has been asserted on hardware by
+      anything but a human.
+      The silence is fixed too, because it cost two sessions. A `@Before` reads
+      `KeyguardManager.isKeyguardLocked` and fails with the cause and the fix. **Verified by
+      re-locking the phone**: before the guard the suite ran past a ten-minute kill with no
+      verdict; after it, `3 tests / 3 failures / 1.8s`, each one reading "the device is locked
+      - unlock it and re-run". (An em dash in that message comes back mojibaked through the
+      instrumentation reporter, so it is plain ASCII on purpose.)
+      Note for the next device session: the handset re-locks the moment its screen sleeps, and
+      the lock is secure — `KEYCODE_WAKEUP` turns the screen on but does not dismiss the
+      keyguard, and `screencap` on a lock screen returns an empty file rather than an error.
+      Unlock it by hand before running the connected suite
+- [ ] **Not wired into CI yet.** The two reasons to wait are now gone: the animation hook
+      landed, and the suite can no longer hang on a locked device. What remains is purely
+      infrastructural — CI has no handset, so this needs Gradle Managed Devices or
+      `reactivecircus/android-emulator-runner` (both boot unlocked, so the keyguard guard is
+      a no-op there). Until then it runs on demand: `:app:connectedDebugAndroidTest` with the
+      phone attached and unlocked
 
 ## Open — merged from `v2` (Abhimanyu, 2026-08-13)
 

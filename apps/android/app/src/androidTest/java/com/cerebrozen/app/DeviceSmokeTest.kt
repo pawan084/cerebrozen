@@ -1,5 +1,6 @@
 package com.cerebrozen.app
 
+import android.app.KeyguardManager
 import android.content.Context
 import android.telephony.TelephonyManager
 import androidx.lifecycle.Lifecycle
@@ -11,10 +12,10 @@ import com.cerebrozen.app.ui.screens.deviceCrisisCountry
 import com.cerebrozen.app.ui.screens.reduceMotionOverrideForTests
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -45,6 +46,27 @@ class DeviceSmokeTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
     @Before
+    fun theDeviceMustBeUnlocked() {
+        // A locked handset cannot resume an activity, so every ActivityScenario
+        // test below is unrunnable — and it does not say so: on CPH2681 the
+        // suite simply never finishes (killed at ten minutes, against ~7s
+        // unlocked). That silence is what the 2026-08-14 session met and
+        // recorded as "ActivityScenario cannot bring MainActivity to RESUMED,
+        // and says nothing about why" — with the phone locked at the time. The
+        // tests were never broken; the precondition was never stated. It is
+        // stated here, and it fails in a second instead of hanging.
+        val keyguard = context.getSystemService(KeyguardManager::class.java)
+        assertFalse(
+            // Plain ASCII: an em dash comes back mojibaked through the
+            // instrumentation reporter, in the one message someone reads while
+            // something is already wrong.
+            "the device is locked - unlock it and re-run (`adb shell input keyevent KEYCODE_WAKEUP` " +
+                "only turns the screen on; the keyguard still blocks every activity launch)",
+            keyguard?.isKeyguardLocked == true,
+        )
+    }
+
+    @Before
     fun stillTheInfiniteAnimations() {
         // Without this, `ActivityScenario.launch` never returns: Espresso waits
         // for the main looper to quiesce and the sheen and breathing orb are
@@ -60,16 +82,6 @@ class DeviceSmokeTest {
         reduceMotionOverrideForTests = null
     }
 
-    @Ignore(
-        "Fails on CPH2681 with an empty failure body (2026-08-14). The animation " +
-            "hook fixed the *hang* — this test now returns a verdict in 0.8s instead " +
-            "of blocking forever — but ActivityScenario still cannot bring MainActivity " +
-            "to RESUMED here, and the instrumentation reports no message to say why. " +
-            "Left written and ignored rather than deleted or left red: the suite stays " +
-            "green so it can be wired into CI, and the gap stays visible. Next step is " +
-            "to run it from Android Studio, where the failure detail is readable, or " +
-            "add a crash handler that surfaces the cause."
-    )
     @Test
     fun the_app_launches_and_settles_without_crashing() {
         // The cheapest test that could possibly have value, and the one thing no
@@ -87,7 +99,6 @@ class DeviceSmokeTest {
         }
     }
 
-    @Ignore("Blocked by the same ActivityScenario failure as the launch test above.")
     @Test
     fun the_app_survives_a_configuration_change() {
         // Recreation is where real devices punish state that only ever lived in
