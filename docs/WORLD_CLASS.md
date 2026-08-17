@@ -36,13 +36,16 @@ open.
 >   `tests/test_live_llm.py`, opt-in behind `RUN_LLM_TESTS=1` — which the same fix
 >   had made unreachable until 2026-08-17, since the blanking ran unconditionally.
 >   Both halves are now pinned: hermetic by default, and the escape hatch opens.
-> - **5 (crisis path on hardware) — partly done, and the rest should stay undone.**
->   Walked on the OnePlus against a live backend: a message the scanner flags
->   returns the server's region-correct Tele-MANAS card (TODO §V3-d), and the TIPP
->   self-harm note's door was walked 2026-08-12 (CLAIMS_MAP §2). What is *not*
->   verified is the final `ACTION_DIAL` connecting, and nobody should verify it —
->   the last step of this path rings a real helpline staffed for people in crisis.
->   The honest close is a test line or a staged number, not a live dial.
+> - **5 (crisis path on hardware) — now automated, and the last step should stay
+>   undone.** Walked by hand on the OnePlus against a live backend (a flagged
+>   message returns the server's region-correct Tele-MANAS card, TODO §V3-d; the
+>   TIPP note's door 2026-08-12, CLAIMS_MAP §2), and since 2026-08-17 walked by
+>   `CrisisPathDeviceTest` on every connected run: the `cerebro://crisis` deeplink
+>   lands, and the screen shows the name **and the number** that this hardware's
+>   own region resolves to — the half that was wrong when a UK helpline reached
+>   Indian users. What is *not* verified is the final `ACTION_DIAL` connecting,
+>   and nobody should verify it: the last step of this path rings a helpline
+>   staffed for people in crisis. The honest close is a test line, not a live dial.
 > - **6, 7 (iOS build + walking both clients) — half.** Android has been walked on
 >   the CPH2681 repeatedly and now runs `DeviceSmokeTest` on it; iOS has still not
 >   been compiled in this repo. This machine has no Mac, so item 6 gates item 7.

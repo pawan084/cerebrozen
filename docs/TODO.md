@@ -1576,6 +1576,26 @@ less time than any of them. **A grep that finds nothing is evidence about the gr
       the lock is secure — `KEYCODE_WAKEUP` turns the screen on but does not dismiss the
       keyguard, and `screencap` on a lock screen returns an empty file rather than an error.
       Unlock it by hand before running the connected suite
+- [x] **The suite stopped being only a smoke test (2026-08-17).** `DeviceSmokeTest` proves
+      the APK starts; it never opened a screen. `CrisisPathDeviceTest` opens the one where a
+      defect is measured in human harm, and asserts the two things the existing gates
+      structurally cannot:
+      - **The rendered number.** `CrisisDirectoryTest` and `scripts/check-crisis-lines.mjs`
+        read the *directory* — they prove the data and say nothing about what a phone draws
+        from it, which is exactly how a UK helpline once reached Indian users on a device
+        whose data was right all along. The test resolves the region the way the app does and
+        asserts the screen shows that line's name **and its number**.
+      - **The ordering.** "The mental-health line leads every crisis surface" (REDESIGN §2.3)
+        is checked across three stacks by a script reading the directory, and
+        `UrgentSupportScreen`'s own comment records that the gate *could not see this screen*,
+        "because it reads the directory, not a layout". A rendered screen has coordinates, so
+        the test compares them.
+      Written against the raw numbers first, the ordering assertion failed at
+      `emergency=245px` — the immediate-danger **banner**, which sits above every card on
+      purpose. The test now compares the two action-card titles, and the comment says why, so
+      nobody re-reads that banner as a regression. Nothing in the file dials anything: the
+      number is asserted as shown, and connecting it stays a human decision.
+      **5 tests / 0 failures / 15.8s** on CPH2681.
 - [x] **Wired into CI 2026-08-17 — and it is green.** New `android-device` job in
       `.github/workflows/ci.yml`: `reactivecircus/android-emulator-runner`, API 34 /
       `google_apis` / x86_64 with KVM enabled on the runner, running
