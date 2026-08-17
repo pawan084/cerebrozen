@@ -134,13 +134,20 @@ struct HomeView: View {
 }
 
 // MARK: - Quick links (ref home grid)
-/// The ref four-tile explore row: Games · Insights · Programs · Sounds.
+/// The ref four-tile explore row: Toolkit · Insights · Programs · Sounds.
 /// Small tinted squares with a glyph — entry points, not competition for the hero.
+///
+/// The first tile said "Games" and opened `GamesHubView`, a type that has not
+/// existed since the Games+Tools split was folded into one `ToolkitView`
+/// ("the gamecontroller framing is gone", `Features/Games/GamesHub.swift`). The
+/// rename left this caller behind and the build has not compiled since; the tile
+/// now names and opens what is actually there. Games are still in it — they are
+/// two rows inside Ground and Settle, which is the point of the merge.
 struct QuickLinksGrid: View {
     // Plain data: destinations are built lazily inside the NavigationLink
     // closure so Home renders never construct (or AnyView-erase) the screens.
     private static let links: [(id: String, symbol: String)] = [
-        ("Games", "gamecontroller"),
+        ("Toolkit", "wind"),
         ("Insights", "chart.line.uptrend.xyaxis"),
         ("Programs", "calendar"),
         ("Sounds", "music.note"),
@@ -149,7 +156,7 @@ struct QuickLinksGrid: View {
     @ViewBuilder
     private func destination(for id: String) -> some View {
         switch id {
-        case "Games":    GamesHubView()
+        case "Toolkit":  ToolkitView()
         case "Insights": InsightsView()
         case "Programs": ProgramsView()
         default:         SoundLibraryView()

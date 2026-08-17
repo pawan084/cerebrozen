@@ -783,8 +783,12 @@ struct Celebration: ViewModifier {
     }
 
     private func particleOffset(_ i: Int) -> CGSize {
+        // Both sides Double: with `r` as CGFloat the multiply had to pick
+        // between the Double and CGFloat overloads of `cos`, and the compiler
+        // refused ("ambiguous use of 'cos'"). CGSize takes Double directly, so
+        // nothing needs converting back.
         let angle = Double(i) / 12 * 2 * .pi
-        let r: CGFloat = burst ? 88 : 0
+        let r: Double = burst ? 88 : 0
         return CGSize(width: cos(angle) * r, height: sin(angle) * r)
     }
 
