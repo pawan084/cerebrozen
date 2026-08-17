@@ -385,6 +385,29 @@ and the orb; what it lacked was motion where movement *means* something.
   state is hoisted for this); screens whose bar scrolls with the body leave it
   false.
 
+### Web surfaces reviewed in the light theme (2026-08-17)
+
+First walk of the landing page, the browser app and admin **rebuilt from source** — and the
+first lesson was about the walk itself: `docker compose up -d <svc>` reuses whatever image
+exists, so the containers were serving old builds. The landing page I first reviewed was a
+different design generation entirely, and `/explore` 404'd purely because the `app` image
+predated the route. Nothing containerised is worth reviewing without `--build`.
+
+- **`.checkin-hero` / `.prompt-hero` / `.talk-hero` headings were invisible in Dawn.** The
+  palette note in `apps/app/app/globals.css` already says these dark inset panels "carry
+  white text", and they pin their eyebrows and paragraphs — but never their HEADINGS, which
+  inherited `--text`. White in Night, so nothing showed; near-black in Dawn, putting #211d20
+  on a #171019 panel. Measured **1.12:1** for "How are you arriving today?" and **1.72:1**
+  for "Add intensity or a note", against a 4.5:1 floor; **18.67:1** after. `.hero-card`
+  was already correct because it sets `color` on the panel itself — which is what the other
+  three should have copied.
+- **The landing page passes.** Zero contrast failures across every measurable string in the
+  light theme (18 unmeasurable, all inside gradient panels), and all 34 links resolve.
+- **All 20 browser-app routes and the landing's legal/support pages return 200.**
+- Method note: two rounds of false positives before the real one — a `color(srgb 0.97 …)`
+  background parsed as 0-255, and a background probe that fell back to page cream inside dark
+  panels and reported a perfect 1.00:1. A contrast sweep is only as honest as its parser.
+
 ### V6 density + honesty pass (2026-08-16, uncommitted) — walked on the OnePlus
 
 A whole-app pass on the two things a 720px phone punishes: **space** (padding,

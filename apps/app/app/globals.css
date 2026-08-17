@@ -779,6 +779,19 @@ select option { color: var(--ink); }
 }
 .checkin-hero .eyebrow { color: rgba(255,255,255,0.7); }
 .checkin-hero h2 { font-family: var(--font-serif), Georgia, serif; font-weight: 600; font-size: 30px; margin: 6px 0 18px; }
+
+/* The dark inset panels carry their own ink — see the palette note above, which
+   already says so. `.hero-card` sets `color: #fff` on the panel itself; these
+   three never did, and pinned only their eyebrows and paragraphs. Their
+   HEADINGS were left to inherit `--text`, which is white in Night (so nothing
+   showed) and near-black in Dawn — putting #211d20 on a #171019 panel at about
+   1.1:1. Measured on the rebuilt app: "How are you arriving today?" 1.12:1,
+   "Add intensity or a note" 1.72:1, against a 4.5:1 floor.
+   The panels stay dark on purpose; it is the ink that has to know that. */
+.checkin-hero h2,
+.prompt-hero h2,
+.talk-hero h2 { color: #fff; }
+.checkin-hero .text-btn { color: rgba(255,255,255,0.82); }
 .checkin-orb { position: absolute; top: -30px; right: -10px; width: 190px; height: 190px; border-radius: 50%; background: radial-gradient(circle at 42% 38%, #fff, var(--lav) 58%, var(--lav-2)); filter: blur(2px); opacity: 0.9; }
 .emoji-row { display: flex; gap: 12px; position: relative; z-index: 1; }
 .emoji-btn { width: 58px; height: 58px; border-radius: 16px; display: grid; place-items: center; font-size: 26px; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.06); transition: transform 0.15s, background 0.15s, border-color 0.15s; }
