@@ -694,6 +694,16 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
                     style = MaterialTheme.typography.labelSmall, color = TextMuted,
                 )
             }
+            // The verdict belongs where the action is. This used to render at
+            // the very END of the card — after the Health Connect block — so on
+            // a 720x1604 phone a guest could tap Save night and see nothing at
+            // all: the refusal ("Sign in to keep this…") was real, correct and
+            // two scrolls below the button that caused it. Twenty minutes of
+            // this walk went into "the button does nothing" before the message
+            // turned up off-screen.
+            status?.let {
+                Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+            }
             // Optional import follows the manual path instead of interrupting
             // the core question → time → save flow.
             if (hcAvailable) {
@@ -705,7 +715,6 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
                 })
             }
             }
-            status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = TextMuted) }
         }
         }
         // Time-aware order: through the afternoon the check-in about last night
