@@ -17,6 +17,8 @@ import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -246,15 +248,37 @@ internal fun ComposeTestRule.turnOn(matcher: SemanticsMatcher, timeoutMs: Long =
         node.fetchSemanticsNode().config.getOrNull(SemanticsProperties.ToggleableState)
     }.getOrNull()
     if (state() == ToggleableState.On) return
-    node.performClick()
-    val deadline = System.currentTimeMillis() + timeoutMs
-    while (System.currentTimeMillis() < deadline) {
-        runCatching { mainClock.advanceTimeBy(250) }
-        runCatching { waitForIdle() }
-        if (state() == ToggleableState.On) return
-        Thread.sleep(100)
+
+    fun settle(untilMs: Long): Boolean {
+        val deadline = System.currentTimeMillis() + untilMs
+        while (System.currentTimeMillis() < deadline) {
+            runCatching { mainClock.advanceTimeBy(250) }
+            runCatching { waitForIdle() }
+            if (state() == ToggleableState.On) return true
+            Thread.sleep(100)
+        }
+        return false
     }
-    assertTrue("the toggle never read as On after being clicked (state: ${state()})", false)
+
+    // Invoke the control's OWN click handler rather than tapping coordinates.
+    // A coordinate tap and a semantics action are different things: the tap has
+    // to survive hit-testing, and on the CI emulator — whose AVD reports 160dpi,
+    // so this Switch is a 52x32 node on a screen the app lays out as if it were
+    // 1080dp wide — clicking its centre toggled nothing, ten seconds of waiting
+    // included, while the identical call worked on the handset.
+    runCatching { node.performSemanticsAction(SemanticsActions.OnClick) }
+    if (settle(timeoutMs / 2)) return
+    // Fall back to the tap, in case a control carries no OnClick action.
+    runCatching { node.performClick() }
+    if (settle(timeoutMs / 2)) return
+
+    val where = runCatching { node.fetchSemanticsNode().boundsInRoot.toString() }.getOrDefault("<unreadable>")
+    val displayed = runCatching { node.assertIsDisplayed(); true }.getOrDefault(false)
+    assertTrue(
+        "the toggle never read as On - neither its own OnClick action nor a tap moved it " +
+            "(state: ${state()}, displayed: $displayed, bounds: $where)",
+        false,
+    )
 }
 
 /**
