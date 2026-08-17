@@ -263,3 +263,66 @@ jobs:
             apps/android/app/build/reports/tests/
             apps/android/app/build/reports/lint-results-*.html
           if-no-files-found: ignore
+
+  # ── Android: the APK actually starting on Android (WC-281) ────────────
+  # Everything above this job runs on the JVM: Robolectric renders Compose
+  # without an Android, and RouteReachabilityTest parses the NavHost without
+  # rendering it at all. None of that can promise the APK starts — a crash in
+  # Application.onCreate, a manifest the merger broke, an API used below minSdk
+  # are all invisible there and all fatal to a release. `DeviceSmokeTest` holds
+  # only what a JVM cannot answer, which is why it is three tests and not fifty.
+  #
+  # Held back until now for two reasons, both since closed: infinite Compose
+  # animations hung Espresso (fixed by `reduceMotionOverrideForTests`, an in-app
+  # hook rather than a device setting), and a locked handset made the suite hang
+  # with no verdict (2026-08-17 — now a KeyguardManager check that fails in
+  # ~2s with the reason). A managed emulator boots unlocked, so that guard is a
+  # no-op here and exists for the phone.
+  #
+  # Blocking, like the job above, and for the same reason: this repo has already
+  # learned what `continue-on-error` does to an Android job. `timeout-minutes`
+  # is the backstop instead — a hang costs 25 minutes once, not a stuck queue.
+  android-device:
+    name: Android (instrumented, emulator)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      # The runner ships KVM disabled for non-root; without this the emulator
+      # falls back to software and takes long enough to hit the timeout.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      # API 34 matches the handset the suite was written against (CPH2681,
+      # Android 14). `google_apis` rather than `default`: the crisis-region test
+      # reads TelephonyManager, and while the emulator has no SIM — so it takes
+      # the locale-fallback branch — the services build is the closer analogue
+      # of a real phone.
+      - name: Instrumented tests on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          working-directory: apps/android
+          script: ./gradlew :app:connectedDebugAndroidTest --no-daemon --stacktrace
+      - name: Upload instrumented results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-instrumented-results
+          path: |
+            apps/android/app/build/reports/androidTests/
+            apps/android/app/build/outputs/androidTest-results/
+          if-no-files-found: ignore
