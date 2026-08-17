@@ -814,6 +814,21 @@ All six static gates green. **Playwright e2e run 2026-08-13: 53 passed in 2.0m, 
       `test_input_bounds::test_sleep_rejects_implausible_dates`, the test that failed, cannot.
       Still open nearby: `services/organizations.py:156` also takes `utcnow().date()`, but for
       contract access windows, where a UTC boundary is arguably correct — **[decide]**
+- [x] **TEST-01 verified end to end, and its escape hatch repaired (2026-08-17).** Re-ran the
+      suite in the container with a **live `OPENAI_API_KEY` still in `backend/.env`** — the exact
+      condition that used to break it: **695 passed, 2 skipped, coverage 96%**, both contract
+      tests green. Hermeticity is real, not a property of CI's blank environment.
+      The two skips exposed the fix's own cost. `tests/test_live_llm.py` is the opt-in suite for
+      the streaming paths `.coveragerc` excludes, and it documents its entry as
+      `RUN_LLM_TESTS=1`. But conftest blanked the keys **unconditionally**, before settings were
+      read — so with the flag set *and* a real key present, both tests still skipped, advising
+      the reader to do precisely what they had just done. A suite that can never run is not a
+      suite, and this one covers the paths coverage deliberately does not. The blanking is now
+      conditional on that same flag: hermetic by default no matter what the shell or `.env`
+      says, and the documented door opens. Verified both directions — with the flag, **2 passed
+      in 37s against a real model** (chat reply + Oracle SSE stream, so the checkpointer and
+      streaming plumbing are exercised too); without it, the live tests skip and the
+      "degrades without keys" pair passes.
 - [x] **TEST-01 · The backend suite is not hermetic** — **fixed 2026-08-14 in `43d7af0a`**,
       and left unticked here for thirteen commits, which is its own small lesson: a ledger
       nobody closes stops being evidence. `backend/tests/conftest.py` now **sets** (not

@@ -24,6 +24,32 @@ are marked **[external]**.
 Ordered. Nothing below this section makes the product world-class while these are
 open.
 
+> **Status note, 2026-08-17.** This list is the 2026-08-13 snapshot and is left
+> unrenumbered so `WC-n` citations keep meaning what they meant. Four entries have
+> since moved, and a stale critical path misdirects as badly as an incomplete one:
+>
+> - **4 (TEST-01) — closed.** `backend/tests/conftest.py` blanks the provider keys
+>   before settings are read, so key presence in a developer's `.env` or shell can
+>   no longer route the suite through live OpenAI. Re-verified 2026-08-17 with a
+>   live key sitting in `backend/.env`: **695 passed, 2 skipped, coverage 96%**,
+>   and both "degrades without keys" contract tests green. The 2 skips are
+>   `tests/test_live_llm.py`, opt-in behind `RUN_LLM_TESTS=1` — which the same fix
+>   had made unreachable until 2026-08-17, since the blanking ran unconditionally.
+>   Both halves are now pinned: hermetic by default, and the escape hatch opens.
+> - **5 (crisis path on hardware) — partly done, and the rest should stay undone.**
+>   Walked on the OnePlus against a live backend: a message the scanner flags
+>   returns the server's region-correct Tele-MANAS card (TODO §V3-d), and the TIPP
+>   self-harm note's door was walked 2026-08-12 (CLAIMS_MAP §2). What is *not*
+>   verified is the final `ACTION_DIAL` connecting, and nobody should verify it —
+>   the last step of this path rings a real helpline staffed for people in crisis.
+>   The honest close is a test line or a staged number, not a live dial.
+> - **6, 7 (iOS build + walking both clients) — half.** Android has been walked on
+>   the CPH2681 repeatedly and now runs `DeviceSmokeTest` on it; iOS has still not
+>   been compiled in this repo. This machine has no Mac, so item 6 gates item 7.
+> - **281 (Android instrumented tests in CI) — one step left.** The suite runs on
+>   hardware on demand and is stable; CI has no handset, so it needs a managed
+>   device or emulator runner. See TODO's WC-281 entry.
+
 1. **[decide]** Choose the clinical claim you are willing to defend, in writing, in front of a regulator — everything in §1 follows from that one sentence.
 2. Run one real outcome study (pre/post PHQ-9 or GAD-7 on consenting users) so retention is measured against *getting better*, not against session count.
 3. Recruit a named clinical advisor and publish the name — an unsigned safety model is not a credential.

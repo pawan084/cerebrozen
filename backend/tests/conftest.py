@@ -18,8 +18,18 @@ os.environ["TESTING"] = "1"  # must be set before importing the app/engine
 # lose to this too, and pydantic-settings ranks the environment above the
 # `.env` file, so blanking here beats both. A test that wants the AI path
 # monkeypatches the provider; nothing legitimately needs the network.
-os.environ["OPENAI_API_KEY"] = ""
-os.environ["ANTHROPIC_API_KEY"] = ""
+#
+# Except one thing does, on purpose. `tests/test_live_llm.py` is the opt-in
+# suite for the streaming paths coverage excludes, and it documents its own
+# entry: `RUN_LLM_TESTS=1`. Blanking unconditionally made that entry
+# unreachable — with the flag set AND a real key in `.env`, both tests still
+# skipped, advising the reader to do exactly what they had just done. The
+# hermeticity fix had quietly eaten its own escape hatch, and a suite that can
+# never run is not a suite. The default is unchanged: without the flag, the
+# keys are blank no matter what the developer's shell or `.env` says.
+if os.getenv("RUN_LLM_TESTS") != "1":
+    os.environ["OPENAI_API_KEY"] = ""
+    os.environ["ANTHROPIC_API_KEY"] = ""
 # Isolated media dir — app.main mounts StaticFiles(MEDIA_ROOT) at import time,
 # and narration tests write real files there.
 os.environ.setdefault("MEDIA_ROOT", tempfile.mkdtemp(prefix="cerebro-media-"))
