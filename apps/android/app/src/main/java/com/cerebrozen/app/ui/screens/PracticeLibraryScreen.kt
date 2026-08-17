@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -355,7 +356,15 @@ fun UrgentSupportScreen(
     val emergency = regional.firstOrNull { it.target in setOf("112", "911", "999", "000", "111") } ?: regional.first()
     val mental = primaryCrisisLine(region)
     val context = LocalContext.current
-    Column(Modifier.fillMaxSize().background(Night)) {
+    Column(
+        Modifier.fillMaxSize().background(Night)
+            // In the app this screen is a NavHost destination, and the Scaffold
+            // already insets it. The funnel has no Scaffold — it composes this
+            // directly — so the bar drew UNDER the status bar and the title sat
+            // on top of the clock. Found on glass at 720x1604; the one screen
+            // where a reader is least able to work around a layout defect.
+            .then(if (inFunnel) Modifier.statusBarsPadding() else Modifier),
+    ) {
         Row(
             Modifier.fillMaxWidth().height(66.dp).background(CardFill.copy(alpha = .96f)).padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(11.dp), verticalAlignment = Alignment.CenterVertically,

@@ -4,6 +4,7 @@ import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.lifecycle.Lifecycle
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.test.core.app.ActivityScenario
@@ -95,13 +96,13 @@ class CrisisPathDeviceTest {
     }
 
     private fun launchCrisis(): ActivityScenario<MainActivity> =
-        ActivityScenario.launch(
+        ActivityScenario.launch<MainActivity>(
             Intent(context, MainActivity::class.java).apply {
                 action = Intent.ACTION_VIEW
                 data = Uri.parse("cerebro://crisis")
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             },
-        )
+        ).also { it.moveToState(Lifecycle.State.RESUMED) }
 
     /** The region this handset would actually resolve, by the app's own rules. */
     private fun region(): String = effectiveRegion(
@@ -109,8 +110,23 @@ class CrisisPathDeviceTest {
         deviceCrisisCountry(context),
     )
 
-    private fun awaitText(text: String) = compose.waitUntil(15_000) {
-        compose.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
+    /**
+     * Poll for [text], treating "there is no Compose hierarchy yet" as *not
+     * yet* rather than as failure.
+     *
+     * Without the `runCatching`, `fetchSemanticsNodes` throws
+     * `IllegalStateException: No compose hierarchies found in the app` the
+     * instant it is called before `setContent` has run — and this app opens on
+     * an animated splash, so that window is real. Run after `DeviceSmokeTest`
+     * the activity was already warm and this passed; run alone, or on a device
+     * busy enough to slow the launch, it failed on the first poll. A flaky
+     * assertion on the crisis path is worse than none: it teaches the next
+     * person to re-run red rather than read it.
+     */
+    private fun awaitText(text: String) = compose.waitUntil(25_000) {
+        runCatching {
+            compose.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
+        }.getOrDefault(false)
     }
 
     @Test
