@@ -7,6 +7,7 @@ import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isNotEnabled
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -211,3 +212,35 @@ internal fun ComposeTestRule.tapText(text: String, exact: Boolean = false): Sema
 
 /** Tap a node whose text matches exactly — for labels that are substrings of others. */
 internal fun ComposeTestRule.tapExactText(text: String): SemanticsNodeInteraction = tapText(text, exact = true)
+
+/**
+ * Wait for a gated control to actually enable, then tap it.
+ *
+ * A disabled node still exists and still matches by label, so tapping one is a
+ * silent no-op that leaves the walk on the same screen with nothing to explain
+ * it. The funnel's Continue is gated on the 18+ attestation, and the gap
+ * between the toggle and the button enabling is real on slower hardware: the
+ * phone passed this and the CI emulator failed it at exactly that step, which
+ * is the difference between a test and a coin toss.
+ */
+internal fun ComposeTestRule.tapWhenEnabled(text: String, exact: Boolean = true, timeoutMs: Long = 15_000) {
+    requireText(text)
+    val matcher = (hasText(text, substring = !exact) or hasContentDescription(text, substring = !exact)) and
+        hasClickAction()
+    val deadline = System.currentTimeMillis() + timeoutMs
+    while (System.currentTimeMillis() < deadline) {
+        val enabled = runCatching {
+            onAllNodes(matcher).fetchSemanticsNodes()
+                .any { !it.config.contains(SemanticsProperties.Disabled) }
+        }.getOrDefault(false)
+        if (enabled) {
+            onAllNodes(matcher and !isNotEnabled())[0].performClick()
+            runCatching { mainClock.advanceTimeBy(400) }
+            runCatching { waitForIdle() }
+            return
+        }
+        runCatching { mainClock.advanceTimeBy(250) }
+        Thread.sleep(100)
+    }
+    assertTrue("\"$text\" never became enabled", false)
+}

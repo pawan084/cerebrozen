@@ -93,7 +93,7 @@ class OnboardingE2ETest {
             compose.onNode(hasText(s(R.string.ob_disclosure_cta)) and hasClickAction())
                 .assertIsNotEnabled()
             compose.tapText(s(R.string.ob_age_confirm))
-            compose.tapExactText(s(R.string.ob_disclosure_cta))
+            compose.tapWhenEnabled(s(R.string.ob_disclosure_cta))
 
             // 2 — Consent. Every switch off, every time.
             compose.requireText(s(R.string.ob_consent_title))
@@ -104,13 +104,13 @@ class OnboardingE2ETest {
                 6, switches.size,
             )
             repeat(switches.size) { compose.onAllNodes(isToggleable())[it].assertIsOff() }
-            compose.tapExactText(s(R.string.common_continue))
+            compose.tapWhenEnabled(s(R.string.common_continue))
 
             // 3 — State check. A pick is required to continue, and it only
             // shapes the first suggestion — nothing here is scored.
             compose.requireText(s(R.string.ob_state_title))
             compose.tapText(s(R.string.ob_state_opt_overthinking))
-            compose.tapExactText(s(R.string.common_continue))
+            compose.tapWhenEnabled(s(R.string.common_continue))
 
             // 4 — Guest. "Continue as guest" does it: no interstitial.
             compose.requireText(s(R.string.ob_guest_title))
