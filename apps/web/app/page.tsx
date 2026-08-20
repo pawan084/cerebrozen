@@ -65,7 +65,13 @@ const SPACES = [
   // Explore took Sleep's slot in the tab set (ref/ ruling, REDESIGN_V2.md §6);
   // sleep is still the first thing behind this door, so the copy leads with it.
   { tab: "Explore", route: "/explore", body: "Find a tool by what would help — sleep, sounds, grounding or thought work." },
-  { tab: "Talk", route: "/chat", body: "A voice and text AI companion that listens, reflects, and acts." },
+  // "voice and text" was false of the surface this door opens. The browser
+  // chat is text-only and says so itself ("Voice arrives with the mobile
+  // apps"), so the landing page was promising a capability the destination
+  // openly disclaims. Third one caught on this list for the same reason as the
+  // Face ID and "real support" fixes noted below — the rule was written, and
+  // this row was missed by it.
+  { tab: "Talk", route: "/chat", body: "An AI companion that listens, reflects, and acts — in writing here, with voice on the mobile apps." },
   // Every door here opens the BROWSER app, so every promise has to be true of
   // the browser app. Two were not: "lock it behind Face ID" describes an iOS
   // feature reached by a button that goes to the web (and iOS is not
