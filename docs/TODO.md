@@ -451,6 +451,43 @@ gap): TIPP, gratitude, one-good-thing, intention, the CBT thought record, crisis
 insight reel, wind-down, the mindful mini-games, baseline assessment, trusted contact, the
 standalone player.
 
+### The 12 small tap targets: eleven did not exist (2026-08-20)
+
+Measured before fixing, and the measurement is most of the story.
+
+**Eleven of the twelve were clipping artifacts.** `uiautomator` reports VISIBLE
+bounds — a 200px card at the bottom of a scroll container measures the sliver you can
+see. Every one of the twelve ended at exactly **y=1604**, the screen edge, which is the
+tell. Re-measured after scrolling, they either grew or scrolled away.
+
+**Three more, found statically, were also not violations.** `TopBarAction` is
+`.size(46.dp)`, `CircleAction` is `.size(47.dp)`, and the crisis back button is a raw
+46dp `Box` — all under the 48dp floor visually. But Compose expands an interactive
+node's touch target to the 48dp minimum: measured on the handset, every one of them
+reports **96x96** at the touch layer. A small visual size is not a small tap target.
+Left as they are: changing them alters the design for no accessibility gain.
+
+**One was real, and only under animation.** The Sleep hero's Play pill pulses on an
+infinite `animateFloat(0.98f, 1.03f)` through a `graphicsLayer`, and `graphicsLayer`
+scale transforms HIT TESTING, not only pixels. Sampled across the cycle it oscillated
+**94–98px** against a 96px floor — the app's most-invited tap shrinking below the
+target size while someone is aiming at it. The pulse now runs `1f..1.05f`: same
+invitation, same 5% of travel, never smaller than the layout. Re-sampled after the fix:
+a steady **100px**. (`pressScale`, which shrinks to 0.96 while HELD, is deliberately
+untouched — by then contact is already made.)
+
+**The auditor is now in the repo, with its own errors written down.**
+`scripts/android-walk-audit.py` skips nodes flush against a viewport edge and counts
+them separately, marks filled-control contrast as low-confidence, and downgrades every
+tap finding to `SMALLTAP?` — a single dump races layout, and the bottom nav pill
+measured 220x11 seven seconds after launch versus 212x114 settled. Re-run over the same
+58 captures: **SMALLTAP 12 → 2**, and both survivors are that nav pill mid-animation.
+
+The docstring states plainly what the tool gets wrong in both directions, including that
+it called `explore` clean while the worst colour literal in the app (1.89:1) sat on that
+screen, because a gradient is not flat enough to measure against. Pixels find places to
+look; the palette arithmetic decides.
+
 ### The 37 hex literals swept out of Android screens (2026-08-20)
 
 The systemic version of the two colour bugs above: `CLAUDE.md` has said "screens read

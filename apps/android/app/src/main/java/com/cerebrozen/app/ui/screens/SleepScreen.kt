@@ -525,7 +525,16 @@ fun SleepScreen(onOpen: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
                 val reduceMotion = rememberReduceMotion()
                 val playTransition = rememberInfiniteTransition(label = "sleepPlay")
                 val playScale by playTransition.animateFloat(
-                    0.98f, 1.03f,
+                    // Upward only. `graphicsLayer` scale transforms HIT TESTING,
+                    // not just the pixels, so pulsing down to 0.98 shrank the
+                    // pill's touch target below the 48dp floor for half of
+                    // every cycle — measured on a CPH2681 as it oscillated
+                    // 94-98px against a 96px floor. `pressScale` shrinking on
+                    // press is fine (contact is already made); shrinking at
+                    // REST is the one that costs a tap, because that is when
+                    // someone is aiming at it. Same invitation, same 5% of
+                    // travel, never smaller than the layout size.
+                    1f, 1.05f,
                     infiniteRepeatable(tween(1500), RepeatMode.Reverse),
                     label = "sleepPlayScale",
                 )
