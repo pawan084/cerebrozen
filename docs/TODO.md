@@ -451,6 +451,58 @@ gap): TIPP, gratitude, one-good-thing, intention, the CBT thought record, crisis
 insight reel, wind-down, the mindful mini-games, baseline assessment, trusted contact, the
 standalone player.
 
+### The web client walked on a real handset (2026-08-20, CPH2681 over CDP)
+
+The new rooms were built and shipped green — 58 e2e, typecheck, lint, claims gate — and
+then walked on a phone, where six things were wrong that no gate was asking about. The
+method is the point: Chrome on the device over `adb forward tcp:9222
+localabstract:chrome_devtools_remote`, then Playwright `connectOverCDP`, so every number
+below was **measured on the handset** rather than judged from a screenshot.
+
+- **Today was 128px wider than the screen.** `documentElement.clientWidth` 360,
+  `scrollWidth` 488, 75 elements past the right edge, and Chrome zooming the page out to
+  fit (`innerWidth` 488). The layout was innocent — sidebar hidden, tabs shown,
+  `.dash-grid` correctly 324px — but the grid ITEM measured 470. Cause: `.emoji-row`, six
+  58px tiles and five 12px gaps = **408px of min-content**, inside a grid child whose
+  default `min-width: auto` refuses to shrink. Fixed by wrapping the row (not scrolling
+  it: it is the primary action, and hiding two of six feelings behind a swipe makes the
+  easiest thing to reach the one nobody sees) plus `.dash-grid > * { min-width: 0 }`.
+  After: scrollWidth 360, offenders 0. **It passed at 390px and failed at 360** — the
+  overflow test now measures at the handset's real width.
+- **`.ds-cta` was scoped to `.design-root`.** The primary button on /checkin — and on
+  every room added since — had no rule outside the design prototype, so it rendered as a
+  grey UA button under the 48px floor. `.text-btn` and `.today-cta` were promoted when
+  these screens graduated and carry a comment warning about exactly this; `.ds-cta` and
+  `.ds-textarea` were missed. Promoted, with a test.
+- **A chosen chip did not look chosen.** `aria-pressed` was set on the Trends/Sleep
+  windows, the mixer presets and the journal's tag filters, and styled only for
+  `.ds-chip`. Tapping "Still air" changed the blend and the heading while the chip sat
+  still. Added `.chip[aria-pressed="true"]`, with a test that the two states paint
+  different backgrounds.
+- **Three stat tiles stacked to ~750px** on Sleep insights, pushing the chart they explain
+  off the bottom. `.stat-tiles.compact` keeps them a row of three on a phone. "7h 43m"
+  wrapped inside its tile, so the duration now carries a non-breaking space.
+- **Two-night weeks drew two half-screen slabs.** `.sleep-bar-col` is capped at 48px and
+  left-packed.
+- **Body scan put Begin eight cards below the fold** — the controls now sit above the
+  script. `.text-btn:disabled` also had no style, so a dead "Back" looked live.
+
+Verified on the handset, not assumed: a check-in made with the API tunnel cut showed
+"Saved on this device" and "It will sync the next time you are online", the queue drained
+on the next load, and `POST /moods` came back **201** in the API log. The mixer's
+synthesised layers registered with Android's own audio service
+(`AudioPlaybackConfiguration ... type:AAudio state:started usage=USAGE_MEDIA
+sampleRate=48000`) and stopped cleanly. Trends read 12 nights, "Averaging 7h 43m", and
+withheld the mood-sleep link with its reason. Sleep insights showed "—" under Week
+because that window genuinely holds 2 nights (`enough_data: false` from the API) and the
+real figures under Month.
+
+Two environment traps worth keeping: a stray `python.exe` on `0.0.0.0:8000` from another
+project swallowed the phone's `adb reverse` tunnel (the API log showed **no** `/auth/login`
+at all — that is the diagnostic), routed around with a socat container on 8001 rather than
+killing someone else's server; and a mid-walk `api` restart produced a genuine
+"We couldn't load your nights just now", which is the error branch behaving correctly.
+
 ### V6 density + honesty pass (2026-08-16, uncommitted) — walked on the OnePlus
 
 A whole-app pass on the two things a 720px phone punishes: **space** (padding,
