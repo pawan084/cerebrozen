@@ -77,6 +77,39 @@ function LibraryCatalogue() {
           A filtered view · <Link href="/library" className="link">browse the full library</Link>
         </p>
       )}
+      {/* Reading that needs no connection and no session — the same two
+          overviews Android ships offline. They sit above the served catalogue
+          because they are the part that still works when nothing loads. */}
+      <section className="card" aria-label="Offline reading">
+        <h2>Read offline</h2>
+        <div className="entry">
+          <div className="row">
+            <div className="grow">
+              <strong>
+                <Link href="/library/cbti" className="link">CBT-I Overview</Link>
+              </strong>
+              <div className="meta">
+                Six modules on habits that can support sleep. Educational — personalised CBT-I
+                is work for a qualified clinician.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="entry">
+          <div className="row">
+            <div className="grow">
+              <strong>
+                <Link href="/library/mbct" className="link">MBCT Overview</Link>
+              </strong>
+              <div className="meta">
+                Eight modules inspired by MBCT. Not a substitute for the clinician-led
+                programme.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {kinds.map((kind, i) => (
         <section className={`card cz-in cz-d${Math.min(i + 1, 6)}`} key={kind} aria-label={KIND_LABELS[kind]}>
           <h2>{KIND_LABELS[kind]}</h2>
@@ -106,7 +139,9 @@ function LibraryCatalogue() {
         </section>
       ))}
       <p className="footnote">
-        Items with narration play right here — the full soundscape mixer lives in the iOS &amp; Android apps.
+        Items with narration play right here, and the{" "}
+        <Link href="/sleep/mixer" className="link">layered mixer</Link>{" "}
+        blends four of them at once.
       </p>
       </div>
     </>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { OUTBOX_EVENT, send } from "@/lib/outbox";
 import { AppHeader } from "@/components/AppHeader";
 import { GuidedTour } from "@/components/GuidedTour";
 import { InterventionCard } from "@/components/InterventionCard";
@@ -90,6 +91,9 @@ export default function Home() {
   const [picked, setPicked] = useState<string | null>(null);
   const [resp, setResp] = useState("");
   const [checkInError, setCheckInError] = useState<string | null>(null);
+  /** Written here, not yet on the server. Said out loud, because the streak
+   *  and the trends below will not move until it syncs. */
+  const [checkInQueued, setCheckInQueued] = useState(false);
   const [streak, setStreak] = useState<Streak | null>(null);
   const [moods, setMoods] = useState<Mood[]>([]);
   const [reflection, setReflection] = useState<string>("");
@@ -108,13 +112,30 @@ export default function Home() {
     api<{ program: Program | null }>("/programs/active").then((r) => setProgram(r.program)).catch(() => {});
   }, []);
 
+  // When the offline queue finally drains, the numbers on this page are stale
+  // by exactly the writes it just sent — so refetch the two it can move.
+  useEffect(() => {
+    const onOutbox = (e: Event) => {
+      if (!((e as CustomEvent).detail?.sent > 0)) return;
+      setCheckInQueued(false);
+      api<Streak>("/users/me/streak").then(setStreak).catch(() => {});
+      api<Mood[]>("/moods?limit=60").then(setMoods).catch(() => {});
+    };
+    window.addEventListener(OUTBOX_EVENT, onOutbox);
+    return () => window.removeEventListener(OUTBOX_EVENT, onOutbox);
+  }, []);
+
   async function pick(m: (typeof MOODS)[number]) {
     setPicked(m.name);
     setResp(m.resp);
     setCheckInError(null);
+    setCheckInQueued(false);
     try {
-      await api("/moods", { method: "POST", body: JSON.stringify({ mood: m.name, note: m.note, symbol: m.symbol, intensity: 3 }) });
-      api<Streak>("/users/me/streak").then(setStreak).catch(() => {});
+      // The outbox keeps this tap when the network drops instead of losing it,
+      // and returns null to say so.
+      const row = await send("/moods", { mood: m.name, note: m.note, symbol: m.symbol, intensity: 3 });
+      setCheckInQueued(row === null);
+      if (row !== null) api<Streak>("/users/me/streak").then(setStreak).catch(() => {});
     } catch {
       // Register D3: the affirming response was shown optimistically and the
       // POST error swallowed - the user was told "Love that..." while nothing
@@ -272,6 +293,12 @@ export default function Home() {
               {picked && !checkInError && (
                 <p className="tiny">
                   This shapes your next step and your weekly trends. Nothing here is scored.
+                </p>
+              )}
+              {checkInQueued && !checkInError && (
+                <p className="tiny" role="status">
+                  Saved on this device — it will sync, and count towards your streak, once
+                  you are back online.
                 </p>
               )}
               {checkInError && <p className="error" role="alert">{checkInError}</p>}

@@ -1409,3 +1409,58 @@ select option { color: var(--ink); }
 @media (prefers-reduced-motion: reduce) {
   .ds-chip, .ds-tile, .ds-row { transition: none; }
 }
+
+/* The offline write queue's only chrome. Deliberately a calm line rather than
+   a warning colour: nothing has gone wrong, the entry is kept. */
+.outbox-bar {
+  margin: 0;
+  padding: 10px 20px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--line);
+}
+
+/* Screen-reader-only. Used where a chart is drawn for the eye and the same
+   numbers are given as text for anyone reading with a screen reader — the
+   picture is `aria-hidden`, the list is not. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Nightly duration bars on Sleep insights. Heights come from the data in an
+   inline style; everything else lives here. */
+.sleep-bars { display: flex; align-items: flex-end; gap: 8px; height: 118px; margin-top: 16px; }
+.sleep-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; justify-content: flex-end; }
+.sleep-bar { width: 100%; border-radius: 7px 7px 2px 2px; background: linear-gradient(180deg, var(--info), var(--accent)); }
+.sleep-bar-col small { font-size: 10.5px; color: var(--muted); }
+
+/* A numbered reading list (CBT-I / MBCT overviews, the body-scan parts). The
+   marker is dropped because each item is already a card with its own heading;
+   two numbering systems on one row reads as a bug. */
+.offline-modules { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 14px; }
+
+/* Mixer sliders. The label carries the layer name, where its sound comes from,
+   and the level — a bare slider gives no way to know what it is set to. */
+.mixer-row { display: grid; gap: 6px; margin-top: 14px; }
+.mixer-row label { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 14px; color: var(--text); }
+.mixer-row label small { color: var(--muted); font-size: 12px; }
+.mixer-row input[type="range"] { width: 100%; accent-color: var(--accent); height: 24px; }
+
+/* Trend bars. One column per LOGGED day — days with no data are absent from
+   the series, so the chart is narrower rather than gappy, which is the honest
+   shape: an unlogged day is not a zero. */
+.trend-bars { display: flex; align-items: flex-end; gap: 3px; height: 92px; margin: 14px 0 10px; overflow-x: auto; }
+.trend-col { flex: 1 0 6px; display: flex; align-items: flex-end; justify-content: center; }
+.trend-bar { width: 100%; min-width: 6px; border-radius: 5px 5px 2px 2px; }
+.trend-bar.mood { background: var(--accent); }
+.trend-bar.sleep { background: var(--info); }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { send } from "@/lib/outbox";
 import { AppHeader } from "@/components/AppHeader";
 import { CrisisLines } from "@/components/CrisisLines";
 
@@ -41,6 +42,9 @@ export default function Journal() {
   const [busy, setBusy] = useState(false);
   const [support, setSupport] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  /** An entry is written and kept, but has not reached the server — so it is
+   *  not in the list below and has not been read for risk. Both are said. */
+  const [queuedNote, setQueuedNote] = useState(false);
   const [mood, setMood] = useState("");
   // Search over the same server index Android uses (/journal?q= & ?tag=).
   const [query, setQuery] = useState("");
@@ -105,11 +109,15 @@ export default function Journal() {
   async function save(e: React.FormEvent) {
     e.preventDefault(); if (busy || !title.trim()) return; setBusy(true); setSaveError(null);
     try {
-      const entry = await api<Entry>("/journal", { method: "POST", body: JSON.stringify({ title, body, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), symbol: "book" }) });
-      setSupport(["elevated", "crisis"].includes(entry.risk_level));
+      const entry = await send<Entry>("/journal", { title, body, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), symbol: "book" });
+      // A queued entry has NOT been read for risk — the scan is server-side.
+      // Leaving `support` alone is the honest move: an offline entry gets no
+      // support banner rather than a reassuring absence of one.
+      if (entry) setSupport(["elevated", "crisis"].includes(entry.risk_level));
+      setQueuedNote(entry === null);
       window.localStorage.removeItem(DRAFT_KEY);
-      setTitle(""); setBody(""); setTags(""); setOpen(false); await reload(query, tagFilter);
-      api<string[]>("/journal/tags").then(setAllTags).catch(() => {});
+      setTitle(""); setBody(""); setTags(""); setOpen(false);
+      if (entry) { await reload(query, tagFilter); api<string[]>("/journal/tags").then(setAllTags).catch(() => {}); }
     } catch {
       // Register D5: the draft survived but nothing said why the entry never
       // appeared. The words are the point here - they stay, and so does the
@@ -184,6 +192,14 @@ export default function Journal() {
             </section>
 
             <div className="sec-head"><h2 className="serif-h">Recent entries</h2></div>
+            {queuedNote && (
+              <p className="sub" role="status" style={{ marginBottom: 12 }}>
+                Your entry is saved on this device and will send when you are back online. It
+                is not in the list below yet, and the safety check that runs on new entries
+                has not read it.
+              </p>
+            )}
+
             {/* Search + tag filter over the server's own journal index. */}
             <form
               className="row"

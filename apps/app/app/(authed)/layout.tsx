@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { hasSession, signOut } from "@/lib/api";
 import { currentPath } from "@/lib/nextPath";
+import { OUTBOX_EVENT, pendingCount, startOutbox } from "@/lib/outbox";
 import { BrandMark, Icon } from "@/components/icons";
 
 // Nav restructured to the spec's IA (ref/, ruling recorded in REDESIGN_V2.md §6).
@@ -65,6 +66,10 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
   // chip at paying users on every load.
   const [tier, setTier] = useState<string | null>(null);
   const [upsell, setUpsell] = useState(false);
+  /** Writes made without a network, still on this device. Shown in the shell
+   *  rather than only on the screen that made them: the person may well have
+   *  navigated away, and "did that save?" deserves an answer from anywhere. */
+  const [pending, setPending] = useState(0);
 
   useEffect(() => {
     if (!hasSession()) {
@@ -86,6 +91,20 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
         setTier(me.subscription_tier || "free");
       }).catch(() => {}));
   }, [router]);
+
+  // The queue drains on load and whenever the browser says the network is
+  // back. Mounted here so it runs for every authed screen, once.
+  useEffect(() => {
+    if (!ready) return;
+    const stopOutbox = startOutbox();
+    setPending(pendingCount());
+    const onChange = (e: Event) => setPending((e as CustomEvent).detail?.pending ?? 0);
+    window.addEventListener(OUTBOX_EVENT, onChange);
+    return () => {
+      stopOutbox();
+      window.removeEventListener(OUTBOX_EVENT, onChange);
+    };
+  }, [ready]);
 
   function dismissUpsell() {
     window.localStorage.setItem(PREMIUM_DISMISSED, "1");
@@ -158,7 +177,15 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
         </div>
       </aside>
 
-      <div className="app-main" id="main">{children}</div>
+      <div className="app-main" id="main">
+        {pending > 0 && (
+          <p className="outbox-bar" role="status">
+            {pending === 1 ? "1 entry is" : `${pending} entries are`} saved on this device and
+            waiting to send. Nothing is lost — this clears itself when you are back online.
+          </p>
+        )}
+        {children}
+      </div>
 
       <nav className="mobile-tabs" aria-label="Primary">
         {MOBILE.map(({ href, label, icon: I }) => (

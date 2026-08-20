@@ -148,6 +148,13 @@ export default function Insights() {
             <Link href="/patterns" className="link" style={{ display: "inline-block", marginTop: 12 }}>
               See everything CereBro remembers →
             </Link>
+            {/* This page recomputes a 14-day view in the browser; Trends asks
+                the server for the series, which is where the mood-and-sleep
+                link lives — and where it is withheld until it means
+                something. */}
+            <Link href="/insights/trends" className="link" style={{ display: "block", marginTop: 8 }}>
+              Trends over a month or three, and how your nights sit against your days →
+            </Link>
           </div>
         </div>
       </div>

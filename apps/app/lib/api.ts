@@ -31,6 +31,11 @@ function storeSession(tokens: { access_token: string; refresh_token: string }) {
  * deliberately absent: it belongs to the device, not the account. */
 const PERSONAL_KEYS = [
   REFRESH_KEY,
+  // The offline write queue. It holds entries ONE person authored, so it must
+  // not survive a sign-out: on a shared browser the next person's first drain
+  // would post the previous person's check-ins into their account. Losing a
+  // queued write when a session ends is the lesser of the two failures.
+  "cerebro_app_outbox",
   "cbz-safety-plan",
   "cerebro_app_journal_draft",
   "cerebro_app_onboarding_draft",
@@ -112,10 +117,15 @@ export async function authedFetch(
   // Fresh page load: no in-memory access token yet, but a refresh token exists.
   if (!accessToken && hasSession()) await refreshSession();
 
+  // FormData must NOT carry a hand-set Content-Type: the browser adds the
+  // multipart boundary itself, and stamping "application/json" over a file
+  // upload produces a body the server cannot parse (this is how /voice/stt
+  // would have failed). Everything else still defaults to JSON.
+  const isForm = typeof FormData !== "undefined" && init.body instanceof FormData;
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...(isForm ? {} : { "Content-Type": "application/json" }),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...(init.headers || {}),
     },
@@ -129,7 +139,7 @@ export async function authedFetch(
   if (res.status === 401) {
     if (allowRetry && (await refreshSession())) return authedFetch(path, init, false);
     clearSession();
-    throw new Error("unauthorized");
+    throw Object.assign(new Error("unauthorized"), { status: 401 });
   }
   return res;
 }
@@ -187,7 +197,11 @@ export async function api<T = any>(path: string, init: RequestInit = {}): Promis
     } catch (e) {
       if (e instanceof FreeLimitError) throw e;
     }
-    throw new Error(detail);
+    // The status rides ALONG with the message. The offline queue has to tell
+    // "the server refused this" (never retry) from "the network never
+    // answered" (queue it), and by this point `detail` is the server's own
+    // prose with the number parsed out of it — a message is not a status.
+    throw Object.assign(new Error(detail), { status: res.status });
   }
   if (res.status === 204) return undefined as T;
   return res.json();

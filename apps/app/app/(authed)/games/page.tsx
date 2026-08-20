@@ -114,6 +114,18 @@ export default function Toolkit() {
           <WhyThisWorks text="Guided imagery is a standard relaxation component in stress and anxiety protocols. The detail is what does the work — which is why the prompts ask about sound and temperature rather than just telling you to picture somewhere nice." />
         </section>
 
+        <section className="card">
+          <h3 style={{ margin: "0 0 4px" }}>Body scan</h3>
+          <p className="sub">
+            Eight parts of the body, in order, noticing what is there without trying to change
+            it. Move at your own pace or let it time each part for you.
+          </p>
+          <Link href="/games/bodyscan" className="pill-btn tinted" style={{ marginTop: 12 }}>
+            Start the scan
+          </Link>
+          <WhyThisWorks text="The body scan is the first formal practice in MBSR and MBCT, and the instruction that does the work is the one people skip: notice, do not fix. Nothing here is scored and there is no relaxed enough to reach." />
+        </section>
+
         {/* The builder is a door, not a section: it only sequences the tools
             above, and putting it first would suggest setup comes before use. */}
         <section className="card">

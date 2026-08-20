@@ -381,6 +381,71 @@ test.describe("Web app (authenticated client)", () => {
 
     await expect(page).toHaveURL(new RegExp(`^${APP}/home`), { timeout: 20_000 });
   });
+  test("a check-in made offline is kept, then sent when the network returns", async ({ page, context }) => {
+    // The gap this closes: until the outbox existed, a mood tapped with no
+    // signal threw, showed "we couldn't save that", and was simply gone —
+    // while the Android client had kept the same tap since the metro problem.
+    test.setTimeout(90_000);
+    const email = `e2e-outbox-${Date.now()}@test.app`;
+    await createAccount(page, email);
+
+    // Load the page first, THEN pull the network — going offline before the
+    // navigation would just fail to fetch the document, which tests nothing.
+    await page.goto(`${APP}/checkin`, { waitUntil: "networkidle" });
+    await context.setOffline(true);
+    await page.getByRole("button", { name: /Good|Anxious|Low|Tired/ }).first().click();
+    await page.getByRole("button", { name: "Save this check-in" }).click();
+
+    // Kept, and said so — not "saved", and not an error either.
+    await expect(page.getByText("It will sync the next time you are online.")).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.locator(".outbox-bar")).toContainText("waiting to send");
+
+    // Back online: the queue drains itself and the bar goes away on its own.
+    await context.setOffline(false);
+    await page.evaluate(() => window.dispatchEvent(new Event("online")));
+    await expect(page.locator(".outbox-bar")).toHaveCount(0, { timeout: 20_000 });
+
+    // And the entry really did reach the SERVER, rather than the bar merely
+    // clearing itself: Today's presence rail is computed from /users/me/streak,
+    // which only counts what the API actually holds.
+    await page.goto(`${APP}/home`, { waitUntil: "networkidle" });
+    await expect(page.locator(".rail-big")).toContainText("day present", { timeout: 20_000 });
+    await expect(page.locator(".rail-big b")).not.toHaveText("0");
+  });
+
+  test("the new rooms render, and none of them is a door nobody can find", async ({ page }) => {
+    // The orphan trap, ported from Android: the Practice library existed as a
+    // route with no way in, so it was dead product nobody could reach. A page
+    // that renders is only half of shipped — something has to link to it.
+    test.setTimeout(120_000);
+    const email = `e2e-rooms-${Date.now()}@test.app`;
+    await createAccount(page, email);
+
+    const ROOMS = [
+      { path: "/sleep/insights", heading: /Look for the pattern/, from: "/sleep" },
+      { path: "/sleep/mixer", heading: /Just rain|Silent|Mostly/, from: "/sleep" },
+      { path: "/insights/trends", heading: /How the days read|Reading your logs/, from: "/insights" },
+      { path: "/games/bodyscan", heading: /Body Scan/, from: "/games" },
+      { path: "/library/cbti", heading: /CBT-I Overview/, from: "/library" },
+      { path: "/library/mbct", heading: /MBCT Overview/, from: "/library" },
+    ];
+
+    for (const room of ROOMS) {
+      await page.goto(`${APP}${room.path}`, { waitUntil: "networkidle" });
+      await expect(page.getByText(room.heading).first(), `${room.path} renders`)
+        .toBeVisible({ timeout: 20_000 });
+
+      // …and its parent actually offers a way in.
+      await page.goto(`${APP}${room.from}`, { waitUntil: "networkidle" });
+      await expect(
+        page.locator(`a[href="${room.path}"]`).first(),
+        `${room.from} has no link to ${room.path} — that is an orphan route`,
+      ).toBeVisible({ timeout: 20_000 });
+    }
+  });
+
   test("every chip is a tap target, not a decoration", async ({ page }) => {
     // `.chip` and `.ui-chip` are buttons everywhere they appear — chat retry
     // and suggestions, the ritual cue picker, journal tag filters, the

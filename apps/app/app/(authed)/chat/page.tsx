@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { canRecord, speak, startRecording, transcribe, voiceStatus, type Recording } from "@/lib/voice";
 import { FreeLimitError, api } from "@/lib/api";
 import { OracleWidget, oracleAvailable, oracleStream } from "@/lib/oracle";
 import { AppHeader } from "@/components/AppHeader";
@@ -89,6 +90,18 @@ export default function Chat() {
   // The message that failed to send, so "Try again" can resend it verbatim —
   // without this, an error meant retyping from memory on a bad connection.
   const [failedText, setFailedText] = useState<string | null>(null);
+  // Voice. `null` while /voice/status is still unknown — the microphone does
+  // not appear at all until the server has said the key exists, because a
+  // button that fails when pressed is worse than no button (the same ruling
+  // Android applies to its Google sign-in).
+  const [voice, setVoice] = useState<{ stt: boolean; tts: boolean } | null>(null);
+  const [recording, setRecording] = useState<Recording | null>(null);
+  const [listening, setListening] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  /** Speak replies aloud. Off until asked for: a wellness app that starts
+   *  talking on a quiet train is a bad surprise. */
+  const [speakReplies, setSpeakReplies] = useState(false);
+  const spoken = useRef<HTMLAudioElement | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   // False until the user actually sends something this visit — history
   // hydrating must not yank the page to the composer (register D56).
@@ -149,6 +162,43 @@ export default function Chat() {
     return !hadError;
   }
 
+  useEffect(() => {
+    // Asked once. A browser that cannot record is the same answer as a server
+    // with no key — no microphone shown either way.
+    if (!canRecord()) { setVoice({ stt: false, tts: false }); return; }
+    voiceStatus().then(setVoice);
+  }, []);
+
+  /** Hold to talk. The clip only leaves the browser when you let go, and the
+   *  transcript lands in the composer for you to read before it is sent —
+   *  never straight into the conversation, because a mis-heard sentence sent
+   *  on your behalf is the failure people never forgive. */
+  async function toggleMic() {
+    setVoiceError(null);
+    if (recording) {
+      setListening(false);
+      const rec = recording;
+      setRecording(null);
+      try {
+        const clip = await rec.stop();
+        const text = await transcribe(clip);
+        if (text) setInput((prev) => (prev ? `${prev} ${text}` : text));
+        else setVoiceError("That came through silent — try again a bit closer.");
+      } catch (e: any) {
+        setVoiceError(e?.message || "Couldn't turn that into words.");
+      }
+      return;
+    }
+    try {
+      setRecording(await startRecording());
+      setListening(true);
+    } catch {
+      // Denied permission, or no microphone. Both are the person's own device
+      // saying no, so this is a statement rather than an error.
+      setVoiceError("No microphone available — you can still type.");
+    }
+  }
+
   async function send(text: string) {
     const t = text.trim();
     if (!t || busy) return;
@@ -170,6 +220,10 @@ export default function Chat() {
           body: JSON.stringify({ text: t }),
         });
         push({ id: reply.reply.id, role: "assistant", text: reply.reply.text, widget: reply.widget });
+        if (speakReplies && voice?.tts) {
+          spoken.current?.pause();
+          spoken.current = await speak(reply.reply.text);
+        }
         const sugg: Suggestion[] = reply.suggestions ?? [];
         if (sugg.some((s) => s.action === "crisis")) setCrisis({});
         setSuggestions(sugg.filter((s) => s.action !== "crisis"));
@@ -368,12 +422,50 @@ export default function Chat() {
           placeholder="Say what's on your mind…"
           aria-label="Message"
         />
+        {voice?.stt && (
+          <button
+            type="button"
+            className="btn ghost"
+            aria-pressed={listening}
+            aria-label={listening ? "Stop recording" : "Record a message"}
+            onClick={() => void toggleMic()}
+            disabled={busy}
+          >
+            {listening ? "Stop" : "Speak"}
+          </button>
+        )}
         <button className="btn" disabled={busy || !input.trim()}>
           {busy ? "…" : "Send"}
         </button>
       </form>
+      {listening && (
+        <p className="footnote" role="status">
+          Listening. Press stop when you are done — the clip is turned into words you can read
+          and edit before anything is sent.
+        </p>
+      )}
+      {voiceError && <p className="error" role="alert">{voiceError}</p>}
+      {voice?.tts && (
+        <p className="footnote">
+          <button
+            type="button"
+            className="linklike"
+            aria-pressed={speakReplies}
+            onClick={() => {
+              const next = !speakReplies;
+              setSpeakReplies(next);
+              if (!next) spoken.current?.pause();
+            }}
+          >
+            {speakReplies ? "Stop reading replies aloud" : "Read replies aloud"}
+          </button>
+        </p>
+      )}
       <p className="footnote">
-        Voice conversations arrive with the mobile apps. Free accounts have a daily message allowance.
+        {voice && !voice.stt && !voice.tts
+          ? "Voice is not switched on for this server — typing is the whole of it here. "
+          : ""}
+        Free accounts have a daily message allowance.
       </p>
         </>
       )}

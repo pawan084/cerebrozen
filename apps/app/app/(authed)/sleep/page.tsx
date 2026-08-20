@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, API_URL, authedFetch } from "@/lib/api";
+import { send } from "@/lib/outbox";
 import { AppHeader } from "@/components/AppHeader";
 import { WhyThisWorks } from "@/components/WhyThisWorks";
 
@@ -65,6 +66,9 @@ export default function Sleep() {
   const [wake, setWake] = useState("07:00");
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  /** Kept on this device, not yet on the server — so "Your rhythm" below has
+   *  not counted it, and the confirmation says so. */
+  const [queued, setQueued] = useState(false);
   const [busy, setBusy] = useState(false);
   const [soundscapes, setSoundscapes] = useState<Content[]>([]);
   const [stories, setStories] = useState<Content[]>([]);
@@ -86,8 +90,12 @@ export default function Sleep() {
     e.preventDefault();
     if (!quality || busy) return; setBusy(true); setSaveError(null);
     try {
-      await api("/sleep", { method: "POST", body: JSON.stringify({ date: todayISO(), bedtime: `${bedtime}:00`, wake_time: `${wake}:00`, quality, awakenings: 0 }) });
+      // Queued rather than lost when the network is down — a night logged in
+      // bed, on a phone with one bar, is exactly the write this protects.
+      const row = await send("/sleep", { date: todayISO(), bedtime: `${bedtime}:00`, wake_time: `${wake}:00`, quality, awakenings: 0 });
+      setQueued(row === null);
       setSaved(true);
+      if (row === null) return;
       // Awaited (register D58): the fire-and-forget refetch could leave the
       // "Your rhythm" card silently showing pre-save data beside the "Saved"
       // confirmation. The save already succeeded, so a failed refresh only
@@ -138,6 +146,18 @@ export default function Sleep() {
 
         {/* Consistency insight (CBT-I Phase 1) — client-side only, ≥3 real
             nights; the same noon-anchored math Android unit-tests. */}
+        {/* The door to the fuller view. It sits OUTSIDE the fold below, and
+            outside the block inside it that returns null under three nights —
+            a link only visible once you open a collapsed section and only
+            once you already have data is a door most people never find. */}
+        <p className="sub" style={{ marginTop: 10 }}>
+          <Link href="/sleep/insights" className="link">
+            Sleep insights
+          </Link>{" "}
+          — the same nights over a week, a month or three, with the direction the server
+          computes rather than this page&apos;s own seven-night arithmetic.
+        </p>
+
         <details className="today-fold">
           <summary>
             <span>Your rhythm</span>
@@ -177,6 +197,16 @@ export default function Sleep() {
         </div>
         <WhyThisWorks text="From CBT-I (cognitive behavioural therapy for insomnia) — the best-evidenced approach in sleep apps (Lancet Digital Health, 2025)." />
         </details>
+
+        {/* Outside the fold for the same reason as the insights door above:
+            the mixer is a destination, not a detail of this page. */}
+        <p className="sub" style={{ marginTop: 10 }}>
+          Sounds for tonight — one at a time below, or{" "}
+          <Link href="/sleep/mixer" className="link">
+            blend four layers in the mixer
+          </Link>
+          .
+        </p>
 
         <details className="today-fold">
           <summary>
@@ -239,7 +269,13 @@ export default function Sleep() {
             <label className="field grow"><span>In bed around</span><input type="time" value={bedtime} onChange={(e) => setBedtime(e.target.value)} /></label>
             <label className="field grow"><span>Woke up around</span><input type="time" value={wake} onChange={(e) => setWake(e.target.value)} /></label>
           </div>
-          {saved && <p className="success" role="status">Saved — one entry per morning, edits welcome.</p>}
+          {saved && (
+            <p className="success" role="status">
+              {queued
+                ? "Saved on this device — it will send when you are back online, and your rhythm below will catch up then."
+                : "Saved — one entry per morning, edits welcome."}
+            </p>
+          )}
           {saveError && <p className="error" role="alert">{saveError}</p>}
           <button className="btn" disabled={!quality || busy}>{busy ? "Saving…" : "Save check-in"}</button>
         </form>

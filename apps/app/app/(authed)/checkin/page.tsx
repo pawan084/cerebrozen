@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { send } from "@/lib/outbox";
 
 // Check in (TOD-02), graduated from /design/checkin on 2026-08-12.
 //
@@ -77,6 +78,10 @@ export default function CheckinPage() {
   const [consent, setConsent] = useState<Consent | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  /** The write is on this device but not yet on the server. The confirmation
+   *  has to say so — "Saved" over an unsent entry is the same false warmth
+   *  the failure case already refuses. */
+  const [queued, setQueued] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -92,15 +97,16 @@ export default function CheckinPage() {
     setSaving(true);
     setError(null);
     try {
-      await api("/moods", {
-        method: "POST",
-        body: JSON.stringify({
-          mood: chosen.name,
-          note: note.trim() || chosen.note,
-          symbol: chosen.symbol,
-          intensity: intensity ?? 3,
-        }),
+      // Through the outbox, not straight at the API: with no signal this
+      // returns null and keeps the entry to send later, rather than losing
+      // the one thing on this page the person actually wrote.
+      const row = await send("/moods", {
+        mood: chosen.name,
+        note: note.trim() || chosen.note,
+        symbol: chosen.symbol,
+        intensity: intensity ?? 3,
       });
+      setQueued(row === null);
       setSaved(true);
     } catch {
       // Same rule the home check-in learned the hard way: never show a warm
@@ -271,11 +277,14 @@ export default function CheckinPage() {
           {saved ? (
             <div className="ds-actions" aria-live="polite">
               <Link href="/home" className="ds-cta">
-                Saved — back to Today
+                {queued ? "Saved on this device — back to Today" : "Saved — back to Today"}
               </Link>
               <Link href="/insights" className="text-btn">
                 See what it adds up to
               </Link>
+              {queued ? (
+                <p className="sub">It will sync the next time you are online.</p>
+              ) : null}
             </div>
           ) : (
             <div className="ds-actions">
