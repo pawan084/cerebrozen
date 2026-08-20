@@ -43,7 +43,10 @@ function withinWindow(nights: Night[], days: number): Night[] {
   return nights.filter((n) => !n.date || n.date >= iso);
 }
 
-const hhmm = (min: number) => `${Math.floor(min / 60)}h ${min % 60}m`;
+// A NON-BREAKING space: in the compact stat tile "7h 43m" wrapped onto two
+// lines while "29m" and "3.5/5" did not, so one tile stood taller than its
+// neighbours and the row stopped reading as a row. Seen on a CPH2681.
+const hhmm = (min: number) => `${Math.floor(min / 60)}h ${min % 60}m`;
 
 // The direction sentence. `trend` is the server's word; these are the only
 // four it emits, and none of them is a diagnosis or a promise.
@@ -122,7 +125,7 @@ export default function SleepInsights() {
           <h2 id="si-stats" className="sr-only">
             This window in numbers
           </h2>
-          <div className="stat-tiles">
+          <div className="stat-tiles compact">
             {[
               { value: enough ? hhmm(summary!.avg_duration_min) : "—", label: "average" },
               { value: enough ? `${summary!.bedtime_consistency_min}m` : "—", label: "bedtime range" },

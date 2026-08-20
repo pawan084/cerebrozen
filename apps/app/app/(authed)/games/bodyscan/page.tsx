@@ -100,15 +100,10 @@ export default function BodyScan() {
             Move attention through the body without trying to change anything. It works with
             no connection at all — nothing here is sent anywhere.
           </p>
-
-          <ol className="offline-modules">
-            {STEPS.map((s) => (
-              <li key={s.part} className="ds-card">
-                <h2 className="serif-h">{s.part}</h2>
-                <p className="sub">{s.body}</p>
-              </li>
-            ))}
-          </ol>
+          {/* Controls above the script. The eight parts are worth reading, but
+              putting them first meant Begin sat eight cards below the fold on a
+              phone — the primary action of the screen, reachable only by
+              scrolling past the thing you came to do. */}
 
           <section className="ds-card">
             <div className="ds-head">
@@ -128,6 +123,15 @@ export default function BodyScan() {
               </button>
             </div>
           </section>
+
+          <ol className="offline-modules">
+            {STEPS.map((s) => (
+              <li key={s.part} className="ds-card">
+                <h2 className="serif-h">{s.part}</h2>
+                <p className="sub">{s.body}</p>
+              </li>
+            ))}
+          </ol>
 
           <WhyThisWorks text="Attention gets somewhere to be that is not the thought you were having. Noticing a sensation without trying to change it is the practice — there is no relaxed enough to reach." />
         </div>

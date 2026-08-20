@@ -446,6 +446,97 @@ test.describe("Web app (authenticated client)", () => {
     }
   });
 
+  test("none of the new rooms scrolls sideways on a phone", async ({ page }) => {
+    // The recurring shape of a design rejection here has never been styling —
+    // it has been truncation, wrapping and overflow. So the new rooms get
+    // measured at phone width rather than looked at: a stat row of three
+    // tiles, a slider column and a bar chart are exactly the three layouts
+    // that push a page wider than the screen.
+    test.setTimeout(120_000);
+    const email = `e2e-phone-${Date.now()}@test.app`;
+    await createAccount(page, email);
+    // 360, not 390: that is the CSS width of the OnePlus CPH2681 this was
+    // walked on (720 physical at 320dpi), and the bug found there — a mood row
+    // whose six 58px tiles came to 408px of min-content inside a grid item
+    // that would not shrink — passed at 390 and failed at 360.
+    await page.setViewportSize({ width: 360, height: 800 });
+
+    for (const path of [
+      "/home",
+      "/sleep",
+      "/sleep/insights",
+      "/sleep/mixer",
+      "/insights",
+      "/insights/trends",
+      "/games",
+      "/games/bodyscan",
+      "/library",
+      "/library/cbti",
+      "/library/mbct",
+      "/journal",
+      "/checkin",
+      "/chat",
+    ]) {
+      await page.goto(`${APP}${path}`, { waitUntil: "networkidle" });
+      const { scroll, client } = await page.evaluate(() => ({
+        scroll: document.documentElement.scrollWidth,
+        client: document.documentElement.clientWidth,
+      }));
+      // A chart may scroll INSIDE its own container; the page must not.
+      expect(scroll, `${path} scrolls sideways at 390px`).toBeLessThanOrEqual(client + 1);
+    }
+  });
+
+  test("the primary button is a real button on every route, not a UA default", async ({ page }) => {
+    // `.ds-cta` lived only under `.design-root`, the prototype wrapper, so on
+    // every route that graduated out of /design it had NO rule at all and the
+    // most important control on the screen rendered as a grey UA button below
+    // the 48px target floor. It shipped that way on /checkin and was invisible
+    // in review — a default button looks unremarkable on a desktop screenshot.
+    test.setTimeout(120_000);
+    const email = `e2e-cta-${Date.now()}@test.app`;
+    await createAccount(page, email);
+
+    for (const path of ["/checkin", "/sleep/mixer", "/games/bodyscan"]) {
+      await page.goto(`${APP}${path}`, { waitUntil: "networkidle" });
+      // /checkin has no Save button until a feeling is chosen — the guard below
+      // caught that on the first run, which is what it is for.
+      if (path === "/checkin") {
+        await page.getByRole("button", { name: /Good|Anxious|Low|Tired/ }).first().click();
+      }
+      const cta = page.locator(".ds-cta:visible").first();
+      const count = await page.locator(".ds-cta:visible").count();
+      expect(count, `${path} rendered no .ds-cta — this check would pass vacuously`)
+        .toBeGreaterThan(0);
+      const style = await cta.evaluate((el) => {
+        const cs = getComputedStyle(el);
+        return { minHeight: parseFloat(cs.minHeight), radius: cs.borderRadius, height: el.getBoundingClientRect().height };
+      });
+      expect(style.height, `${path} primary button is under the 48px floor`).toBeGreaterThanOrEqual(48);
+      expect(style.radius, `${path} primary button has no pill radius — is .ds-cta scoped again?`)
+        .not.toBe("0px");
+    }
+  });
+
+  test("a chosen chip looks chosen, not merely announced", async ({ page }) => {
+    // aria-pressed was set everywhere and styled nowhere for `.chip`, so the
+    // selected window on Trends, the active preset on the mixer and the
+    // journal's tag filters were distinguishable to a screen reader and not to
+    // an eye. Found by tapping "Still air" on a handset and watching nothing
+    // move.
+    const email = `e2e-chip-${Date.now()}@test.app`;
+    await createAccount(page, email);
+    await page.goto(`${APP}/sleep/insights`, { waitUntil: "networkidle" });
+
+    const chips = page.locator(".chip[aria-pressed]");
+    expect(await chips.count(), "no pressable chips — vacuous").toBeGreaterThan(1);
+    const on = await page.locator('.chip[aria-pressed="true"]').first()
+      .evaluate((el) => getComputedStyle(el).backgroundColor);
+    const off = await page.locator('.chip[aria-pressed="false"]').first()
+      .evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(on, "selected and unselected chips paint the same background").not.toBe(off);
+  });
+
   test("every chip is a tap target, not a decoration", async ({ page }) => {
     // `.chip` and `.ui-chip` are buttons everywhere they appear — chat retry
     // and suggestions, the ritual cue picker, journal tag filters, the
