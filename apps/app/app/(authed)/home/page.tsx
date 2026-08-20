@@ -376,10 +376,18 @@ export default function Home() {
                     <span className="plan-start">{s.done ? "DONE" : "START"}</span>
                   </Link>
                 ))}
+              {/* This row renders ONLY when the plan fetch failed, and it used
+                  to promise "Personalized from your check-ins" — a claim about
+                  a plan the app had just failed to load. Worse, `planFailed`
+                  makes `heroKind` "fallback", so the hero directly above was
+                  simultaneously saying "This one is not personalised yet". One
+                  render, two contradictory claims. Found by comparing this
+                  screen against the Android Home, which carries the same
+                  `heroKindFor` contract. */}
               {planFailed && (
                 <Link href="/plan" className="plan-row">
                   <span className="plan-play" style={{ background: STEP_COLORS[0] }}><Icon.play size={16} /></span>
-                  <span className="plan-body"><strong>Open today&apos;s plan</strong><small>Personalized from your check-ins</small></span>
+                  <span className="plan-body"><strong>Open today&apos;s plan</strong><small>We could not load it just now — open to try again</small></span>
                   <span className="plan-start">START</span>
                 </Link>
               )}
