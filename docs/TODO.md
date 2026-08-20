@@ -451,6 +451,46 @@ gap): TIPP, gratitude, one-good-thing, intention, the CBT thought record, crisis
 insight reel, wind-down, the mindful mini-games, baseline assessment, trusted contact, the
 standalone player.
 
+### The last contrast flags, chased to two root causes (2026-08-21)
+
+The walk's mid-range flags — the ones left "unverified" when the literal sweep landed —
+turned out to be **real**, and to come from two places rather than seven. Re-walked after
+each fix; the mid-range list went **21 → 1**, and the one survivor is not a defect.
+
+**`colorScheme.primary` was a constant.** Material hands `primary` to every unstyled
+`TextButton` as its label colour, and both schemes set it to `BrandPrimary` — a fixed dark
+plum (`#8A4A78`). On Night's page that is **2.96:1**, on a Night card **2.68:1**.
+Twenty-three TextButtons carried no explicit colour and inherited exactly that, which is
+what kept surfacing as "Next" / "Previous" / "Pause" at 2.6–2.8:1 on the offline guidance
+screens. `primary` is now the per-theme `Periwinkle` (9.70:1 Night, 9.91:1 Dawn), and
+`onPrimary` moves with it — mandatory, because the fill is a PALE plum in Night and the
+Cream ink that suited the dark one would vanish on it. The comment above that block
+already warned about this exact trap; the code had drifted from it.
+
+**`Color.White` on a `Periwinkle` fill, in a conditional.** `Periwinkle` is `#D9ACDE` in
+Night — a light pink — so white-on-it measured **1.93:1**, against 10.85:1 in Dawn. That
+is every selected mood tile, every intensity chip, and the onboarding option rows: the
+SELECTED state was the one you could not read. Eight sites, now `OnPrimary` (8.77:1 /
+10.61:1). The earlier sweep missed them because they are written
+`if (active) Color.White else …` — a plain `color = Color.White` grep does not see it.
+
+**The one remaining flag is correct behaviour.** `tipp` "Previous" at 2.63:1 is the button
+DISABLED on step 1 of 4, dimmed deliberately to say so. WCAG 1.4.3 exempts inactive
+components from the contrast minimum, so dimming it is the affordance, not a defect.
+
+**Everything else is the known filled-pill artifact:** of 32 remaining flags, 31 sit at
+1.00–1.10:1, which is the signature of taking ink as the extreme pixel inside a filled
+button. Verified individually as legible on the handset.
+
+Also checked and cleared: a scan pairing every `color =` / `tint =` in a screen with its
+nearest enclosing `.background()` produced six candidates, and all six were mis-pairings —
+the "background" was a 10dp status dot or a 1dp divider. Worth knowing before trusting
+that shape of scan.
+
+`ContrastTest` gains both pairings in both themes (542 unit tests). Dawn re-walked on the
+handset after the theme change: no regression, filled components and TextButton ink both
+correct.
+
 ### The 12 small tap targets: eleven did not exist (2026-08-20)
 
 Measured before fixing, and the measurement is most of the story.
