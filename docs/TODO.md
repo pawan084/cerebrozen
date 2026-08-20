@@ -451,6 +451,47 @@ gap): TIPP, gratitude, one-good-thing, intention, the CBT thought record, crisis
 insight reel, wind-down, the mindful mini-games, baseline assessment, trusted contact, the
 standalone player.
 
+### The Android app walked on the same handset (2026-08-20, CPH2681, live backend)
+
+Built fresh from main (the installed APK was three days old and predated this session's
+Sleep commits), installed, and walked against the dev backend over `adb reverse`. The two
+Sleep fixes from earlier hold up on device: the times read in full Periwinkle, and the
+save verdict sits directly under the Save button. `POST /sleep` came back **201** and the
+card collapsed to "Logged · Good · 23:00–07:00".
+
+One real defect, in the offline queue's *surface* rather than its storage:
+
+- **A queued write could be both unsent and invisible.** `TodayScreen` gated the
+  queued-writes banner on `Session.servedStale` — so the banner, and the "Send now" it
+  carries, disappeared the moment reads started working again, which is exactly when it
+  becomes useful. Walked: a check-in logged with the backend unreachable said "Kept on
+  this device — it will sync when you're back"; the link was restored; the next read
+  succeeded; the row then reverted to the OLDER server value with nothing on screen
+  admitting a write was pending. Nothing was lost — the drain at app start sent it
+  (`POST /moods` 201) — but "not lost" is not "the person can see what is happening".
+  Fixed: the banner now shows whenever `Outbox.count() > 0`, with copy that fits the
+  online case (the offline sentence explains the stale reads too, and would be a lie once
+  reads are live), and Today drains once automatically when it stops serving stale reads.
+- **`Outbox.drain()` had no lock.** Adding an automatic trigger made a pre-existing race
+  easy to hit: two callers read `pending()` together and both POSTed the same entry, and
+  the server's idempotency guard answered the loser **409 in the same millisecond**.
+  Nothing was duplicated — that is what the guard is for — but the race was real.
+  `drain()` now serialises on a `Mutex`.
+
+Verified after the fix: queue offline → restore → the entry sends itself, the banner
+clears, and the row shows the synced value, with no cold start. `GET /moods` confirms
+**one** row per write across the whole walk (four writes, four rows, including the one
+made from the browser earlier).
+
+**Open, not closed:** after the mutex the drain still issues a second POST that the
+idempotency layer answers as a replay (201 in 6.79ms against the real one's 2336ms). One
+row lands, so this is waste rather than a correctness bug, and the cause was not chased.
+
+**Flake, seen once:** `GuestAppE2ETest::a_guests_check_in_is_answered_not_errored` failed
+the first full instrumented run ("never appeared on screen: Anxious", 52.6s), then passed
+alone and passed a full re-run (8/8, 23.8s). Recorded as intermittent — not fixed, and
+not attributed.
+
 ### The web client walked on a real handset (2026-08-20, CPH2681 over CDP)
 
 The new rooms were built and shipped green — 58 e2e, typecheck, lint, claims gate — and
