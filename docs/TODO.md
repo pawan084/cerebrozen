@@ -451,6 +451,62 @@ gap): TIPP, gratitude, one-good-thing, intention, the CBT thought record, crisis
 insight reel, wind-down, the mindful mini-games, baseline assessment, trusted contact, the
 standalone player.
 
+### The 37 hex literals swept out of Android screens (2026-08-20)
+
+The systemic version of the two colour bugs above: `CLAUDE.md` has said "screens read
+design tokens only" since the iOS client, and 37 opaque `Color(0xFF…)` literals had
+accumulated in `ui/screens/` anyway. **All 37 are gone**, and a test now enforces the rule
+rather than restating it.
+
+Every one was authored while looking at Dawn, and every one failed in Night. Measured
+against the surface each actually sits on:
+
+| literal | where | Night before | after |
+| --- | --- | --- | --- |
+| `6C2768` ×5 | symbols, crisis links, Explore eyebrow | **1.89:1** | 8.77 (`Periwinkle`) |
+| `6E376B` ×2 | back arrows | **2.15:1** | 7.74 (`Periwinkle`) |
+| `A52F50` | crisis back arrow | **2.78:1** | 6.58 (`Danger`) |
+| `955386` ×2 | chevrons | **3.10:1** | 7.71 (`TextMuted2`) |
+| `B13D57` ×6 | page eyebrows | **3.27:1** | 8.91 (`Warm`) |
+| `776E6E`, `817980` | subtitles, placeholder | 3.41–4.01 | 7.71 (`TextMuted`) |
+| `4B775E` ×4, `C75270` ×4 | family icons | 3.30–3.92 | 9.30 / 7.35 (`Ok` / `Warm`) |
+| `E34B4B` ×3, `D45369` | urgent icons | on `DangerSoft` | 6.58 (`Danger`) |
+| peach / lavender ×3 | Explore hero gradient | mixed a flipping stop with two fixed ones | `ExploreHero*` |
+
+Three that were not simply a wrong token:
+
+- **The Explore hero mixed art with theme.** Two stops were fixed hex and the middle one
+  was `AccentSoft`, which flips — so Night got a dark band between two light ones, and the
+  eyebrow sat on a mid-tone wash at 1.89:1. It now follows the shape `MixerHero*` and
+  `SleepHero*` already use. The eyebrow is `Cyan`, and it is gated against **every stop**
+  of the gradient, not just the one under the glyphs today (tightest: 4.80:1 on Dawn).
+- **A `Color.White` button label was unreadable in both states.** Not a hex literal, so
+  the sweep nearly missed it — found because the walk's 2.53:1 flag on gratitude
+  "Save privately" cross-validated exactly against token arithmetic. White measured
+  **2.95:1** on the enabled Accent2 pill and **2.53:1** on the disabled one, in Night. The
+  label now follows the fill: `OnAccent` (5.73) / `DisabledInk` (6.80). Four other
+  `Color.White` inks fixed the same way; `DisabledFill` in Night was also making the
+  disabled state LOUDER than the live one.
+- **`FocusCard(accent = …)`** was the only call site in the app overriding that default,
+  with a plum one shade off `BrandPrimary`, for a shadow tint. Override dropped.
+
+**The gate.** `NoRawColorsInScreensTest` walks `ui/screens/` and fails on any opaque
+literal, naming file, line and value. Verified to fail before being left green.
+Translucent literals are deliberately allowed — a colour with alpha below `FF` composes
+over whatever is beneath it, so it cannot be light-theme-only by construction; the two
+that remain are a 15% white highlight and a 19% plum stroke on a decorative canvas.
+`ContrastTest` gains 12 new pairings covering every replacement, in both themes.
+
+**On the walk auditor, again.** Its mid-range flags proved RIGHT where they could be
+cross-checked: gratitude "Save privately" 2.53:1 and breathing-intro "BREATHING" 3.27:1
+both matched token arithmetic exactly. But it reported `explore` as **clean** while the
+worst literal in the app (1.89:1) was on that screen — a gradient is not flat, so it was
+skipped as unmeasurable. It errs in both directions; the token arithmetic is the
+instrument that decides.
+
+Gates: 537 unit tests green (ContrastTest 28, NoRawColorsInScreens 1), instrumented 8/8,
+and both themes re-walked on the handset — Dawn's art is pixel-for-pixel what it was.
+
 ### All 58 Android routes walked and measured (2026-08-20, CPH2681)
 
 The first systematic pass over the whole graph rather than the screens someone thought to
