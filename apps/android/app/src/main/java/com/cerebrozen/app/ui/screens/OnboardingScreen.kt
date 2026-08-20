@@ -170,6 +170,7 @@ import org.json.JSONObject
 import com.cerebrozen.app.ui.theme.FieldFill
 import com.cerebrozen.app.ui.theme.Ok
 import com.cerebrozen.app.ui.theme.OkSoft
+import com.cerebrozen.app.ui.theme.OnPrimary
 
 // V2-e: the six retired steps (Language/Intro/Reset/Reflection/Notify/Ready)
 // left the enum with their branches — entries are in FUNNEL order because
@@ -1099,14 +1100,19 @@ private fun StateOptionRow(
             // the first check-in looked unfinished. Selection reads from the
             // tile colours; the icon stays put and names the state.
             Icon(icon, contentDescription = null,
-                tint = if (selected) Color.White else Periwinkle,
+                // `Color.White` on a Periwinkle fill measured 1.93:1 in Night (the token
+                // is #D9ACDE there — a LIGHT pink) against 10.85:1 in Dawn, so the
+                // selected option was the one you could not read, in the theme most
+                // people use at night. OnPrimary is the ink this fill was designed for:
+                // 8.77:1 Night, 10.61:1 Dawn.
+                tint = if (selected) OnPrimary else Periwinkle,
                 modifier = Modifier.size(19.dp))
         }
         Column {
             Text(label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
-                color = if (selected) Color.White else TextPrimary)
+                color = if (selected) OnPrimary else TextPrimary)
             Text(subtitle, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 16.sp),
-                color = if (selected) Color.White.copy(alpha = .82f) else TextMuted)
+                color = if (selected) OnPrimary.copy(alpha = .82f) else TextMuted)
         }
     }
 }

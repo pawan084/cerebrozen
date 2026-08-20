@@ -108,6 +108,33 @@ class ContrastTest {
      * against the surface it actually sits on, in both themes; these lock that
      * arithmetic in so the next palette edit cannot quietly undo it.
      */
+    /**
+     * The Material role, and the selected-state ink — the two pairings behind
+     * the last of the device walk's mid-range flags.
+     *
+     * `colorScheme.primary` is the ink Material hands to every unstyled
+     * `TextButton`, and it was the CONSTANT `BrandPrimary` in both schemes: a
+     * dark plum measuring 2.96:1 on Night's page and 2.68:1 on a Night card.
+     * Twenty-three TextButtons inherited it, which is what kept surfacing as
+     * "Next" / "Previous" / "Pause" at 2.6-2.8:1 on the offline guidance
+     * screens. `Color.White` on a Periwinkle fill was the same story from the
+     * other end — 1.93:1 in Night for every selected mood tile, intensity chip
+     * and onboarding option, against 10.85:1 in Dawn.
+     */
+    @Test
+    fun night_materialPrimaryAndSelectedInk_meetAA() = night {
+        assertContrast("Periwinkle as TextButton ink on Night", Periwinkle, Night)     // 9.70:1, was 2.96
+        assertContrast("Periwinkle as TextButton ink on CardFill", Periwinkle, CardFill) // 8.77:1, was 2.68
+        assertContrast("OnPrimary on Periwinkle (selected fills)", OnPrimary, Periwinkle) // 8.77:1, was 1.93
+    }
+
+    @Test
+    fun dawn_materialPrimaryAndSelectedInk_meetAA() = dawn {
+        assertContrast("Periwinkle as TextButton ink on Night", Periwinkle, Night)         // 9.91:1
+        assertContrast("Periwinkle as TextButton ink on CardFill", Periwinkle, CardFill)   // 10.61:1
+        assertContrast("OnPrimary on Periwinkle (selected fills)", OnPrimary, Periwinkle)  // 10.61:1
+    }
+
     @Test
     fun night_theTokensThatReplacedScreenLiterals_meetAA() = night {
         assertContrast("Warm on Night (page eyebrows)", Warm, Night)              // 8.91:1, was 3.27

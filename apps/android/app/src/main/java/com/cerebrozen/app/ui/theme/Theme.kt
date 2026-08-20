@@ -20,8 +20,22 @@ fun CereBroTheme(content: @Composable () -> Unit) {
     // white label there would be all but invisible.
     val scheme = if (AppTheme.isNight) {
         darkColorScheme(
-            primary = BrandPrimary,
-            onPrimary = Cream,
+            // Per-theme, not the constant BrandPrimary. `primary` is the ink
+            // Material hands to every unstyled TextButton, and BrandPrimary is
+            // a DARK plum (#8A4A78) — on Night's page it measured 2.96:1, on a
+            // Night card 2.68:1, against a 4.5:1 floor. Twenty-three
+            // TextButtons carried no explicit colour and inherited exactly
+            // that, which is what the device walk kept flagging as
+            // "Next" / "Previous" / "Pause" at 2.6-2.8:1 on the offline
+            // guidance screens. Periwinkle is the same role resolved per
+            // theme: 9.70:1 here, 9.91:1 in Dawn.
+            //
+            // `onPrimary` moves with it, and has to: this fill is now a PALE
+            // plum in Night, so the Cream ink that suited the dark one would
+            // be all but invisible on it — which is precisely what the comment
+            // above this block already warned about.
+            primary = Periwinkle,
+            onPrimary = OnPrimary,
             primaryContainer = LavenderPillFloor,
             onPrimaryContainer = Cream,
             secondary = BrandSecondary,
@@ -41,7 +55,11 @@ fun CereBroTheme(content: @Composable () -> Unit) {
         )
     } else {
         lightColorScheme(
-            primary = BrandPrimary,
+            // Same role, same reasoning as the dark scheme above. In Dawn
+            // Periwinkle resolves to the dark plum BrandPrimary approximated,
+            // so filled components look as they did and TextButton ink gains
+            // contrast (5.75:1 -> 9.91:1).
+            primary = Periwinkle,
             onPrimary = OnPrimary,
             primaryContainer = LavenderPillFloor,
             onPrimaryContainer = OnPrimary,

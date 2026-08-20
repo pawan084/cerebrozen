@@ -1673,7 +1673,7 @@ fun GroundingIntroScreen(
                 listOf("Thoughts feel loud", "You feel disconnected", "You need a short reset").forEachIndexed { i, label ->
                     Text(
                         label, style = MaterialTheme.typography.labelMedium,
-                        color = if (i == 0) Color.White else Periwinkle,
+                        color = if (i == 0) OnPrimary else Periwinkle,
                         modifier = Modifier.clip(RoundedCornerShape(99.dp))
                             .background(if (i == 0) Periwinkle else Periwinkle.copy(alpha = .06f))
                             .padding(horizontal = 15.dp, vertical = 13.dp),
@@ -1789,12 +1789,17 @@ fun CheckInDetailScreen(
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Icon(moodIcon(mood.name), contentDescription = null,
-                                    tint = if (active) Color.White else Periwinkle,
+                                    // `Color.White` on a Periwinkle fill measured 1.93:1 in Night (the token
+                                    // is #D9ACDE there — a LIGHT pink) against 10.85:1 in Dawn, so the
+                                    // selected option was the one you could not read, in the theme most
+                                    // people use at night. OnPrimary is the ink this fill was designed for:
+                                    // 8.77:1 Night, 10.61:1 Dawn.
+                                    tint = if (active) OnPrimary else Periwinkle,
                                     modifier = Modifier.size(18.dp))
                             }
                             Text(
                                 stringResource(mood.labelRes), style = MaterialTheme.typography.titleSmall,
-                                color = if (active) Color.White else TextPrimary,
+                                color = if (active) OnPrimary else TextPrimary,
                             )
                         }
                     }
@@ -1811,7 +1816,7 @@ fun CheckInDetailScreen(
                     val active = intensity == value
                     Text(
                         value, style = MaterialTheme.typography.labelMedium,
-                        color = if (active) Color.White else Periwinkle,
+                        color = if (active) OnPrimary else Periwinkle,
                         modifier = Modifier.clip(RoundedCornerShape(99.dp))
                             .background(if (active) Periwinkle else Periwinkle.copy(alpha = .06f))
                             .clickable { intensity = value }.padding(horizontal = 15.dp, vertical = 12.dp),
@@ -2054,7 +2059,7 @@ fun ReferenceSleepInsightsScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                     val active = window == id
                     Text(
                         stringResource(labelRes), style = MaterialTheme.typography.titleSmall,
-                        color = if (active) Color.White else TextMuted,
+                        color = if (active) OnPrimary else TextMuted,
                         modifier = Modifier.clip(RoundedCornerShape(99.dp))
                             .background(if (active) Periwinkle else CardFill)
                             .clickable { window = id }.padding(horizontal = 15.dp, vertical = 12.dp),
