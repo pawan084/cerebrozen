@@ -171,7 +171,10 @@ export class Mixer {
   /** Layers playing from an uploaded server asset instead of the synth. */
   private elements = new Map<LayerId, HTMLAudioElement>();
   private volumes: number[] = LAYERS.map(() => 0);
-  private masterVolume = 0.8;
+  /** 0.7, the same default `SoundscapeMixer.master` carries on Android — the
+   *  two clients opening at different loudness is the kind of drift that makes
+   *  "the same mixer" quietly untrue. */
+  private masterVolume = 0.7;
   /** key → url, for the layers an admin has actually uploaded. */
   private assets: Partial<Record<LayerId, string>> = {};
 

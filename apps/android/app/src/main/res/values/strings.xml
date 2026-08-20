@@ -1861,6 +1861,9 @@
     <string name="journal_entry_queued">Kept on this device — it will sync when you\'re back online.</string>
     <string name="outbox_pending">%d waiting to sync</string>
     <string name="today_banner_offline_queued">You\'re offline — showing the last copy. %1$d thing(s) you wrote are saved here and will send themselves when you\'re back.</string>
+    <!-- Online, but the queue has not emptied yet. The offline sentence above
+         explains the stale reads as well, so it cannot be reused here. -->
+    <string name="today_banner_queued_online">%1$d thing(s) you wrote haven\'t reached CereBro yet. They are saved here and sending now.</string>
 
     <!-- Trends. Every summary string is only ever shown when the server said
          it had enough data; the "not enough" strings are the honest default. -->

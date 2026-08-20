@@ -23,7 +23,7 @@ export default function MixerPage() {
   const mixer = useRef<Mixer>();
   const [playing, setPlaying] = useState(false);
   const [volumes, setVolumes] = useState<number[]>(PRESETS[0].volumes);
-  const [master, setMaster] = useState(0.8);
+  const [master, setMaster] = useState(0.7); // matches Android's default
   const [served, setServed] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   // One <audio> per layer an admin HAS uploaded. Without these the mixer would

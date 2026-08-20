@@ -1064,12 +1064,38 @@ fun TodayScreen(onOpen: (String) -> Unit) {
             )
         }
 
-        // Offline with queued writes still earns a surface — it carries Send now.
-        val queuedWrites = if (Session.servedStale) com.cerebrozen.app.net.Outbox.count() else 0
+        // Queued writes earn a surface whether or not reads are stale.
+        //
+        // This used to read `if (Session.servedStale) Outbox.count() else 0`,
+        // which hid the banner — and its Send now — at exactly the moment it
+        // becomes useful: the network came back. Walked on a CPH2681
+        // 2026-08-20: a check-in logged with the backend unreachable said
+        // "Kept on this device", the link was restored, the next read
+        // succeeded, and the entry then went BOTH unsent and invisible — the
+        // row reverted to the older server value with nothing on screen
+        // admitting a write was pending. It was not lost (the drain at app
+        // start sent it, POST /moods 201), but "not lost" is not the same as
+        // "the person can see what is happening".
+        val queuedWrites = com.cerebrozen.app.net.Outbox.count()
         if (queuedWrites > 0) {
+            // Back online with a queue is a transient state, so try it once
+            // rather than only offering a button. The banner stays until the
+            // drain actually empties the queue.
+            LaunchedEffect(Session.servedStale, queuedWrites) {
+                if (!Session.servedStale) {
+                    runCatching { com.cerebrozen.app.net.Outbox.drain() }
+                    reload()
+                }
+            }
             InfoBanner(
                 icon = Icons.Outlined.CloudOff,
-                text = stringResource(R.string.today_banner_offline_queued, queuedWrites),
+                text = stringResource(
+                    // The offline sentence explains the stale reads too, and
+                    // would be a lie once reads are live again.
+                    if (Session.servedStale) R.string.today_banner_offline_queued
+                    else R.string.today_banner_queued_online,
+                    queuedWrites,
+                ),
                 actionLabel = stringResource(R.string.today_banner_offline_send),
                 onAction = { scope.launch { runCatching { com.cerebrozen.app.net.Outbox.drain() }; reload() } },
             )

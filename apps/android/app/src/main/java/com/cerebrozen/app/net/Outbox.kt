@@ -1,5 +1,7 @@
 package com.cerebrozen.app.net
 
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -148,7 +150,18 @@ object Outbox {
      * successful network read, the user pulling to refresh) — an empty queue
      * costs one preference read and no network.
      */
-    suspend fun drain(): DrainResult {
+    suspend fun drain(): DrainResult = drainLock.withLock { drainLocked() }
+
+    /** Serialises drains. Two callers used to read [pending] at the same moment
+     *  and both POST the same entry: the server's idempotency guard answered
+     *  the loser 409 ("already in flight"), so nothing was duplicated — but the
+     *  race was real and became easy to hit once Today started draining
+     *  automatically when the network returned (device walk 2026-08-20: a 201
+     *  and a 409 in the same millisecond). The lock costs nothing on the empty
+     *  queue that most calls find. */
+    private val drainLock = Mutex()
+
+    private suspend fun drainLocked(): DrainResult {
         val items = pending()
         if (items.isEmpty()) return DrainResult(0, 0, 0)
 
