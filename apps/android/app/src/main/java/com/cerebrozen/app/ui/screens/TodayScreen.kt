@@ -1638,7 +1638,11 @@ fun GroundingIntroScreen(
                 .padding(horizontal = 21.dp, vertical = 14.dp).padding(bottom = 18.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            FocusCard(accent = Color(0xFF7B376E), pastel = true) {
+            // The accent is the shadow tint and the orb, nothing that carries text.
+            // This was the only call site in the app that overrode it, with a
+            // plum a shade off the BrandPrimary default (7B376E vs 8A4A78) —
+            // so the override was a literal buying nothing.
+            FocusCard(pastel = true) {
                 Text("GROUND · 3 MINUTES", style = MaterialTheme.typography.labelSmall, color = Warm)
                 Text(
                     "5 things\nyou can see.",

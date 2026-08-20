@@ -188,6 +188,7 @@ import kotlinx.coroutines.delay
 import kotlin.random.Random
 import org.json.JSONArray
 import com.cerebrozen.app.ui.theme.FieldFill
+import com.cerebrozen.app.ui.theme.OnAccent
 
 /** Page frame for a pushed sub-screen: back affordance + eyebrow + serif title. */
 @Composable
@@ -263,7 +264,7 @@ internal fun SubPage(
                 Text(
                     eyebrow.uppercase(),
                     style = MaterialTheme.typography.labelSmall.copy(letterSpacing = if (softDawn) .7.sp else 1.7.sp),
-                    color = if (softDawn) Color(0xFFB13D57) else EyebrowMuted,
+                    color = if (softDawn) Warm else EyebrowMuted,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -1451,11 +1452,11 @@ private fun MixerHeroCard(
                 horizontalArrangement = Arrangement.spacedBy(9.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White)
+                Icon(if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, contentDescription = null, tint = OnAccent)
                 Text(
                     if (playing) stringResource(R.string.common_pause_label) else stringResource(R.string.common_play_label),
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
+                    color = OnAccent,
                 )
             }
         }

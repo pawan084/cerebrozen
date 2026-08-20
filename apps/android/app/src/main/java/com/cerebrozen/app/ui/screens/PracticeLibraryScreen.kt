@@ -80,6 +80,12 @@ import com.cerebrozen.app.ui.theme.OkSoft
 import com.cerebrozen.app.ui.theme.Periwinkle
 import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.TextSoft
+import com.cerebrozen.app.ui.theme.CrisisPrimaryFill
+import com.cerebrozen.app.ui.theme.Danger
+import com.cerebrozen.app.ui.theme.DisabledFill
+import com.cerebrozen.app.ui.theme.DisabledInk
+import com.cerebrozen.app.ui.theme.TextMuted2
+import com.cerebrozen.app.ui.theme.OnAccent
 
 
 /** The first level under Explore's Calm now card: broad practice families,
@@ -106,7 +112,7 @@ fun PracticeLibraryScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
             Text(
                 stringResource(R.string.practicelib_eyebrow),
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = .7.sp),
-                color = Color(0xFFB13D57),
+                color = Warm,
             )
             Text(
                 stringResource(R.string.practicelib_hero),
@@ -123,14 +129,14 @@ fun PracticeLibraryScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                 color = TextMuted,
             )
             Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
-                PracticeFamilyRow(Icons.Outlined.Spa, stringResource(R.string.practicelib_breathe_title), stringResource(R.string.practicelib_breathe_sub), OkSoft, Color(0xFF4B775E)) { onOpen("breathing-intro") }
+                PracticeFamilyRow(Icons.Outlined.Spa, stringResource(R.string.practicelib_breathe_title), stringResource(R.string.practicelib_breathe_sub), OkSoft, Ok) { onOpen("breathing-intro") }
                 // LocalFlorist, not HealthAndSafety: the red-cross shield is this
                 // app's crisis symbol (Urgent support wears it on every screen),
                 // and audit K found it labelling a routine practice family here.
-                PracticeFamilyRow(Icons.Outlined.LocalFlorist, stringResource(R.string.practicelib_ground_title), stringResource(R.string.practicelib_ground_sub), WarmSoft, Color(0xFFC75270)) { onOpen("groundingintro") }
-                PracticeFamilyRow(Icons.Outlined.FavoriteBorder, stringResource(R.string.practicelib_reset_title), stringResource(R.string.practicelib_reset_sub), WarmSoft, Color(0xFFC75270)) { onOpen("tipp") }
-                PracticeFamilyRow(Icons.Outlined.Psychology, stringResource(R.string.practicelib_thoughts_title), stringResource(R.string.practicelib_thoughts_sub), WarmSoft, Color(0xFFC75270)) { onOpen("cbt") }
-                PracticeFamilyRow(Icons.Outlined.Bedtime, stringResource(R.string.practicelib_sleep_title), stringResource(R.string.practicelib_sleep_sub), OkSoft, Color(0xFF4B775E)) { onOpen("bodyscan") }
+                PracticeFamilyRow(Icons.Outlined.LocalFlorist, stringResource(R.string.practicelib_ground_title), stringResource(R.string.practicelib_ground_sub), WarmSoft, Warm) { onOpen("groundingintro") }
+                PracticeFamilyRow(Icons.Outlined.FavoriteBorder, stringResource(R.string.practicelib_reset_title), stringResource(R.string.practicelib_reset_sub), WarmSoft, Warm) { onOpen("tipp") }
+                PracticeFamilyRow(Icons.Outlined.Psychology, stringResource(R.string.practicelib_thoughts_title), stringResource(R.string.practicelib_thoughts_sub), WarmSoft, Warm) { onOpen("cbt") }
+                PracticeFamilyRow(Icons.Outlined.Bedtime, stringResource(R.string.practicelib_sleep_title), stringResource(R.string.practicelib_sleep_sub), OkSoft, Ok) { onOpen("bodyscan") }
                 // The door `guidedimagery` never had. Four finished journeys —
                 // forest, ocean, mountain, meadow, five steps each with voice
                 // cues — were registered in the graph with nothing anywhere in
@@ -138,8 +144,8 @@ fun PracticeLibraryScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
                 // advertise "Body scan and imagery" and open only the body
                 // scan; imagery is its own family now, and that subtitle no
                 // longer promises what it does not open.
-                PracticeFamilyRow(Icons.Outlined.Landscape, stringResource(R.string.practicelib_imagery_title), stringResource(R.string.practicelib_imagery_sub), OkSoft, Color(0xFF4B775E)) { onOpen("guidedimagery") }
-                PracticeFamilyRow(Icons.Outlined.AutoAwesome, stringResource(R.string.practicelib_gratitude_title), stringResource(R.string.practicelib_gratitude_sub), WarmSoft, Color(0xFFC75270)) { onOpen("gratitude") }
+                PracticeFamilyRow(Icons.Outlined.Landscape, stringResource(R.string.practicelib_imagery_title), stringResource(R.string.practicelib_imagery_sub), OkSoft, Ok) { onOpen("guidedimagery") }
+                PracticeFamilyRow(Icons.Outlined.AutoAwesome, stringResource(R.string.practicelib_gratitude_title), stringResource(R.string.practicelib_gratitude_sub), WarmSoft, Warm) { onOpen("gratitude") }
             }
         }
     }
@@ -168,20 +174,20 @@ fun PracticeBreathingScreen(onBack: () -> Unit, onUrgent: () -> Unit, onBegin: (
             horizontalArrangement = Arrangement.spacedBy(11.dp),
         ) {
             CircleAction(FieldFill, onBack) {
-                Icon(Icons.Outlined.ArrowBack, "Back", tint = Color(0xFF6E376B), modifier = Modifier.size(23.dp))
+                Icon(Icons.Outlined.ArrowBack, "Back", tint = Periwinkle, modifier = Modifier.size(23.dp))
             }
             Column(Modifier.weight(1f)) {
                 Text("Breathing", style = MaterialTheme.typography.headlineSmall.copy(fontFamily = serif), color = TextPrimary)
                 Text("Prepare session", style = MaterialTheme.typography.bodySmall, color = TextMuted)
             }
             CircleAction(DangerSoft, onUrgent) {
-                Icon(Icons.Outlined.HealthAndSafety, "Urgent support", tint = Color(0xFFE34B4B), modifier = Modifier.size(23.dp))
+                Icon(Icons.Outlined.HealthAndSafety, "Urgent support", tint = Danger, modifier = Modifier.size(23.dp))
             }
         }
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 26.dp, vertical = 15.dp),
         ) {
-            Text("BREATHING", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = .7.sp), color = Color(0xFFB13D57))
+            Text("BREATHING", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = .7.sp), color = Warm)
             Text(
                 "In for four,\nout for six.", modifier = Modifier.padding(top = 7.dp),
                 style = MaterialTheme.typography.displayLarge.copy(fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 40.sp, lineHeight = 39.sp),
@@ -218,7 +224,7 @@ fun PracticeBreathingScreen(onBack: () -> Unit, onUrgent: () -> Unit, onBegin: (
                     .background(Accent2).clickable(onClick = onBegin),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("Begin 2-minute breathing", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White)
+                Text("Begin 2-minute breathing", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = OnAccent)
             }
         }
     }
@@ -239,7 +245,7 @@ fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
             Text(
                 "GRATITUDE REFLECTION",
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = .7.sp),
-                color = Color(0xFFB13D57),
+                color = Warm,
             )
             Text(
                 "Notice one\nthing—not\neverything.",
@@ -258,7 +264,7 @@ fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
             OutlinedTextField(
                 value = reflection,
                 onValueChange = { reflection = it; status = null },
-                placeholder = { Text("One thing that made today slightly easier...", color = Color(0xFF817980)) },
+                placeholder = { Text("One thing that made today slightly easier...", color = TextMuted) },
                 modifier = Modifier.fillMaxWidth().height(78.dp),
                 shape = RoundedCornerShape(18.dp),
                 minLines = 2,
@@ -279,7 +285,7 @@ fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
             val enabled = !busy && reflection.isNotBlank()
             Box(
                 Modifier.fillMaxWidth().padding(top = 17.dp).height(49.dp).clip(RoundedCornerShape(25.dp))
-                    .background(if (enabled) Accent2 else Color(0xFFB89AB2))
+                    .background(if (enabled) Accent2 else DisabledFill)
                     .clickable(enabled = enabled) {
                         busy = true; status = null
                         scope.launch {
@@ -303,7 +309,12 @@ fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
                 Text(
                     if (busy) stringResource(R.string.common_one_moment)
                     else stringResource(R.string.practice_gratitude_save),
-                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White,
+                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
+                    // The label follows the FILL: white on the disabled pill
+                    // measured 2.53:1, and white on the enabled Accent2 pill
+                    // 2.95:1 in Night — the button was unreadable in both
+                    // states, in the theme most people use at night.
+                    color = if (enabled) OnAccent else DisabledInk,
                 )
             }
             status?.let {
@@ -371,7 +382,7 @@ fun UrgentSupportScreen(
             horizontalArrangement = Arrangement.spacedBy(11.dp), verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(Modifier.size(46.dp).clip(CircleShape).background(FieldFill).clickable(onClick = onBack), contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.ArrowBack, "Back", tint = Color(0xFFA52F50), modifier = Modifier.size(23.dp))
+                Icon(Icons.Outlined.ArrowBack, "Back", tint = Danger, modifier = Modifier.size(23.dp))
             }
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.crisis_screen_title), style = MaterialTheme.typography.titleLarge.copy(fontFamily = serif), color = TextPrimary)
@@ -403,7 +414,7 @@ fun UrgentSupportScreen(
             // borrowing India's badge.
             val verifiedRegion = crisisRegionIsVerified(region)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.crisis_region_language, stringResource(regionLabelRes(region)).uppercase()), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall.copy(letterSpacing = .8.sp), color = Color(0xFFB13D57))
+                Text(stringResource(R.string.crisis_region_language, stringResource(regionLabelRes(region)).uppercase()), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall.copy(letterSpacing = .8.sp), color = Warm)
                 Box(
                     Modifier.clip(CircleShape)
                         .background(if (verifiedRegion) OkSoft else WarmSoft)
@@ -467,14 +478,14 @@ fun UrgentSupportScreen(
             }
             androidx.compose.material3.HorizontalDivider(color = LineStroke.copy(alpha = .7f))
             Text(stringResource(R.string.crisis_cached_title), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = TextMuted)
-            Text(stringResource(R.string.crisis_sources), style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp), color = Color(0xFF776E6E))
+            Text(stringResource(R.string.crisis_sources), style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp), color = TextMuted)
             if (!inFunnel) {
-                Text(stringResource(R.string.crisis_change_region), modifier = Modifier.padding(7.dp).clickable { onOpen("crisisregion") }, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF6C2768))
+                Text(stringResource(R.string.crisis_change_region), modifier = Modifier.padding(7.dp).clickable { onOpen("crisisregion") }, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Periwinkle)
                 Box(
                     Modifier.fillMaxWidth().height(49.dp).clip(RoundedCornerShape(25.dp)).background(CardFill)
                         .border(1.dp, LineStroke, RoundedCornerShape(25.dp)).clickable { onOpen("safetyplan") },
                     contentAlignment = Alignment.Center,
-                ) { Text(stringResource(R.string.crisis_open_safety_plan), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF6C2768)) }
+                ) { Text(stringResource(R.string.crisis_open_safety_plan), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Periwinkle) }
             }
             Spacer(Modifier.height(6.dp))
         }
@@ -487,13 +498,13 @@ private fun UrgentAction(title: String, detail: String, icon: ImageVector, prima
     Row(
         Modifier.fillMaxWidth().heightIn(min = if (primary) 86.dp else 94.dp)
             .shadow(7.dp, shape, ambientColor = Color.Black.copy(alpha = .06f)).clip(shape)
-            .background(if (primary) Color(0xFFD93B36) else CardFill)
+            .background(if (primary) CrisisPrimaryFill else CardFill)
             .then(if (primary) Modifier else Modifier.border(.5.dp, LineStroke.copy(alpha = .7f), shape))
             .clickable(onClick = onClick).padding(horizontal = 17.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(13.dp), verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(43.dp).clip(CircleShape).background(if (primary) DangerSoft else if (sage) OkSoft else DangerSoft), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = if (primary) Color(0xFFE34B4B) else if (sage) Color(0xFF4B775E) else Color(0xFFD45369), modifier = Modifier.size(22.dp))
+            Icon(icon, null, tint = if (primary) Danger else if (sage) Ok else Danger, modifier = Modifier.size(22.dp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = if (primary) Color.White else TextPrimary)
@@ -519,12 +530,12 @@ private fun NoticeChoice(symbol: String, title: String, subtitle: String? = null
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(21.dp),
     ) {
-        Text(symbol, style = MaterialTheme.typography.titleMedium, color = Color(0xFF6C2768))
+        Text(symbol, style = MaterialTheme.typography.titleMedium, color = Periwinkle)
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
             subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = TextMuted) }
         }
-        Text("›", style = MaterialTheme.typography.titleLarge, color = Color(0xFF955386))
+        Text("›", style = MaterialTheme.typography.titleLarge, color = TextMuted2)
     }
 }
 
@@ -543,14 +554,14 @@ private fun PracticeHeader(
         horizontalArrangement = Arrangement.spacedBy(11.dp),
     ) {
         CircleAction(FieldFill, onBack) {
-            Icon(Icons.Outlined.ArrowBack, "Back", tint = Color(0xFF6E376B), modifier = Modifier.size(23.dp))
+            Icon(Icons.Outlined.ArrowBack, "Back", tint = Periwinkle, modifier = Modifier.size(23.dp))
         }
         Column(Modifier.weight(1f)) {
             Text(title, maxLines = 1, style = MaterialTheme.typography.headlineSmall.copy(fontFamily = serif), color = TextPrimary)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
         }
         CircleAction(DangerSoft, onUrgent) {
-            Icon(Icons.Outlined.HealthAndSafety, "Urgent support", tint = Color(0xFFE34B4B), modifier = Modifier.size(23.dp))
+            Icon(Icons.Outlined.HealthAndSafety, "Urgent support", tint = Danger, modifier = Modifier.size(23.dp))
         }
     }
 }
@@ -611,8 +622,8 @@ private fun PracticeFamilyRow(
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color(0xFF776E6E), maxLines = 1)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted, maxLines = 1)
         }
-        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Color(0xFF955386), modifier = Modifier.size(19.dp))
+        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = TextMuted2, modifier = Modifier.size(19.dp))
     }
 }

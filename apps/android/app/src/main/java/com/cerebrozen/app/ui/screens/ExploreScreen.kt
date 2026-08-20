@@ -64,6 +64,11 @@ import com.cerebrozen.app.ui.theme.TextPrimary
 import com.cerebrozen.app.ui.theme.Warm
 import com.cerebrozen.app.ui.theme.AccentSoft
 import com.cerebrozen.app.ui.theme.FieldFill
+import com.cerebrozen.app.ui.theme.Cyan
+import com.cerebrozen.app.ui.theme.ExploreHeroEnd
+import com.cerebrozen.app.ui.theme.ExploreHeroOrbCore
+import com.cerebrozen.app.ui.theme.ExploreHeroOrbEdge
+import com.cerebrozen.app.ui.theme.ExploreHeroStart
 
 /** Explore hub matched to the canonical mobile.html composition. Existing
  * destinations remain present; this only changes their visual hierarchy. */
@@ -169,14 +174,14 @@ private fun ExploreHero(onClick: () -> Unit) {
     // what the tap does, which is cheaper than the height was.
     Box(
         Modifier.fillMaxWidth().height(160.dp).background(
-            Brush.linearGradient(listOf(Color(0xFFFFE2D6), AccentSoft, Color(0xFFE1CDEA))), shape,
+            Brush.linearGradient(listOf(ExploreHeroStart, AccentSoft, ExploreHeroEnd)), shape,
         ).clip(shape).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),
     ) {
         Canvas(Modifier.fillMaxSize()) {
             drawCircle(Color(0x25FFFFFF), radius = 105.dp.toPx(), center = Offset(size.width * .90f, size.height * .95f))
             drawCircle(Color(0x305A2B5C), radius = 88.dp.toPx(), center = Offset(size.width * .90f, size.height * .95f), style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
             drawCircle(
-                Brush.radialGradient(listOf(Color.White, FieldFill, Color(0xFFD5B8E1))),
+                Brush.radialGradient(listOf(ExploreHeroOrbCore, FieldFill, ExploreHeroOrbEdge)),
                 radius = 34.dp.toPx(), center = Offset(58.dp.toPx(), 60.dp.toPx()),
             )
         }
@@ -186,7 +191,7 @@ private fun ExploreHero(onClick: () -> Unit) {
         ) {
             Text(
                 stringResource(R.string.explore_hero_eyebrow).uppercase(),
-                style = MaterialTheme.typography.labelSmall, color = Color(0xFF6C2768),
+                style = MaterialTheme.typography.labelSmall, color = Cyan,
             )
             Text(
                 stringResource(R.string.explore_hero_title),

@@ -102,6 +102,59 @@ class ContrastTest {
      * which no token test can see at all. Dawn passed both (10.02:1 and
      * 10.61:1), which is exactly why light-theme review kept missing them.
      */
+    /**
+     * The pairings the 2026-08-20 token sweep created, when 37 opaque literals
+     * came out of `ui/screens/`. Each replacement was chosen by computing it
+     * against the surface it actually sits on, in both themes; these lock that
+     * arithmetic in so the next palette edit cannot quietly undo it.
+     */
+    @Test
+    fun night_theTokensThatReplacedScreenLiterals_meetAA() = night {
+        assertContrast("Warm on Night (page eyebrows)", Warm, Night)              // 8.91:1, was 3.27
+        assertContrast("Warm on WarmSoft (family icons)", Warm, WarmSoft)         // 7.35:1
+        assertContrast("Ok on OkSoft (family icons)", Ok, OkSoft)                 // 9.30:1
+        assertContrast("Danger on DangerSoft (urgent icons)", Danger, DangerSoft) // 6.58:1
+        assertContrast("Periwinkle on FieldFill (back arrows)", Periwinkle, FieldFill) // 7.74:1, was 2.15
+        assertContrast("Periwinkle on CardFill (symbols, links)", Periwinkle, CardFill) // 8.77:1, was 1.89
+        assertContrast("TextMuted on CardFill (row subtitles)", TextMuted, CardFill)    // 7.71:1, was 3.41
+        // The label follows the fill in BOTH button states. White did not: it
+        // measured 2.95:1 on the enabled pill and 2.53:1 on the disabled one.
+        assertContrast("OnAccent on Accent2 (enabled button)", OnAccent, Accent2)      // 5.73:1
+        assertContrast("DisabledInk on DisabledFill", DisabledInk, DisabledFill)       // 6.80:1
+    }
+
+    @Test
+    fun dawn_theSameReplacements_stayReadable() = dawn {
+        assertContrast("Warm on Night", Warm, Night)                             // 4.88:1
+        assertContrast("Warm on WarmSoft", Warm, WarmSoft)                       // 4.56:1
+        assertContrast("Ok on OkSoft", Ok, OkSoft)                               // 5.52:1
+        assertContrast("Danger on DangerSoft", Danger, DangerSoft)               // 4.57:1
+        assertContrast("Periwinkle on FieldFill", Periwinkle, FieldFill)         // 9.36:1
+        assertContrast("Periwinkle on CardFill", Periwinkle, CardFill)           // 10.61:1
+        assertContrast("TextMuted on CardFill", TextMuted, CardFill)             // 5.81:1
+        assertContrast("OnAccent on Accent2", OnAccent, Accent2)                 // 6.16:1
+        assertContrast("DisabledInk on DisabledFill", DisabledInk, DisabledFill) // 5.13:1
+    }
+
+    /**
+     * The Explore hero is a three-stop gradient, so its eyebrow has to clear
+     * the floor against EVERY stop — not just the one under the glyphs today.
+     * The old literal cleared none of them in Night (1.89:1).
+     */
+    @Test
+    fun theExploreHeroEyebrow_clearsEveryStopOfItsGradient() {
+        night {
+            assertContrast("Cyan on ExploreHeroStart", Cyan, ExploreHeroStart)
+            assertContrast("Cyan on AccentSoft (mid stop)", Cyan, AccentSoft)
+            assertContrast("Cyan on ExploreHeroEnd", Cyan, ExploreHeroEnd)
+        }
+        dawn {
+            assertContrast("Cyan on ExploreHeroStart", Cyan, ExploreHeroStart)
+            assertContrast("Cyan on AccentSoft (mid stop)", Cyan, AccentSoft)
+            assertContrast("Cyan on ExploreHeroEnd", Cyan, ExploreHeroEnd)   // 4.80:1, the tightest
+        }
+    }
+
     @Test
     fun night_selectedPickRow_isTheOptionYouCanRead() = night {
         // Appearance / Language / Crisis region all use SelectableRow. The

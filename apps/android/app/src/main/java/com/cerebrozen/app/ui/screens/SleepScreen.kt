@@ -1089,7 +1089,7 @@ private fun SleepPremiumHeader(
             // The credential that both softens and strengthens the claim above.
             Text(
                 stringResource(R.string.sleep_evidence_chip),
-                style = MaterialTheme.typography.labelSmall, color = Color(0xFFB13D57),
+                style = MaterialTheme.typography.labelSmall, color = Warm,
             )
         }
         // The moon stopped being decoration: it opens the player mid-playback,
@@ -1109,7 +1109,7 @@ private fun SleepPremiumHeader(
                 },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Outlined.DarkMode, contentDescription = null, tint = Color(0xFF6C2768), modifier = Modifier.size(27.dp))
+            Icon(Icons.Outlined.DarkMode, contentDescription = null, tint = Periwinkle, modifier = Modifier.size(27.dp))
         }
     }
 }

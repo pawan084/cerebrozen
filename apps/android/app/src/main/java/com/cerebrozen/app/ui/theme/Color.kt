@@ -226,6 +226,45 @@ val OnDanger: Color get() = if (AppTheme.isNight) NightPalette.night else DawnPa
  * that can be read (8.78:1). Found by walking all 58 routes on a CPH2681,
  * 2026-08-20 — a light-theme review passes this every time.
  */
+/**
+ * The Explore hero — the tappable box-breathing door.
+ *
+ * It was a three-stop gradient that MIXED constant art (a peach and a lavender
+ * written as raw hex in the screen file) with `AccentSoft`, which flips. In
+ * Night that put a dark stop between two light ones and left the eyebrow —
+ * also a raw hex, a deep plum — sitting on a mid-tone wash it could not be
+ * read against. Now it follows the same shape [MixerHeroTop] and
+ * [SleepHeroTop] already use: every stop resolves per theme, and the eyebrow
+ * is [Cyan] like the other hero eyebrows (10.44:1 Night, 5.44:1 Dawn).
+ */
+val ExploreHeroStart: Color get() = if (AppTheme.isNight) NightPalette.nightMid else Color(0xFFFFE2D6)
+val ExploreHeroEnd: Color get() = if (AppTheme.isNight) NightPalette.night else Color(0xFFE1CDEA)
+val ExploreHeroOrbCore: Color get() = if (AppTheme.isNight) NightPalette.cardFill else Color.White
+val ExploreHeroOrbEdge: Color get() = if (AppTheme.isNight) NightPalette.nightMid else Color(0xFFD5B8E1)
+
+/**
+ * The Tele-MANAS card on the crisis screen — the one action that must read as
+ * urgent before anything else on the page.
+ *
+ * Deliberately the SAME red in both themes: it is a brand-urgency fill, not a
+ * surface, and the ink on it ([OnDanger]-ish white) is chosen against this red
+ * rather than against the page. It is a token now only so that no screen file
+ * has to carry a hex.
+ */
+val CrisisPrimaryFill: Color get() = Color(0xFFD93B36)
+
+/**
+ * A filled primary button with nothing to submit yet.
+ *
+ * Dawn's stop is the mid-lavender this used to be as a literal; Night's is the
+ * field surface, because a light-lavender pill on a dark page reads as ENABLED
+ * — the disabled state was louder than the live one.
+ */
+val DisabledFill: Color get() = if (AppTheme.isNight) NightPalette.fieldFill else DawnPalette.fieldFill
+
+/** The label on [DisabledFill] — muted on purpose, and legible in both themes. */
+val DisabledInk: Color get() = TextMuted
+
 val DangerSoftInk: Color get() =
     if (AppTheme.isNight) Color(0xFFCFC3D6) else Color(0xFF542D34)
 
