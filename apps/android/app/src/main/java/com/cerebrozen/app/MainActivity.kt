@@ -28,6 +28,7 @@ class MainActivity : FragmentActivity() {
         // The nudge's promise: Push.kt attaches the deeplink to this intent;
         // the NavHost consumes it from the bus once signed in.
         DeeplinkBus.offer(intent?.dataString)
+        debugWalkRoute(intent)
         setContent {
             CereBroTheme {
                 CereBroApp()
@@ -40,5 +41,17 @@ class MainActivity : FragmentActivity() {
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         DeeplinkBus.offer(intent.dataString)
+        debugWalkRoute(intent)
+    }
+
+    /**
+     * `adb shell am start -n …/.MainActivity -e walk_route <route>` — a debug
+     * affordance for walking the whole graph, and a no-op in release. The
+     * notification path above keeps its allow-list; this deliberately does not
+     * go through it, which is exactly why it is gated on the build type.
+     */
+    private fun debugWalkRoute(intent: android.content.Intent?) {
+        if (!BuildConfig.DEBUG) return
+        intent?.getStringExtra("walk_route")?.let { DeeplinkBus.offerDebugRoute(it) }
     }
 }

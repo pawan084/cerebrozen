@@ -236,6 +236,20 @@ object DeeplinkBus {
     var pending by androidx.compose.runtime.mutableStateOf<String?>(null)
         private set
     fun offer(raw: String?) { routeForDeeplink(raw)?.let { pending = it } }
+
+    /**
+     * Address ANY node in the graph, for a debug build only.
+     *
+     * [offer] stays allow-listed because its input comes from the server and a
+     * notification must never navigate somewhere arbitrary. This does not share
+     * that threat model: it is reachable only through an explicit intent extra
+     * that [MainActivity] reads under `BuildConfig.DEBUG`, and exists because a
+     * 59-route app with no way to address a route cannot be walked
+     * systematically — every QA pass had to tap its way in, which is how
+     * screens end up reviewed once and then never again.
+     */
+    fun offerDebugRoute(route: String) { if (route.isNotBlank()) pending = route }
+
     fun clear() { pending = null }
 }
 

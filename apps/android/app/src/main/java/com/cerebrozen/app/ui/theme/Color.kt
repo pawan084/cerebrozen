@@ -214,6 +214,21 @@ val AmberSoft: Color get() = if (AppTheme.isNight) NightPalette.amberSoft else D
  * (Night 8.29:1, Dawn 4.86:1). Screens must never reach for [Night] as ink. */
 val OnDanger: Color get() = if (AppTheme.isNight) NightPalette.night else DawnPalette.night
 
+/**
+ * Secondary text ON a [DangerSoft] panel.
+ *
+ * The crisis screen's "CereBro is not an emergency service and cannot monitor
+ * your safety" was a raw `Color(0xFF542D34)` written into the screen file — a
+ * dark maroon that lands 10.02:1 on Dawn's pale `dangerSoft` and **1.27:1** on
+ * Night's dark one, so the disclaimer under the call-112 banner was invisible
+ * in the theme most people use at night, on the most safety-critical screen in
+ * the product. Dawn keeps exactly the colour it already had; Night gets one
+ * that can be read (8.78:1). Found by walking all 58 routes on a CPH2681,
+ * 2026-08-20 — a light-theme review passes this every time.
+ */
+val DangerSoftInk: Color get() =
+    if (AppTheme.isNight) Color(0xFFCFC3D6) else Color(0xFF542D34)
+
 // ── Sound Mixer hero ────────────────────────────────────────────────────
 // The mixer's hero follows the theme (owner call 2026-08-05) rather than being
 // a constant-dark panel stranded on a light page. Both arms are now plum: the
@@ -391,7 +406,19 @@ val FunnelHeaderTop: Color get() = if (AppTheme.isNight) NightPalette.nightMid e
 val FunnelHeaderBottom: Color get() = Night
 val FunnelBodyText: Color get() = TextSecondary
 val ProgressTrack: Color get() = Line
-val PickRowSelectedFill: Color get() = if (AppTheme.isNight) NightPalette.accentSoft else ChipSelectedFill
+/**
+ * The selected row in a pick list — Appearance, Language, Crisis region.
+ *
+ * It is [ChipSelectedFill] in BOTH themes because the label on it is
+ * [ChipSelectedInk], which is the on-accent ink: in Night that ink (#241927)
+ * is designed against the accent pill (#D9ACDE) and measures the 8.77:1 the
+ * palette documents. Painting it on `accentSoft` (#3A2A3E) instead put dark
+ * ink on a dark surface and measured **1.27:1** — the selected option was the
+ * one you could not read, in the one theme most people use at night. Dawn was
+ * never affected (10.61:1), which is why a light-theme review kept missing it.
+ * Found by walking all 58 routes on a CPH2681, 2026-08-20.
+ */
+val PickRowSelectedFill: Color get() = ChipSelectedFill
 val PickRowFill: Color get() = Surface
 val PickRowStroke: Color get() = Line
 val PickRowChevron: Color get() = TextMuted2

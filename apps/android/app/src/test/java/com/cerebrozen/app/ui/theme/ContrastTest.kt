@@ -91,6 +91,40 @@ class ContrastTest {
 
     // ── Night — the plum dark appearance ────────────────────────────────────
 
+    /**
+     * The two pairings the 2026-08-20 device walk found broken, in the theme
+     * this file was supposed to protect.
+     *
+     * Both escaped a 482-line token gate for the same reason, in two shapes:
+     * the gate enumerates *text role x neutral surface*, and neither of these
+     * is that. One is an ink used on a fill it was never designed against; the
+     * other was a raw `Color(0xFF542D34)` written straight into a screen file,
+     * which no token test can see at all. Dawn passed both (10.02:1 and
+     * 10.61:1), which is exactly why light-theme review kept missing them.
+     */
+    @Test
+    fun night_selectedPickRow_isTheOptionYouCanRead() = night {
+        // Appearance / Language / Crisis region all use SelectableRow. The
+        // label is ChipSelectedInk, which is on-accent ink; painting it on
+        // `accentSoft` instead of the accent measured 1.27:1 — the SELECTED
+        // option was the one you could not read.
+        assertContrast("ChipSelectedInk on PickRowSelectedFill", ChipSelectedInk, PickRowSelectedFill) // 8.77:1
+    }
+
+    @Test
+    fun night_crisisDisclaimer_isReadableOnItsOwnBanner() = night {
+        // "CereBro is not an emergency service and cannot monitor your safety",
+        // under the call-112 banner on the most safety-critical screen in the
+        // product. Shipped at 1.27:1 in Night.
+        assertContrast("DangerSoftInk on DangerSoft", DangerSoftInk, DangerSoft) // 8.78:1
+    }
+
+    @Test
+    fun dawn_theSameTwoPairings_stayReadable() = dawn {
+        assertContrast("ChipSelectedInk on PickRowSelectedFill", ChipSelectedInk, PickRowSelectedFill) // 10.61:1
+        assertContrast("DangerSoftInk on DangerSoft", DangerSoftInk, DangerSoft)                       // 10.02:1
+    }
+
     @Test
     fun night_textFaint_meetsAA_onEverySurface() = night {
         // TextMuted2/TextFaint is the faintest legal text (`--text-faint`).

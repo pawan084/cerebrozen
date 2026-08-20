@@ -72,6 +72,7 @@ import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.audio.Chime
 import com.cerebrozen.app.ui.theme.Accent2
 import com.cerebrozen.app.ui.theme.DangerSoft
+import com.cerebrozen.app.ui.theme.DangerSoftInk
 import com.cerebrozen.app.ui.theme.FieldFill
 import com.cerebrozen.app.ui.theme.Night
 import com.cerebrozen.app.ui.theme.Ok
@@ -391,7 +392,7 @@ fun UrgentSupportScreen(
                     .padding(18.dp),
             ) {
                 Text(stringResource(R.string.crisis_immediate_danger, emergency.target), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
-                Text(stringResource(R.string.crisis_not_emergency), style = MaterialTheme.typography.bodySmall.copy(lineHeight = 20.sp), color = Color(0xFF542D34))
+                Text(stringResource(R.string.crisis_not_emergency), style = MaterialTheme.typography.bodySmall.copy(lineHeight = 20.sp), color = DangerSoftInk)
             }
             Spacer(Modifier.height(6.dp))
             // A badge is a CLAIM. This one used to render unconditionally, so
