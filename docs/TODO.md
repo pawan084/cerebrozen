@@ -451,6 +451,60 @@ gap): TIPP, gratitude, one-good-thing, intention, the CBT thought record, crisis
 insight reel, wind-down, the mindful mini-games, baseline assessment, trusted contact, the
 standalone player.
 
+### All 58 Android routes walked and measured (2026-08-20, CPH2681)
+
+The first systematic pass over the whole graph rather than the screens someone thought to
+open. **Every route rendered — no blank screens, no crashes, 58/58.**
+
+**How it was made possible.** The app had no way to address a route from outside: one
+LAUNCHER entry, and `cerebro://` deliberately allow-listed to 20 routes because a
+notification must never navigate somewhere arbitrary. That allow-list is untouched; a
+debug-only intent extra was added instead (`am start … -e walk_route <route>` →
+`DeeplinkBus.offerDebugRoute`, gated on `BuildConfig.DEBUG`). A 59-route app that cannot
+be addressed is a 59-route app that gets reviewed once and then never again.
+
+**Two real defects, both Night-only, both confirmed by token arithmetic rather than by
+eye — and both invisible to a light-theme review:**
+
+- **The selected row in every pick list was the one you could not read.** Appearance,
+  Language and Crisis region share `SelectableRow`, whose label is `ChipSelectedInk` —
+  on-accent ink. `PickRowSelectedFill` resolved to `accentSoft` in Night, so dark ink sat
+  on a dark surface: **1.27:1** against a 4.5:1 floor, while Dawn ran 10.61:1. The ink was
+  designed against Night's accent pill (`#D9ACDE`), which is the 8.77:1 the palette
+  comment already documents. Fixed by using the accent fill in both themes.
+- **The crisis screen's disclaimer was invisible in Night.** "CereBro is not an emergency
+  service and cannot monitor your safety", under the call-112 banner, was a raw
+  `Color(0xFF542D34)` written into the screen file — 10.02:1 on Dawn's pale `dangerSoft`,
+  **1.27:1** on Night's dark one. On the most safety-critical screen in the product. Now
+  a theme-aware `DangerSoftInk` token; Dawn keeps the exact colour it had.
+
+**Why the existing 482-line `ContrastTest` did not catch either.** It gates *text role x
+neutral surface*. The first is an ink on a fill that pairing never enumerated; the second
+never entered the token graph at all. Both pairings are now in the gate, and the gate was
+verified to FAIL on the old colours (`contrast 1.27:1 is below the 4.5:1 gate`) before
+being left green — a test that cannot fail is decoration. **35 raw `Color(0xFF…)` literals
+remain in screen files**; each is a place a token test cannot reach, and that is the
+systemic version of this bug. Not fixed here.
+
+**On the auditor itself.** The sweep flagged 54 contrast findings; most are NOT real. The
+1.00:1 cluster is almost entirely filled primary buttons ("Save night", "Begin", "Next",
+"Play"), where picking ink as the extreme pixel inside the glyph box fails against a pill
+fill — several of those were confirmed legible by eye in the same session. The two fixes
+above were each verified independently from the palette hex before any change was made.
+The remaining mid-range flags (checkin "Tired" 1.93, gratitude 2.53, tipp "Previous" 2.63,
+insightreel "Pause" 2.67, crisisgrounding "Next" 2.68) are **unverified** and still open.
+Also unverified: 12 SMALLTAP flags for clickable nodes under the 96px (48dp) floor.
+
+**Instrumented flake, now characterised.** The first `am instrument` run after an
+`adb install` failed 2 of 2 times (`GuestAppE2ETest::a_guests_check_in_is_answered_not_errored`,
+"never appeared on screen: Anxious", 52.6s); every subsequent run passed, 3 of 3, in ~24s.
+Consistent with cold-start work racing the suite's `resetToFirstRun`. Not fixed.
+
+**Note for the next walk:** the debug route hook only takes effect on a COLD start —
+`onNewIntent` delivers the extra but the running NavHost does not act on it. The walk
+force-stops between routes, which also gives each screen a clean back stack. Worth fixing
+if the walk is ever run often enough for the ~3s per route to matter.
+
 ### The Android app walked on the same handset (2026-08-20, CPH2681, live backend)
 
 Built fresh from main (the installed APK was three days old and predated this session's
