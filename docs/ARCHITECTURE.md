@@ -444,6 +444,22 @@ would strand every visitor on localhost, which is why `landing.spec.ts` asserts 
   `/signin?next=<path>` and `signin/page.tsx` lands them there afterwards. `lib/nextPath.ts`
   is an allow-list — same-origin absolute paths only, so `//evil.com`, backslash variants and
   auth-route loops are refused and fall back to `/home`; `app.spec.ts` pins both directions.
+  **Offline writes (2026-08-20)**: `lib/outbox.ts` is a localStorage write queue behind the
+  check-in, journal and sleep saves — the browser half of Android's `net/Outbox.kt`, against
+  the same `Idempotency-Key` contract (`services/idempotency.py`). The key is minted when an
+  item is QUEUED, order is preserved, one failure stops the drain, and a 4xx is rethrown
+  rather than queued. `(authed)/layout.tsx` starts it, drains on the `online` event, and shows
+  what is waiting; a `cerebro:outbox` CustomEvent tells a screen to refetch once the server
+  has actually heard.
+  **Voice (2026-08-20)**: `lib/voice.ts` — `MediaRecorder` → `POST /voice/stt` → the
+  transcript lands in the COMPOSER for review, and `POST /voice/tts` speaks replies when asked.
+  Gated on `/voice/status` *and* `canRecord()`, so no dead control appears.
+  Later pages: `/sleep/insights` (server `/sleep/summary` over week/month/3-months,
+  `enough_data`-gated), `/insights/trends` (`/insights/trends`, with the withheld mood↔sleep
+  correlation and its reason), `/sleep/mixer` (`lib/mixer.ts` — four Web Audio layers
+  synthesised in-browser, an uploaded `ambience.*` asset superseding a layer when one exists),
+  `/games/bodyscan`, and the offline reading rooms `/library/cbti` + `/library/mbct`
+  (`components/OfflineProgram.tsx`, Android's copy verbatim).
 - **Admin** — one client component (`app/page.tsx`) with tabs
   overview/analytics/users/content/safety/waitlist. Analytics renders the first-party
   aggregates (`services/metrics.py`); Users offers a metadata-only detail drill-down.

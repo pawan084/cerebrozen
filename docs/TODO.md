@@ -408,6 +408,49 @@ predated the route. Nothing containerised is worth reviewing without `--build`.
   background parsed as 0-255, and a background probe that fell back to page cream inside dark
   panels and reported a perfect 1.00:1. A contrast sweep is only as honest as its parser.
 
+### Web ⇄ Android parity: the gaps closed (2026-08-20)
+
+The comparison found seven real gaps. All seven are built; the ones that remain are
+listed below them, honestly, rather than described as done.
+
+- **The offline write queue.** The biggest, because it was the only one that LOST
+  something: a check-in, journal entry or night saved without a signal simply failed.
+  `apps/app/lib/outbox.ts` mirrors `net/Outbox.kt` against the same idempotency contract —
+  key minted when the item is queued (not at send time, or a retry after a crash creates a
+  second check-in), oldest-first drain, one failure stops it, and **a 4xx is rethrown rather
+  than queued** because "saved, will sync" over a request the server refused is a lie found
+  out later. The shell shows what is waiting; `/checkin`, `/journal` and `/sleep` each say
+  "saved on this device" rather than "Saved". The journal additionally says the safety scan
+  has **not** read a queued entry — it is server-side, so it genuinely has not.
+  Pinned by an e2e test that goes offline mid-page and then asserts the SERVER-computed
+  streak moves once the network returns.
+- **Voice.** `lib/voice.ts` → `/voice/stt` and `/voice/tts`. The transcript lands in the
+  composer for review, never straight into the conversation. The microphone only exists when
+  `/voice/status` says the key is configured **and** the browser can record — the same
+  "hide it rather than ship a dead button" ruling Android applies to Google sign-in. The
+  composer's "voice arrives with the mobile apps" footnote is gone; when voice is off, the
+  page says so instead.
+- **Sleep insights** (`/sleep/insights`) — week/month/3-months over `/sleep/summary`, every
+  tile gated on `enough_data` so nothing prints "0h 0m" as if it were a measurement.
+- **Trends** (`/insights/trends`) — the day-by-day series with unlogged days ABSENT rather
+  than zero, and the mood↔sleep link withheld with its reason until enough overlapping days
+  exist.
+- **The mixer** (`/sleep/mixer`) — four layers, four presets, same vectors as Android. The
+  layers are **synthesised in-browser** (`lib/mixer.ts`, Web Audio): every `ambience.*` row
+  in the catalogue ships an empty `url` today, so fetching the same files would have shipped
+  four silent sliders. An uploaded asset supersedes a layer per layer, and each slider's
+  label says which of the two you are hearing.
+- **Body scan** (`/games/bodyscan`), **CBT-I** and **MBCT** (`/library/cbti`, `/library/mbct`)
+  — Android's copy verbatim, disclaimers included. Pause holds the remaining seconds, which
+  is Android register B34 ported rather than re-learned.
+- `authedFetch` no longer stamps `Content-Type: application/json` over a `FormData` body —
+  that would have broken the STT upload before it left the browser.
+
+**Still open** (Android routes with no web equivalent, none of them a data-loss or honesty
+gap): TIPP, gratitude, one-good-thing, intention, the CBT thought record, crisis grounding,
+insight reel, wind-down, the mindful mini-games, baseline assessment, trusted contact, the
+standalone player.
+
 ### V6 density + honesty pass (2026-08-16, uncommitted) — walked on the OnePlus
 
 A whole-app pass on the two things a 720px phone punishes: **space** (padding,

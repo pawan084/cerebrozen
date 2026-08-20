@@ -1,5 +1,30 @@
 # Web Parity Audit — Android Redesign → Web App (apps/app)
 
+> **SUPERSEDED IN PART, 2026-08-20.** Everything below was audited against the
+> Android client of **2026-07-12**, which predates the V2–V6 companion-first
+> redesign — so its table describes a version of Android that no longer exists.
+> It is kept for the reasoning and for the waves it records, not as a current
+> gap list.
+>
+> The 2026-08-20 pass compared the two clients again and closed the gaps it
+> found rather than tabling them:
+>
+> | Gap | Closed by |
+> | --- | --- |
+> | No offline write queue — a check-in, journal entry or night logged without a signal was simply lost, while Android had kept them since the metro problem | `apps/app/lib/outbox.ts` + the queued wording on `/checkin`, `/journal`, `/sleep` and the shell's pending bar. Test: `e2e/tests/app.spec.ts` "a check-in made offline is kept, then sent when the network returns" |
+> | No voice — the composer footnote said voice "arrives with the mobile apps" | `apps/app/lib/voice.ts` against `/voice/stt` + `/voice/tts`; microphone only appears when `/voice/status` says the key exists **and** the browser can record |
+> | No sleep insights — `/sleep/summary` was never called from the browser | `/sleep/insights` (week / month / 3 months, `enough_data`-gated) |
+> | No trends — `/insights/trends` was never called from the browser | `/insights/trends`, including the withheld mood↔sleep link and its reason |
+> | No mixer — the library footnote sent people to the mobile apps for it | `/sleep/mixer`; the four layers are synthesised in-browser because every `ambience.*` catalogue row still ships an empty `url`, and an uploaded asset supersedes a layer per layer |
+> | No body scan, CBT-I or MBCT rooms | `/games/bodyscan`, `/library/cbti`, `/library/mbct` — Android's copy verbatim, disclaimers included |
+>
+> **Still open after that pass** (Android routes with no web equivalent):
+> TIPP, gratitude, one-good-thing, intention, the CBT thought record, crisis
+> grounding, insight reel, wind-down, the mindful mini-games, baseline
+> assessment, trusted contact, and the standalone player. None of them is a
+> data-loss or honesty gap — they are rooms.
+
+
 > **STATUS 2026-07-24: Waves A–D LANDED** (4 commits on `v1`): B1–B8 + item 3
 > (fakes killed), items 1–4 (public `/crisis` page, Tele-MANAS-first banners with
 > tappable `tel:` links, Support sidebar door, Talk-to-a-human card — **no
