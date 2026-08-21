@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.VolumeOff
 import androidx.compose.material.icons.outlined.VolumeUp
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -67,6 +68,7 @@ import com.cerebrozen.app.ui.screens.PrimaryButton
 import com.cerebrozen.app.ui.screens.SectionCard
 import com.cerebrozen.app.ui.screens.SubPage
 import com.cerebrozen.app.ui.screens.ToolAmbienceEffect
+import com.cerebrozen.app.ui.theme.DisabledTextInk
 import com.cerebrozen.app.ui.theme.ArtCyan
 import com.cerebrozen.app.ui.theme.ArtPeriwinkle
 import com.cerebrozen.app.ui.theme.ArtScrim
@@ -267,7 +269,14 @@ fun CrisisGroundingScreen(onBack: () -> Unit, onOpenBreathLoops: () -> Unit) {
             Text("${grounding.count} · ${stringResource(grounding.senseRes)}", style = MaterialTheme.typography.headlineSmall, color = Cyan)
             Text(stringResource(grounding.promptRes), color = TextSoft)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                TextButton(enabled = groundingIndex > 0, onClick = { groundingIndex-- }) { Text(stringResource(R.string.offline_previous)) }
+                TextButton(
+                    enabled = groundingIndex > 0,
+                    // Material's disabled default is `onSurface` at 38%, which
+                    // measured 2.33:1 in Dawn — dim enough to read as absent
+                    // rather than as a step you cannot go back from yet.
+                    colors = ButtonDefaults.textButtonColors(disabledContentColor = DisabledTextInk),
+                    onClick = { groundingIndex-- },
+                ) { Text(stringResource(R.string.offline_previous)) }
                 Text(stringResource(R.string.offline_progress, groundingIndex + 1, OfflineToolContent.grounding.size), color = TextMuted)
                 TextButton(onClick = { if (groundingIndex < OfflineToolContent.grounding.lastIndex) groundingIndex++ else groundingIndex = 0 }) { Text(stringResource(R.string.common_next)) }
             }

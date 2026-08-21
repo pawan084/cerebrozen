@@ -48,6 +48,7 @@ import com.cerebrozen.app.ui.theme.TextSoft
 import com.cerebrozen.app.ui.theme.CardFill
 import com.cerebrozen.app.ui.theme.LineStroke
 import com.cerebrozen.app.ui.theme.VeilWell
+import com.cerebrozen.app.ui.theme.DisabledTextInk
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 
@@ -376,7 +377,7 @@ private fun TippPreviousButton(enabled: Boolean, modifier: Modifier, onClick: ()
         Text(
             stringResource(R.string.tipp_previous),
             style = MaterialTheme.typography.titleSmall,
-            color = if (enabled) TextPrimary else TextMuted.copy(alpha = 0.45f),
+            color = if (enabled) TextPrimary else DisabledTextInk,
             maxLines = 1,
         )
     }

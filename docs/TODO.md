@@ -451,6 +451,35 @@ gap): TIPP, gratitude, one-good-thing, intention, the CBT thought record, crisis
 insight reel, wind-down, the mindful mini-games, baseline assessment, trusted contact, the
 standalone player.
 
+### The two disabled buttons — not a compliance fix, a legibility one (2026-08-21)
+
+The last two flags on the Dawn walk were "Previous" on step 1 of TIPP (1.94:1) and of the
+5-4-3-2-1 grounding sequence (2.33:1), both correctly disabled. WCAG 1.4.3 exempts
+inactive components, so neither was a violation — but at those ratios they read as
+**absent** rather than as a control you cannot use yet, and a step counter whose back
+button appears to vanish is a worse answer than one that is plainly there and plainly
+unavailable.
+
+Both now use a shared `DisabledTextInk` (`TextMuted` at 0.7): measured on the handset at
+**3.07:1 Dawn / 4.47:1 Night**, identical across the two screens, against an ENABLED label
+near 16:1. The gap is what makes it read as disabled, and it is still about fivefold.
+Going brighter would be the opposite mistake — a disabled control that looks live earns a
+tap and gives nothing back.
+
+The Material one needed an explicit `ButtonDefaults.textButtonColors(disabledContentColor
+= …)`: its default is `onSurface` at 38%, which is where the 2.33:1 came from.
+
+**The gate pins the gap, not just the floor** — 3:1 minimum AND strictly less than
+`enabled / 2.5`, in both themes. Writing it exposed a real limitation in the test helper:
+`assertContrast` reads RGB and ignores alpha, so a translucent ink was being scored at
+FULL strength and the first version of the assertion failed on its own arithmetic rather
+than on the colour. The test now flattens the ink onto its background first, and was
+verified to fail at the old alpha ("2.64:1 — too faint to read as a control", matching the
+device).
+
+**Dawn now has no real contrast findings.** 58 routes: 5 flags, all of them the documented
+filled-pill artifact.
+
 ### Dawn walked too — the DEFAULT appearance, which I had not been testing (2026-08-21)
 
 Prompted by a fair question: why test Night? Because the phone was in dark mode and the

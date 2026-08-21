@@ -121,6 +121,51 @@ class ContrastTest {
      * other end — 1.93:1 in Night for every selected mood tile, intensity chip
      * and onboarding option, against 10.85:1 in Dawn.
      */
+    /**
+     * Flatten a translucent ink onto its background before measuring.
+     *
+     * [assertContrast] reads RGB and ignores alpha, so a colour like
+     * `TextMuted.copy(alpha = 0.7f)` would be scored at FULL strength — the
+     * first version of the test below asserted an upper bound and failed on
+     * exactly that, reporting the ink as far brighter than it renders.
+     */
+    private fun over(fg: Color, bg: Color): Color = Color(
+        red = fg.red * fg.alpha + bg.red * (1 - fg.alpha),
+        green = fg.green * fg.alpha + bg.green * (1 - fg.alpha),
+        blue = fg.blue * fg.alpha + bg.blue * (1 - fg.alpha),
+    )
+
+    /**
+     * Disabled labels, gated at 3:1 rather than 4.5:1 — on purpose, and from
+     * BOTH sides.
+     *
+     * WCAG 1.4.3 exempts inactive components, so the floor here is not a
+     * compliance line; it is the point below which a disabled control stops
+     * reading as a control at all. "Previous" on step 1 of TIPP measured
+     * 1.94:1 in Dawn and looked absent rather than unavailable.
+     *
+     * The UPPER bound matters just as much: an enabled label sits near 16:1,
+     * and a disabled one creeping toward it would earn taps that do nothing.
+     * This pins the GAP, not just the floor.
+     */
+    @Test
+    fun disabledLabels_areVisibleWithoutLookingLive() {
+        for (theme in listOf(ThemeMode.Night, ThemeMode.Dawn)) inTheme(theme) {
+            val flattened = over(DisabledTextInk, CardFill)
+            val disabled = contrast(flattened.toArgb(), CardFill.toArgb())
+            val enabled = contrast(TextPrimary.toArgb(), CardFill.toArgb())
+            assertTrue(
+                "$theme disabled label is ${"%.2f".format(disabled)}:1 — too faint to read as a control",
+                disabled >= 3.0,
+            )
+            assertTrue(
+                "$theme disabled label is ${"%.2f".format(disabled)}:1 against an enabled " +
+                    "${"%.2f".format(enabled)}:1 — too close, it will read as tappable",
+                disabled < enabled / 2.5,
+            )
+        }
+    }
+
     @Test
     fun night_materialPrimaryAndSelectedInk_meetAA() = night {
         assertContrast("Periwinkle as TextButton ink on Night", Periwinkle, Night)     // 9.70:1, was 2.96

@@ -265,6 +265,24 @@ val DisabledFill: Color get() = if (AppTheme.isNight) NightPalette.fieldFill els
 /** The label on [DisabledFill] — muted on purpose, and legible in both themes. */
 val DisabledInk: Color get() = TextMuted
 
+/**
+ * A disabled label on an ordinary surface — "Previous" on step 1 of TIPP, of
+ * the 5-4-3-2-1 grounding sequence.
+ *
+ * WCAG 1.4.3 exempts inactive components from the contrast minimum, so this is
+ * not a compliance fix. It is a legibility one: at the old alphas these
+ * measured **1.94:1** and **2.33:1** in Dawn, which is dim enough to read as
+ * *absent* rather than as a control you cannot use yet — and a step counter
+ * whose back button seems to vanish is a worse answer than one that is plainly
+ * there and plainly unavailable.
+ *
+ * 0.7 puts it at 3.07:1 on Dawn and 4.45:1 on Night while the ENABLED label
+ * sits at ~16:1, so the gap that says "not yet" is still about fivefold. Going
+ * further would be the opposite mistake: a disabled control that looks live
+ * earns a tap and gives nothing back.
+ */
+val DisabledTextInk: Color get() = TextMuted.copy(alpha = 0.7f)
+
 val DangerSoftInk: Color get() =
     if (AppTheme.isNight) Color(0xFFCFC3D6) else Color(0xFF542D34)
 
