@@ -134,60 +134,15 @@ struct HomeView: View {
 }
 
 // MARK: - Quick links (ref home grid)
-/// The ref four-tile explore row: Toolkit · Insights · Programs · Sounds.
-/// Small tinted squares with a glyph — entry points, not competition for the hero.
-///
-/// The first tile said "Games" and opened `GamesHubView`, a type that has not
-/// existed since the Games+Tools split was folded into one `ToolkitView`
-/// ("the gamecontroller framing is gone", `Features/Games/GamesHub.swift`). The
-/// rename left this caller behind and the build has not compiled since; the tile
-/// now names and opens what is actually there. Games are still in it — they are
-/// two rows inside Ground and Settle, which is the point of the merge.
-struct QuickLinksGrid: View {
-    // Plain data: destinations are built lazily inside the NavigationLink
-    // closure so Home renders never construct (or AnyView-erase) the screens.
-    private static let links: [(id: String, symbol: String)] = [
-        ("Toolkit", "wind"),
-        ("Insights", "chart.line.uptrend.xyaxis"),
-        ("Programs", "calendar"),
-        ("Sounds", "music.note"),
-    ]
-
-    @ViewBuilder
-    private func destination(for id: String) -> some View {
-        switch id {
-        case "Toolkit":  ToolkitView()
-        case "Insights": InsightsView()
-        case "Programs": ProgramsView()
-        default:         SoundLibraryView()
-        }
-    }
-
-    var body: some View {
-        HStack(spacing: 10) {
-            ForEach(Self.links, id: \.id) { link in
-                NavigationLink { destination(for: link.id) } label: {
-                    VStack(spacing: 7) {
-                        // Static chrome — indefinite effects stay reserved
-                        // for live states, not entry-point tiles.
-                        NativeEffectIcon(systemImage: link.symbol, size: 17, weight: .semibold)
-                            .frame(width: 44, height: 44)
-                            .background(Theme.Palette.cardEmphasis)
-                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .stroke(Theme.Palette.line))
-                        Text(link.id)
-                            .appFont(11, weight: .semibold)
-                            .foregroundStyle(Theme.Palette.muted)
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.pressable)
-                .accessibilityLabel(link.id)
-            }
-        }
-    }
-}
+// `QuickLinksGrid` lived here: a four-tile explore row (Toolkit · Insights ·
+// Programs · Sounds) with no call site anywhere in the app. The de-densify
+// in HomeView orphaned it, and then it did real harm — it held the ONLY
+// reference to `SoundLibraryView`, so that screen had no door while still
+// turning up in a grep of this file, which is exactly how an orphan hides.
+// Deleted rather than re-wired: the de-densify cut rows from Home on
+// purpose, and every destination it named is reachable elsewhere — Toolkit
+// from its own row above, Insights from You, Programs from Sleep and the
+// enrolled card, and Sounds now from Sleep beside the meditation library.
 
 /// The ref "PROGRAM · DAY X OF Y" journey card: quiet progress, no pressure.
 struct ProgramProgressCard: View {

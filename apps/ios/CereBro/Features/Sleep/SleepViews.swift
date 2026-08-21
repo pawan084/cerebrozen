@@ -136,6 +136,16 @@ struct SleepHomeView: View {
             ForEach(sleepItems) { SleepRow(item: $0) }
             NavRow(title: "Meditation library", subtitle: "Mindfulness content", systemImage: "figure.mind.and.body", imageURL: Dummy.Img.meditate) { MeditationLibraryView(items: meditationItems) }
             // Programs' standing door (Android sleep_programs_nav parity) — the
+            // `SoundLibraryView` had NO door. It was referenced exactly once
+            // in the whole app — inside `QuickLinksGrid`, a Home view that is
+            // never rendered — so a finished screen sat behind nothing, while
+            // grepping "Sounds" in HomeView still made it look reachable. Same
+            // trap as Android's Practice library and the `guidedimagery` route:
+            // the orphan hides because the source still mentions it. It belongs
+            // beside the meditation library, in the section it is already about.
+            NavRow(title: "Sound library", subtitle: "Every soundscape and sleep story",
+                   systemImage: "music.note", imageURL: Dummy.Img.calm) { SoundLibraryView() }
+
             // Home row was cut in the de-densify; enrolled users also reach it
             // from the Home program card.
             NavRow(title: "Programs", subtitle: "Guided multi-day journeys — start with Sleep Reset",

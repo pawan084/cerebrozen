@@ -1138,26 +1138,41 @@ final class CereBroUITests: XCTestCase {
         // went ("the gamecontroller framing is gone"); the label appears nowhere
         // in the sources now. "How did you sleep?" moved to Sleep, so asking for
         // it *from Home* could only ever fail.
-        let pushed: [(from: String, via: String, name: String)] = [
-            ("Home", "Sounds", "sounds"),
-            ("Home", "Insights", "insights"),
-            ("Home", "Check how you feel", "mood-check-in"),
-            ("Sleep", "How did you sleep?", "sleep-check-in"),
-            ("Home", "Today's plan", "daily-plan"),
-            ("Home", "Programs", "programs"),
-            ("Home", "Toolkit", "toolkit"),
-            ("Home", "Search", "search"),
-            ("Sleep", "Rain over quiet hills", "player"),
-            ("Sleep", "Sleep diary", "sleep-diary"),
-            ("Talk", "Switch to chat", "chat"),
-            ("Journal", "New entry", "journal-entry"),
-            ("Journal", "History", "journal-history"),
-            ("You", "Companion style", "companion-style"),
-            ("You", "Daily reminder", "reminders"),
-            ("You", "Privacy & memory", "privacy"),
-            ("You", "Pattern dashboard", "pattern-dashboard"),
-            ("You", "Urgent support", "crisis"),
-            ("You", "Premium plan", "premium"),
+        // Four of these named Home and meant somewhere else, and the previous
+        // pass blamed scroll position — the `swipeDown` above was that fix, and
+        // CI failed identically with it in place. What is actually true:
+        //
+        //  * `QuickLinksGrid` (Toolkit · Insights · Programs · Sounds) had no
+        //    call site at all, so three of them were never on Home to reach.
+        //    It has been deleted, and Sounds — whose only reference in the
+        //    entire app was that dead grid — now has a door in Sleep.
+        //  * "Check how you feel" renders `if focus.route != .mood`, and this
+        //    tour launches `-resetState YES`, so `!checkedInToday` makes the
+        //    HERO the mood ask and hides the row every single run. It was never
+        //    reachable here; the hero's own CTA is.
+        //
+        // Each entry now names where the destination lives, and the first
+        // candidate that exists wins.
+        let pushed: [(from: String, via: [String], name: String)] = [
+            ("Sleep", ["Sound library"], "sounds"),
+            ("You", ["Weekly insights"], "insights"),
+            ("Home", ["Check how you feel", "Check in"], "mood-check-in"),
+            ("Sleep", ["How did you sleep?"], "sleep-check-in"),
+            ("Home", ["Today's plan"], "daily-plan"),
+            ("Sleep", ["Programs"], "programs"),
+            ("Home", ["Toolkit"], "toolkit"),
+            ("Home", ["Search"], "search"),
+            ("Sleep", ["Rain over quiet hills"], "player"),
+            ("Sleep", ["Sleep diary"], "sleep-diary"),
+            ("Talk", ["Switch to chat"], "chat"),
+            ("Journal", ["New entry"], "journal-entry"),
+            ("Journal", ["History"], "journal-history"),
+            ("You", ["Companion style"], "companion-style"),
+            ("You", ["Daily reminder"], "reminders"),
+            ("You", ["Privacy & memory"], "privacy"),
+            ("You", ["Pattern dashboard"], "pattern-dashboard"),
+            ("You", ["Urgent support"], "crisis"),
+            ("You", ["Premium plan"], "premium"),
         ]
         for page in pushed {
             openTab(app, page.from)
@@ -1168,16 +1183,16 @@ final class CereBroUITests: XCTestCase {
             // you feel" failed while "Today's plan" and "Search", lower on the
             // same screen, passed.
             for _ in 0..<3 { app.swipeDown() }
-            var reached = tap(app, page.via)
+            var reached = page.via.contains { tap(app, $0) }
             if !reached {
                 // The tab bar can still be settling from the previous capture —
                 // re-anchor on the tab once before declaring the page missing.
                 openTab(app, page.from)
                 for _ in 0..<3 { app.swipeDown() }
-                reached = tap(app, page.via)
+                reached = page.via.contains { tap(app, $0) }
             }
             guard reached else {
-                XCTFail("Screenshot tour: '\(page.via)' not reachable from \(page.from) — ios-\(page.name).png not captured")
+                XCTFail("Screenshot tour: none of \(page.via) reachable from \(page.from) — ios-\(page.name).png not captured")
                 continue
             }
             try capture(app, page.name)

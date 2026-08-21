@@ -451,6 +451,44 @@ gap): TIPP, gratitude, one-good-thing, intention, the CBT thought record, crisis
 insight reel, wind-down, the mindful mini-games, baseline assessment, trusted contact, the
 standalone player.
 
+### iOS: the four screenshot-tour failures, and the orphan under them (2026-08-21)
+
+iOS had failed **every time it has ever run in CI** — 2026-08-17 three times, and again
+today. Always the same four, always `testScreenshotTour`: `Sounds`, `Insights`,
+`Programs`, `Check how you feel` "not reachable from Home". The other 18 UI tests pass.
+
+A previous pass diagnosed it as scroll position and added `swipeDown` plus a retry. The
+timing disproves it: that fix landed at **14:15** and the run that failed identically
+started at **14:29**. The diagnosis was wrong.
+
+**What was actually true.** `QuickLinksGrid` — the four-tile explore row naming Toolkit,
+Insights, Programs and Sounds — had **no call site anywhere in the app**. It was orphaned
+by the Home de-densify. Three of the four were therefore never on Home to reach; Toolkit
+passed only because it also has a real `NavRow`. And "Check how you feel" renders
+`if focus.route != .mood`, while the tour launches `-resetState YES` → `!checkedInToday` →
+the HERO is the mood ask → the row is hidden on **every** run. Corroboration: `testHomeFlow`
+and `testPhase2DataLayer` already tap the hero's "Check in" with a fallback, and both pass.
+
+**The real bug underneath: `SoundLibraryView` had no door.** Its only reference in the
+entire app was inside that dead grid — a finished screen behind nothing, while grepping
+"Sounds" in `HomeView` still made it look reachable. That is exactly how an orphan hides,
+and exactly the trap already hit on Android (the Practice library, and the door
+`guidedimagery` never had) and now tested for on web.
+
+Fixed at both layers:
+
+- **App** — `SoundLibraryView` gets a door in Sleep, beside the meditation library it
+  belongs next to. `QuickLinksGrid` deleted rather than re-wired: the de-densify cut Home
+  rows deliberately, and every destination it named is reachable elsewhere (Toolkit from
+  its own row, Insights from You, Programs from Sleep and the enrolled card).
+- **Test** — each tour entry now names where its destination actually lives, and takes a
+  LIST of candidate labels so the conditional check-in row can fall back to the hero CTA.
+
+**Unverified until CI says so.** There is no Mac here, so this is a source-level diagnosis
+with a source-level fix; the iOS job takes 41–51 minutes and is the only thing that can
+confirm it. Called out rather than glossed: everything above is evidence-backed, but
+"compiles and passes" is not yet among the evidence.
+
 ### Admin: the two tabs with no test at all (2026-08-21)
 
 Prompted by a fair question — had admin been tested? It had: 12 e2e tests across 10 tabs,
