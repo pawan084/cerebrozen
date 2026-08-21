@@ -4,6 +4,48 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the last four uncovered web surfaces (2026-08-21)
+
+Re-ran the route count across all four Next apps afterwards, which is the only
+honest way to answer "have you tested everything". It found four more surfaces
+reached by nothing, and each one was worth more than a smoke check:
+
+- **`/delete-account`** — the URL pasted into the Play listing under App content
+  → Data safety. In the sitemap, in the footer, tested by nothing: a store-listing
+  dependency that could 404 or silently lose its `mailto:` and no one would know.
+  Now asserts both routes out (in-app path and the email one for someone who has
+  already uninstalled), the subject line, the 30-day commitment, and BOTH honesty
+  headings — what gets deleted and what does not.
+- **`/terms`** — clause 1, "Wellness, not medical care", is what the App Store
+  review and the whole "companion, never clinician" position rest on. A rewrite
+  that softened it now breaks a test.
+- **`/sleep/ritual`** — the last authed route with no test. Walks all four steps
+  to Goodnight, and pins the promise printed under the brain-dump textarea:
+  *"This stays on your device and is never sent anywhere — unless you choose to
+  save it."* It records every request the page makes and asserts the typed words
+  appear in none of them. **Mutation-checked**: clicking "Save to journal" makes
+  it fail naming `POST /journal`, so the detector is real and the promise holds
+  in both directions.
+- **Admin → Oracle** — the one tab of ten no test opened, and the one most likely
+  to break in the configuration CI actually runs: four admin reads with
+  `ORACLE_ENABLED` unset and no LLM key. "Everything degrades without keys" is a
+  hard rule, and an operator page that errors when a feature is merely off is the
+  most ordinary way to break it. Asserts Agent reads **Off**, both tables render,
+  and `.state` — the shared error box for every failed admin read — appears zero
+  times, which catches whichever of the four calls regresses.
+- Also folded **Terms** and **Delete your account** into the footer-link test,
+  which had been walking six of the eight footer destinations.
+
+Counts after: **web 11/11, app 30/31, admin 10/10 tabs, portal 36/36**; the full
+Playwright suite is **71 passing**. The one route left uncovered is `/design`,
+deliberately: it is scaffolding outside the `(authed)` group, mock data, no
+network, unreachable from the signed-in app, and its own header says "nothing
+here proves the real screen works". Testing it would be testing the scaffolding.
+
+**The stale-image trap bit again** — `docker compose run --rm e2e` runs the tests
+BAKED INTO the image, so the first run of these reported 24 passed, which was
+the old count. The test count is the tell; `build e2e` first.
+
 ## Done — web write-path e2e, and the vanishing plan tick (2026-08-21)
 
 A route-coverage count found four `apps/app` routes reached by no test — `/safety-plan`,

@@ -662,6 +662,52 @@ test.describe("Web app (authenticated client)", () => {
     expect(await active(), "the programme is still active after leaving it").toBeFalsy();
   });
 
+  test("the wind-down ritual walks to the end, and the brain dump never leaves", async ({ page }) => {
+    // /sleep/ritual was the last authed route no test named. Worth more than a
+    // smoke check, because its first step makes an explicit promise in the
+    // footnote under the textarea: "This stays on your device and is never sent
+    // anywhere — unless you choose to save it."
+    //
+    // That sentence sits under the most unguarded writing anyone does all day —
+    // the page's own comment says as much, which is why the reference build's
+    // silent discard was changed to a stated one. A promise like that is worth
+    // a test that would actually catch it breaking, so this records every
+    // request the page makes and asserts the typed words are in none of them.
+    const email = `e2e-ritual-${Date.now()}@test.app`;
+    await createAccount(page, email);
+
+    const secret = `unguarded-${Date.now()}`;
+    const leaked: string[] = [];
+    page.on("request", (r) => {
+      const body = r.postData();
+      if (body && body.includes(secret)) leaked.push(`${r.method()} ${r.url()}`);
+    });
+
+    await page.goto(`${APP}/sleep/ritual`, { waitUntil: "networkidle" });
+    await expect(page.getByText("Step 1 of 4")).toBeVisible();
+
+    await page.getByLabel("Brain dump").fill(secret);
+    await page.getByRole("button", { name: "Continue" }).click();
+
+    // Every step is skippable on purpose — "a body scan you're stuck inside is
+    // not relaxing" — so the walk does not have to sit through 36s of prompts
+    // and six paced breaths to reach the end.
+    await expect(page.getByText("Step 2 of 4")).toBeVisible();
+    await page.getByRole("button", { name: "Skip tonight" }).click();
+    await expect(page.getByText("Step 3 of 4")).toBeVisible();
+    await page.getByRole("button", { name: "Skip ahead" }).click();
+    await expect(page.getByText("Step 4 of 4")).toBeVisible();
+    await page.getByRole("button", { name: "I'm settled" }).click();
+
+    await expect(page.getByText("Goodnight.")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Back to sleep" })).toBeVisible();
+
+    expect(
+      leaked,
+      `the brain dump was sent to ${leaked.join(", ")} — the footnote promises it never leaves the device`,
+    ).toEqual([]);
+  });
+
   test("every chip is a tap target, not a decoration", async ({ page }) => {
     // `.chip` and `.ui-chip` are buttons everywhere they appear — chat retry
     // and suggestions, the ritual cue picker, journal tag filters, the

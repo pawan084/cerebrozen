@@ -239,6 +239,35 @@ test.describe("Admin dashboard", () => {
     expect(await canSignIn(), "re-enabling did not restore access").toBeTruthy();
   });
 
+  test("the Oracle tab holds up with the agent switched off", async ({ page }) => {
+    // The one tab of ten that no test opened. It is also the tab most likely to
+    // break in exactly the configuration CI runs in: four separate admin reads
+    // (/status, /pending, /audit, /agent-actions) on a stack with ORACLE_ENABLED
+    // unset and no LLM key. "Everything degrades without keys" is a hard rule
+    // here, and an operator page that errors when the feature is simply off is
+    // the most ordinary way to break it.
+    await nav(page, "Oracle").click();
+    await expect(page.getByRole("heading", { name: "Oracle", exact: true })).toBeVisible();
+
+    // Five stat cards, and the agent honestly reported as Off rather than blank.
+    await expect(page.locator(".stat")).toHaveCount(5);
+    await expect(page.locator(".stat", { hasText: "Agent" }).locator(".n")).toHaveText("Off");
+
+    // Both tables render — the tool-acceptance stats (register E56: this data
+    // existed and was reachable only by curl) and the audit trail.
+    await expect(page.getByRole("heading", { name: /How often each tool is accepted/i })).toBeVisible();
+
+    // Nothing errored. `Problem` is the shared error state for every failed
+    // admin read, so its absence is the assertion that all four calls answered
+    // — a per-panel check would miss whichever one regressed.
+    await expect(page.locator(".state")).toHaveCount(0);
+
+    // The promise printed on the page itself: arguments are recorded by name
+    // only. If a table ever starts rendering values, this sentence becomes a
+    // lie told to the operator reading it.
+    await expect(page.getByText(/by name only — never their values/i)).toBeVisible();
+  });
+
   test("a reload keeps the operator signed in", async ({ page }) => {
     // The refresh token moved from localStorage to an httpOnly cookie, which
     // means the browser holds the only copy and the console cannot read it.

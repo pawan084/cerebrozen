@@ -35,10 +35,53 @@ test.describe("Trust pages", () => {
     await expect(page.getByText("ElevenLabs")).toBeVisible();
   });
 
+  // Play Console requires a reachable URL where someone can request account and
+  // data deletion WITHOUT installing the app (App content -> Data safety), and
+  // this page IS the URL pasted into the listing. It was in the sitemap and the
+  // footer and reached by no test at all, which is the worst combination: a
+  // store-listing dependency that could 404 or lose its email route silently.
+  test("the off-app deletion route still offers both ways out", async ({ page }) => {
+    await page.goto(`${WEB}/delete-account`, { waitUntil: "networkidle" });
+    await expect(page.getByRole("heading", { name: "Delete your account" })).toBeVisible();
+
+    // Option 1 names the in-app path. If the app ever moves that screen this
+    // sentence goes stale, and someone following it gives up.
+    await expect(page.getByText(/Privacy\s*&\s*data/i).first()).toBeVisible();
+
+    // Option 2 is the half that has to work for someone who has already
+    // uninstalled — the exact person Play has in mind. A mailto that loses its
+    // address is a dead end with no error message.
+    const mail = page.locator('a[href^="mailto:privacy@cerebrozen.in"]').first();
+    await expect(mail).toBeVisible();
+    await expect(mail).toHaveAttribute("href", /subject=/);
+
+    // Both halves of the honesty: what goes, and what stays. A deletion page
+    // that only promised the first half would be the kind of claim CLAIMS_MAP
+    // exists to stop.
+    await expect(page.getByRole("heading", { name: /What gets deleted/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /What does not get deleted/i })).toBeVisible();
+    await expect(page.getByText(/30 days/i).first()).toBeVisible();
+  });
+
+  test("terms lead with wellness, not medical care", async ({ page }) => {
+    // Clause 1 is the one the App Store review and every safety claim rest on.
+    // "Companion, never clinician" is the product's whole position; the terms
+    // are where it is legally stated, so a rewrite that softened it should
+    // break something.
+    await page.goto(`${WEB}/terms`, { waitUntil: "networkidle" });
+    await expect(page.getByRole("heading", { name: "Terms of Use" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Wellness, not medical care/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /AI limitations/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: "refunds policy" }).or(
+      page.locator('a[href="/refunds"]')).first()).toBeVisible();
+  });
+
   test("footer links every trust page from the landing", async ({ page }) => {
     await page.goto(WEB, { waitUntil: "networkidle" });
     for (const [name, path] of [
       ["Security", "/security"],
+      ["Terms", "/terms"],
+      ["Delete your account", "/delete-account"],
       ["Refunds", "/refunds"],
       ["Subprocessors", "/subprocessors"],
       ["Safety centre", "/safety"],
