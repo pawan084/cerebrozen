@@ -42,11 +42,18 @@ jobs:
               - 'backend/**'
               - 'docker-compose*.yml'
               - '.github/workflows/ci.yml'
+              # The Playwright job gates on `backend || web`, and it is the only
+              # thing that runs these specs. Without this, editing a test did
+              # not run it: every e2e change on 2026-08-21 reached main with the
+              # suite SKIPPED, which is the one filter mistake that costs you
+              # the gate you were adding.
+              - 'e2e/**'
             web:
               - 'apps/web/**'
               - 'apps/admin/**'
               - 'apps/app/**'
               - 'scripts/**'
+              - 'e2e/**'
               - '.github/workflows/ci.yml'
             clients:
               - 'apps/**'

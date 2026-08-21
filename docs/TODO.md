@@ -482,7 +482,13 @@ control bytes into a source file, and the upload endpoint validates only the EXT
 non-emptiness anyway; and the media `<input type=file>` is hidden inside a
 `<label class="btn">`, so it can be filled but never asserted visible.
 
-Web e2e **61 → 63**, full suite green.
+Web e2e **61 → 63**, full suite green locally.
+
+**And the hole that found:** pushing them turned CI entirely green with **every job
+skipped** — no path filter mentioned `e2e/**`, so editing a test did not run it. Every e2e
+change this session reached `main` with the Playwright suite skipped. They were verified
+locally, so nothing shipped unproven, but the gate was not gating. `e2e/**` now feeds both
+the `backend` and `web` filters, which is what the Playwright job keys on.
 
 **Still untested on admin:** the Oracle tab, and 7 remaining routes — `/digest/run`,
 `/content/{id}/narrate`, `/oracle/pending/{id}/expire`, `/prompts/{name}/revert`,
