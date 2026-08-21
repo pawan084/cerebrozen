@@ -4,6 +4,62 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — web unit coverage, second wave (2026-08-21)
+
+**49.5% → 74.3%; 442 → 554 tests.** Six more modules, chosen because each one
+carries a promise that fails silently:
+
+- **`analytics.ts` (0 → 96%).** Every rule in its header is a privacy promise
+  invisible on screen: nothing fires before consent, no bearer token rides
+  along, the id names the install and never the person, opt-out is honoured,
+  and a blocked `localStorage` degrades to sending nothing rather than
+  crashing a screen. Also pins the event vocabulary against the backend's
+  `ALLOWED_EVENTS` — unknown names are dropped server-side, so a rename here
+  is a quietly incomplete admin funnel, not an error.
+- **`onboarding.ts` (0 → 100%).** Private by default (nothing pre-ticked —
+  consent must be an action); the consent deep-merge, so a draft saved before
+  `model_training` existed still yields `false` and not `undefined` (a privacy
+  bug and an uncontrolled-input bug at once); `applyOnboarding` best-effort per
+  call. `STEP_NAMES` is checked against `metrics.ONBOARDING_STEPS` for
+  membership AND order — the admin funnel joins on those strings.
+- **`oracle.ts` (0 → 100%).** The decisive one: a frame split across network
+  reads must still parse. A malformed frame is skipped rather than killing the
+  stream, because a dead stream mid-reply reads as the companion refusing to
+  talk to you.
+- **`voice.ts` (0 → 100%).** The microphone track is stopped when a recording
+  ends — leaving it live keeps the browser's recording indicator on, which on
+  a page about privacy is the worst thing to get wrong and is invisible in a
+  screenshot. Plus: the object URL is revoked so spoken replies do not leak for
+  the life of the tab, and `/voice/status` failing means NO microphone rather
+  than a button that fails when pressed.
+- **`push.ts` (0 → 100%).** Unsubscribing locally happens even when the server
+  call fails — otherwise someone who switched notifications off keeps getting
+  them. Also the base64url → bytes VAPID conversion, which fails opaquely
+  inside the browser long after the toggle has flipped.
+- **`portal/lib/api.ts` (0 → 75%).** The separate refresh key is asserted
+  against `apps/app`'s: an administrator is very likely a member too, and a
+  shared key would mean signing out of the portal signed you out of your own
+  wellbeing account. Also 403-is-an-answer-not-an-expiry, and single-flight
+  rotation — three widgets loading at once must not race three refreshes,
+  since a rotated refresh token is single-use and the losers sign you out.
+
+**Mutation-swept again: 11 more deliberate breakages, all 11 caught** (19 across
+both waves). Including: firing funnel events before consent; attaching a bearer
+token to an anonymous event; pre-ticking a consent category; shallow-merging the
+draft; dropping a split SSE frame; leaving the microphone live; enabling voice on
+a truthy-but-not-true flag; keeping notifications on when the server refuses;
+sharing the member app's session key; and racing three token rotations.
+
+**Still uncovered:** `apps/app/lib/mixer.ts` (272 lines, needs Web Audio fakes)
+and the untested half of `apps/app/lib/api.ts` (the auth helpers below `api()`).
+
+**A vitest trap worth knowing.** A `vi.fn()` whose implementation throws — or
+returns a rejected promise — has that error recorded and re-surfaced as an
+unhandled one, failing the test even when the code under test catches it and
+returns normally. Proven by calling the function directly: it returned `false`
+and threw nothing, while the same assertion through the spy failed. The fix is
+to throw from the mock MODULE (via `vi.hoisted` state) instead of from the spy.
+
 ## Done — the four Next apps get unit tests at last (2026-08-21)
 
 Answering "what is the test coverage of web and admin" honestly meant saying
