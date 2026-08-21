@@ -4,6 +4,49 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — component tests, and the 18+ gate Apple never met (2026-08-21)
+
+The unit suite covered `lib/` and nothing else. Components hold real logic, and
+the first one worth testing turned out to hold a real hole.
+
+**`AuthPanel` gates account creation on an 18+ confirmation** when used outside
+the onboarding funnel. Register D23 records that this used to be `!useCode`, so
+a passwordless (OTP) sign-up met no 18+ moment at all "— and neither did Google";
+the comment above the checkbox then claimed *"the one gate every account has to
+pass now renders for every sign-up path."*
+
+**Rendering it was only half of it.** The form paths are stopped by `required`
+on the checkbox — the browser refuses to submit, so `submitEmail`'s own check
+never even runs. But the social buttons are `type="button"` and never submit, so
+that JS check is the ONLY gate they have. **Google had one. Apple did not.**
+Clicking "Sign in with Apple" in account-creation mode with the box unticked
+went straight through to `signInApple`.
+
+Latent rather than live, because Apple stays inert until a Services ID is
+configured — but the day Apple is wired is not the day to discover it was the
+exception, and a comment asserting completeness made it invisible. Fixed by
+mirroring `doGoogle`, and the comment now says which mechanism guards which
+door instead of claiming they are all the same.
+
+`tests/app/AuthPanel.test.tsx` walks all four doors (email, OTP, Google, Apple)
+in both directions. It failed on Apple before the fix and passes after — which
+is the whole proof.
+
+**Two setup notes:**
+- `@testing-library/react` needs `resolve.dedupe: ["react", "react-dom"]`.
+  Without it the component resolves React from `apps/app/node_modules` and the
+  test library from the root, and two copies means a null hook dispatcher:
+  *"Cannot read properties of null (reading 'useState')"* on every render.
+- `vi.mock` factories are hoisted above every `const`, so the mocked modules
+  have to be built with `vi.hoisted` — otherwise the failure is "Cannot access
+  'api' before initialization" at import time, nowhere near the assertion.
+
+**Coverage scope widened to include `components/`, so the headline number FELL
+from 97.6% to ~50%.** That is not a regression: `lib/` is still 97.6%, and a
+number that excluded components was flattering. The components are the next
+surface — `RitualSteps` (358 lines), `ThoughtSort`, `JourneyPath`,
+`OfflineProgram`, the portal `Shell`, and the landing's `Waitlist`.
+
 ## Done — the Android write flows now actually run on CI (2026-08-21)
 
 Fourteen of the twenty-two instrumented tests are WRITE flows, and they need a

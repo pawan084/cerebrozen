@@ -2,7 +2,11 @@
   "//": "Root config for the test suite only. Each app keeps its own tsconfig; this one exists so `tsc --noEmit` can typecheck tests/ the way CI already typechecks all four apps.",
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
@@ -10,8 +14,20 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "types": ["node", "vitest/globals"],
-    "paths": { "@/*": ["./apps/app/*"] }
+    "types": [
+      "node",
+      "vitest/globals"
+    ],
+    "paths": {
+      "@/*": [
+        "./apps/app/*"
+      ]
+    },
+    "jsx": "react-jsx"
   },
-  "include": ["tests/**/*.ts", "vitest.config.ts"]
+  "include": [
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+    "vitest.config.ts"
+  ]
 }

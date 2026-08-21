@@ -86,7 +86,15 @@ export default function AuthPanel({
     if (again) void withBusy(again);
   }
 
-  const doApple = () =>
+  const doApple = () => {
+    if (ageBlocked) {
+      setError("Please confirm you're 18 or older to create an account.");
+      return;
+    }
+    return doAppleAuth();
+  };
+
+  const doAppleAuth = () =>
     withBusy(async () => {
       const { token, name: appleName } = await appleIdentityToken();
       await signInApple(token, appleName);
@@ -258,7 +266,15 @@ export default function AuthPanel({
             exist without the confirmation every other door requires. */}
         {/* Register D23: this was `!useCode`, so a passwordless (OTP) sign-up
             met no 18+ moment at all — and neither did Google, below. The one
-            gate every account has to pass now renders for every sign-up path. */}
+            gate every account has to pass now renders for every sign-up path.
+
+            RENDERING it was only half of it. The form paths are stopped by
+            `required` below; the social buttons are type="button" and never
+            submit, so the JS `ageBlocked` check is the only gate they have.
+            Google got one and Apple did not — a hole this comment claimed did
+            not exist, latent only because Apple stays inert until a Services
+            ID is configured. tests/app/AuthPanel.test.tsx walks all four
+            doors so the claim and the code cannot drift apart again. */}
         {requireAgeAttest && mode === "signUp" && (
           <label className="field check-line">
             <input
