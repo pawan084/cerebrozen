@@ -59,6 +59,14 @@ jobs:
               - 'apps/**'
               - 'scripts/**'
               - 'docs/CLAIMS_MAP.md'
+              # The web unit suite runs in this job, so a change to a TEST has
+              # to be able to trigger it. Same lesson as 'e2e/**' above: a
+              # filter that omits the tests hands you a green tick meaning
+              # "nothing ran".
+              - 'tests/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'vitest.config.ts'
               - '.github/workflows/ci.yml'
             android:
               - 'apps/android/**'
@@ -182,6 +190,7 @@ jobs:
           node-version: "20"
           cache: npm
           cache-dependency-path: |
+            package-lock.json
             apps/web/package-lock.json
             apps/admin/package-lock.json
             apps/app/package-lock.json
@@ -227,6 +236,18 @@ jobs:
       # green CI (WEB-01). All four apps were at zero warnings when this landed,
       # so the gate costs nothing today and refuses the next one. Verified by
       # reintroducing a missing dependency in apps/app: exit 1, rule named.
+      # The four Next apps had no unit tests and no coverage instrumentation of
+      # any kind — 71 browser tests were the entire safety net for four
+      # deployed surfaces. These cover the logic where a silent bug costs the
+      # most: the offline write queue, the ?next= allow-list, the crisis
+      # directory, the DPDP consent notice, the session/error mapping in both
+      # API clients, and the portal's privacy-wall copy.
+      - name: Web unit tests (vitest)
+        run: |
+          npm ci
+          npx tsc --noEmit
+          npm test
+
       - name: Typecheck + lint web
         working-directory: apps/web
         run: |

@@ -8,8 +8,9 @@
  *   heroWhyRes()       → TodayScreen.kt:808
  * Change one side and change the other in the same commit.
  *
- * There is no unit-test runner in apps/app, so unlike the Android twin these
- * functions are only covered by e2e. Keep them pure so that stays cheap.
+ * Covered by tests/app/todayHero.test.ts, which also checks the two provenance
+ * sentences against the Android strings they are hand-copied from. Keep these
+ * functions pure so that stays cheap.
  */
 
 export type HeroKind = "loading" | "fallback" | "plan-step" | "plan-done";

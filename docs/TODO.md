@@ -4,6 +4,59 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the four Next apps get unit tests at last (2026-08-21)
+
+Answering "what is the test coverage of web and admin" honestly meant saying
+there was no number, because nothing measured one: **no unit tests and no
+coverage instrumentation in any of the four apps**, with 71 Playwright tests as
+the entire safety net for four deployed surfaces. That was the largest gap in
+the repo. Closed:
+
+- **Vitest + jsdom, one runner at the repo ROOT** rather than four per-app
+  setups. The `lib/` modules are plain TypeScript, only `apps/app` uses the
+  `@/` alias, and a single coverage number for the whole web surface is the
+  point of the exercise. Tests live in `tests/`, deliberately NOT beside the
+  sources, so `next build` and the production images never see them (verified
+  by rebuilding the app image — the Dockerfile copies only `apps/app`, so the
+  root lockfile never enters the build context).
+- **442 tests across 11 files; coverage 0% → 49.5%** overall, `apps/web/lib` at
+  96%. Targeted by risk rather than by line count: the offline write queue, the
+  `?next=` open-redirect allow-list, both hand-copied crisis directories, the
+  DPDP consent notice (13 languages × 6 categories), the session and error
+  mapping in the app AND admin API clients, the portal IA + privacy-wall copy,
+  `todayHero`, `pageMeta`, `theme`, `appUrl`, `social`.
+- **Mutation-swept, because a suite that cannot fail is decoration.** Eight
+  deliberate breakages, all eight CAUGHT: hiding a 4xx behind "saved, will
+  sync"; allowing `//evil.com` through the redirect guard; flipping the hero
+  branch order so a slow fetch reads as "you have no plan"; dialling a number
+  with its display hyphens; stamping JSON over a FormData upload; softening the
+  privacy-wall sentence; making the plan-source check case-sensitive so "AI"
+  claims the wrong privacy; reporting a dead admin backend as bad credentials.
+- **Cross-stack contracts now checked rather than trusted.** `todayHero`'s two
+  provenance sentences are asserted word-for-word against Android
+  `strings.xml`; the two crisis directories are asserted against each other;
+  `PERSONAL_KEYS` in `api.ts` is asserted to still list the outbox key that
+  `outbox.ts` writes to (neither module can import the other's constant, and
+  the failure is a shared browser posting one person's check-ins into the next
+  person's account); every portal sidebar href is asserted to have a
+  `page.tsx` on disk and a `PAGE_META` title.
+- **Wired into CI** as a step in the existing `web` job, and `tests/**`,
+  `package.json`, `package-lock.json`, `vitest.config.ts` were added to the
+  `clients` path filter — the same lesson as `e2e/**` last week: a filter that
+  omits the tests hands you a green tick meaning "nothing ran". Root
+  `tsconfig.json` added so `tsc --noEmit` typechecks the tests the way all four
+  apps are already typechecked.
+- `apps/app/lib/todayHero.ts` said "there is no unit-test runner in apps/app,
+  so unlike the Android twin these functions are only covered by e2e". That
+  sentence is now false, and was updated rather than left to rot.
+
+**Still uncovered and worth a later pass:** `apps/portal/lib/api.ts` (409
+lines), `apps/app/lib/mixer.ts` (272, needs Web Audio fakes), `analytics.ts`,
+`onboarding.ts`, `voice.ts`, `push.ts`, `oracle.ts`. `portal/lib/mock.ts` is
+excluded from coverage on purpose — 500 lines of fixture data for screens whose
+models do not exist yet, so measuring it would flatter the number without
+testing anything.
+
 ## Done — the last four uncovered web surfaces (2026-08-21)
 
 Re-ran the route count across all four Next apps afterwards, which is the only

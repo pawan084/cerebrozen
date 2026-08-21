@@ -1,0 +1,17 @@
+{
+  "name": "cerebro-web-tests",
+  "private": true,
+  "description": "Unit tests for the four Next apps' lib/ modules. One runner at the root rather than four per-app setups: the modules are plain TypeScript, only apps/app uses the @/ alias, and a single coverage number for the whole web surface is the point of the exercise.",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@vitest/coverage-v8": "^3.2.4",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  }
+}
