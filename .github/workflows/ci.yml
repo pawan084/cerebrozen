@@ -416,7 +416,9 @@ jobs:
         run: cp backend/.env.example backend/.env
       - name: Start the backend the write flows need
         run: |
-          docker compose up -d --build db api
+          # -f docker-compose.ci.yml drops the ./backend:/app bind mount; see
+          # that file for why it is fatal on a runner but fine locally.
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build db api
           for i in $(seq 1 60); do
             curl -sf http://localhost:8000/health >/dev/null && break
             sleep 3
@@ -448,10 +450,10 @@ jobs:
         run: python3 scripts/check-android-skips.py
       - name: Backend logs on failure
         if: failure()
-        run: docker compose logs --tail 100 api
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml logs --tail 100 api
       - name: Tear down the backend
         if: always()
-        run: docker compose down -v
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
       - name: Upload instrumented results on failure
         if: failure()
         uses: actions/upload-artifact@v4

@@ -1,0 +1,29 @@
+# CI overlay for the dev stack.
+#
+# Used only by the Android instrumented job, which needs a real API on the
+# runner's localhost so the emulator can reach it at 10.0.2.2:8000.
+#
+# The one thing it changes is the source bind mount. docker-compose.yml mounts
+# ./backend:/app for hot reload, which is right on a developer's machine and
+# wrong on a runner: the checkout is owned by `runner`, the container runs as a
+# non-root `appuser` with a different uid, and the API's first act is
+#
+#   Path(settings.media_root).mkdir(parents=True, exist_ok=True)
+#
+# inside that mounted directory. On CI that is PermissionError: [Errno 13]
+# Permission denied: 'media', the container dies at import time, and the health
+# probe times out — which is exactly how this failed the first time.
+#
+# Dropping the mount makes the API behave the way docker-compose.e2e.yml's copy
+# already does: source baked into the image, media written to a path appuser
+# owns. Hot reload is not something CI wants anyway.
+#
+# `!reset` and not a plain `volumes: []`. Compose MERGES list-valued keys across
+# overlay files, so an empty list means "add nothing" and leaves the original
+# mount in place — the override looked correct, changed nothing, and would have
+# failed on CI in exactly the same way. Verified by inspecting the merged config
+# (`docker compose ... config`) and the running container's mount count, rather
+# than by trusting the file.
+services:
+  api:
+    volumes: !reset []
