@@ -34,6 +34,34 @@ passed and fourteen quietly did not run.**
 Same shape as the two path-filter holes closed this week: the job was green,
 and green meant less than it looked.
 
+**What it found on the very first clean run.** 22 tests, **0 skipped** — and one
+failure: `PrivacyFlowE2ETest.a_memory_can_be_added_edited_and_deleted_one_at_a_time`
+died on the server's own sentence, *"AI memory is switched off in your privacy
+settings."* The test wrote a memory without granting `ai_memory` first. It had
+been passing on a handset **only because the demo account happened to have
+consent left on from earlier manual use** — ambient state doing the work the
+test claimed to be doing. This is the same mistake already fixed once in
+`ConsentFlowE2ETest` the same day; it was fixed there and missed here, and only
+a freshly seeded database could tell the difference. Now it reads the current
+consent, grants it, and restores it in a `finally` — the pattern the safety-plan
+test in the same file already used.
+
+**Two attempts to get the backend up, both worth recording:**
+1. `docker-compose.yml` mounts `./backend:/app` for hot reload. On a runner the
+   checkout belongs to `runner` and the container runs as a non-root `appuser`
+   with a different uid, so the API's first act — `mkdir` of `media_root`
+   INSIDE the mounted directory — is `PermissionError: [Errno 13]`. It dies at
+   import and the health probe times out. Locally the same compose is fine
+   because Docker Desktop's bind mounts are permissive.
+   `docker-compose.e2e.yml` already avoids this by not mounting the source, so
+   `docker-compose.ci.yml` does the same for the dev stack.
+2. **`volumes: []` did not drop the mount.** Compose MERGES list-valued keys
+   across overlay files, so an empty list means "add nothing" and the original
+   survives. The override looked correct, changed nothing, and would have
+   failed on CI identically. `!reset []` is the documented way. Caught only by
+   inspecting the merged `config` output and the running container's mount
+   count instead of trusting the file.
+
 ## Done — web unit coverage, third wave: 97.6% (2026-08-21)
 
 **74.3% → 97.6%; 554 → 632 tests.** The four Next apps went from no unit tests

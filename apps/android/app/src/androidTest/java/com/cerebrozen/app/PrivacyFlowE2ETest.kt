@@ -118,25 +118,46 @@ class PrivacyFlowE2ETest {
         // the app reaches those routes.
         launch("patterns").use { compose.requireText("Pattern dashboard") }
 
-        val created = BackendFixture.onServer { Api.addMemory("Memory $stamp") }
-        val id = created.getString("id")
+        // Consent is a PRECONDITION here, not the subject. The server refuses a
+        // memory write with "AI memory is switched off in your privacy settings"
+        // unless `ai_memory` is granted — that rule is what ConsentFlowE2ETest
+        // tests; this one is about the row being addressable afterwards.
+        //
+        // It was missing, and the test passed anyway on a handset because the
+        // demo account happened to have consent left on from earlier manual
+        // use. The first run against a freshly seeded CI database failed with
+        // the server's own sentence. A test that depends on ambient account
+        // state passes for a reason that has nothing to do with what it claims.
+        val hadConsent = BackendFixture.onServer { Api.consent() }.optBoolean("ai_memory", false)
+        BackendFixture.onServer { Api.updateConsent(JSONObject().put("ai_memory", true)) }
         try {
-            val edited = "Memory $stamp edited"
-            BackendFixture.onServer { Api.editMemory(id, edited) }
-            val after = BackendFixture.onServer { Api.memories() }
-            val row = (0 until after.length()).map { after.getJSONObject(it) }
-                .firstOrNull { it.optString("id") == id }
-            assertNotNull("the memory vanished after an edit", row)
-            assertEquals("the edit did not take", edited, row!!.optString("body"))
-        } finally {
-            BackendFixture.onServer { Api.deleteOneMemory(id) }
-        }
+            val created = BackendFixture.onServer { Api.addMemory("Memory $stamp") }
+            val id = created.getString("id")
+            try {
+                val edited = "Memory $stamp edited"
+                BackendFixture.onServer { Api.editMemory(id, edited) }
+                val after = BackendFixture.onServer { Api.memories() }
+                val row = (0 until after.length()).map { after.getJSONObject(it) }
+                    .firstOrNull { it.optString("id") == id }
+                assertNotNull("the memory vanished after an edit", row)
+                assertEquals("the edit did not take", edited, row!!.optString("body"))
+            } finally {
+                BackendFixture.onServer { Api.deleteOneMemory(id) }
+            }
 
-        val remaining = BackendFixture.onServer { Api.memories() }
-        assertFalse(
-            "the memory survived DELETE — 'delete any of it' has to mean gone",
-            (0 until remaining.length()).any { remaining.getJSONObject(it).optString("id") == id },
-        )
+            val remaining = BackendFixture.onServer { Api.memories() }
+            assertFalse(
+                "the memory survived DELETE — 'delete any of it' has to mean gone",
+                (0 until remaining.length()).any { remaining.getJSONObject(it).optString("id") == id },
+            )
+        } finally {
+            // Put the switch back exactly as it was. Consent state is rendered
+            // on the check-in screen, so leaving it flipped would change what
+            // the next device walk screenshots.
+            if (!hadConsent) {
+                BackendFixture.onServer { Api.updateConsent(JSONObject().put("ai_memory", false)) }
+            }
+        }
     }
 
     // ── Export ──────────────────────────────────────────────────────────────
