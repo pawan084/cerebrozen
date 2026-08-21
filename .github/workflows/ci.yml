@@ -245,7 +245,6 @@ jobs:
       - name: Web unit tests (vitest)
         run: |
           npm ci
-          npx tsc --noEmit
           npm test
 
       - name: Typecheck + lint web
@@ -274,6 +273,16 @@ jobs:
           npm ci
           npx tsc --noEmit
           npx next lint --max-warnings=0
+
+      # LAST, and deliberately so. The root tsconfig covers tests/, and those
+      # tests import the app modules they exercise — including
+      # apps/web/lib/pageMeta.ts, which imports a TYPE from "next". That
+      # resolves only through apps/web/node_modules, so running this before the
+      # four app installs fails with "Cannot find module 'next'". Vitest itself
+      # is unaffected (type imports are erased at transform time), which is why
+      # the suite runs early for fast feedback and only the typecheck waits.
+      - name: Typecheck the web test suite
+        run: npx tsc --noEmit
 
   # ── iOS: SwiftUI UITests (Simulator) ──────────────────────────────────
   # The two live-backend tests (testCloudSync / testCloudChatAndPlan) self-skip
