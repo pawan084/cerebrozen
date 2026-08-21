@@ -1,6 +1,7 @@
 import { test, expect, Page } from "@playwright/test";
 
 const ADMIN = process.env.ADMIN_URL || "http://admin:3001";
+const API = process.env.API_URL || "http://api:8000";
 
 async function login(page: Page) {
   await page.goto(ADMIN, { waitUntil: "networkidle" });
@@ -143,6 +144,100 @@ test.describe("Admin dashboard", () => {
   // access token lives in memory — so within a single test the refresh
   // credential is never needed, and a cross-origin Set-Cookie that the browser
   // silently dropped would look exactly like success.
+
+  // ── Media catalogue ─────────────────────────────────────────────────────
+  //
+  // The tab had no test at all, and it is the pipeline that decides whether a
+  // premium narration is a real file or silence: `services/media.playback_url`
+  // hands back "" for an un-entitled item, and every `ambience.*` key still
+  // ships with an empty url, which is why the web mixer had to synthesise its
+  // four layers. What an operator uploads here is what clients play.
+
+  test("uploading an asset fills a key, and clearing it hands the key back", async ({ page, request }) => {
+    await nav(page, "Media").click();
+    await expect(page.getByRole("heading", { name: "Media catalogue" })).toBeVisible();
+
+    // Work on a key nothing else depends on being empty, and put it back.
+    const row = page.locator("tr", { hasText: "ambience.wind" }).first();
+    await expect(row).toBeVisible({ timeout: 10_000 });
+
+    // A tiny but REAL file: the endpoint reads the upload, so an empty buffer
+    // would test the form and not the pipeline.
+    await row.locator('input[type="file"]').setInputFiles({
+      name: "wind.mp3",
+      mimeType: "audio/mpeg",
+      // Content is arbitrary on purpose: the endpoint validates the file
+      // EXTENSION and rejects an empty body, and checks nothing else - so this
+      // is a real non-empty upload without smuggling binary into a test file.
+      buffer: Buffer.from("e2e-media-fixture".repeat(64)),
+    });
+    await expect(page.getByText(/Uploaded wind\.mp3/)).toBeVisible({ timeout: 20_000 });
+
+    // The catalogue is what CLIENTS read, so assert there rather than on the
+    // row: this endpoint is public and is the one the app actually calls.
+    const filled = await (await request.get(`${API}/media/catalog?kind=ambience`)).json();
+    const wind = filled.find((a: any) => a.key === "ambience.wind");
+    expect(wind?.url, "the key still has no url after an upload").toBeTruthy();
+
+    // Clear points the key back at nothing — deliberately not a delete, since
+    // removing the row would remove the KEY and the clients' fallback with it.
+    await row.getByRole("button", { name: "Clear" }).click();
+    // The label flips Replace -> Upload when the key empties. Asserting on the
+    // hidden <input> instead never passes: it lives inside a <label class="btn">
+    // and is hidden by design.
+    await expect(row.getByText("Upload", { exact: true })).toBeVisible({ timeout: 15_000 });
+
+    const cleared = await (await request.get(`${API}/media/catalog?kind=ambience`)).json();
+    const after = cleared.find((a: any) => a.key === "ambience.wind");
+    expect(after, "Clear removed the key itself — clients lose their fallback").toBeTruthy();
+    expect(after.url, "the key still points at an asset after Clear").toBeFalsy();
+  });
+
+  // ── Revoking access ─────────────────────────────────────────────────────
+
+  test("disabling an account needs a reason, and actually locks the person out", async ({ page, request }) => {
+    // The one admin action that changes what a real person can do. The dialog
+    // promises "They'll be signed out and locked out" — this proves the second
+    // half, which nothing did: the route was named in no test at all.
+    const email = `e2e-disable-${Date.now()}@cerebro.app`;
+    const password = "lock-me-out-12345";
+    const signup = await request.post(`${API}/auth/signup`, {
+      data: { email, password, name: "E2E Disable" },
+    });
+    expect(signup.ok(), "could not create the account to disable").toBeTruthy();
+
+    const canSignIn = async () =>
+      (await request.post(`${API}/auth/login`, {
+        form: { username: email, password },
+      })).ok();
+    expect(await canSignIn(), "the fresh account could not sign in to begin with").toBeTruthy();
+
+    await nav(page, "Users").click();
+    await page.getByPlaceholder(/Search by email/).fill(email);
+    const row = page.locator("tr", { hasText: email });
+    await expect(row).toBeVisible({ timeout: 10_000 });
+    await row.getByRole("button", { name: "Disable" }).click();
+
+    // Two steps and a reason, on purpose — revoking access should not be one
+    // stray click. The confirm stays disabled until a reason is typed.
+    await expect(page.getByText(/They'll be signed out and locked out/)).toBeVisible();
+    const confirm = page.getByRole("button", { name: "Yes, disable access" });
+    await expect(confirm, "the confirm was live before a reason was given").toBeDisabled();
+    await page.getByLabel(/Why are you disabling this account/).fill("e2e verification");
+    await expect(confirm).toBeEnabled();
+    await confirm.click();
+
+    await expect(row.getByRole("button", { name: "Enable" })).toBeVisible({ timeout: 15_000 });
+    expect(
+      await canSignIn(),
+      "a disabled account can still sign in — the dialog promised a lock-out it did not deliver",
+    ).toBeFalsy();
+
+    // ...and enabling gives access back, so a mistake is recoverable.
+    await row.getByRole("button", { name: "Enable" }).click();
+    await expect(row.getByRole("button", { name: "Disable" })).toBeVisible({ timeout: 15_000 });
+    expect(await canSignIn(), "re-enabling did not restore access").toBeTruthy();
+  });
 
   test("a reload keeps the operator signed in", async ({ page }) => {
     // The refresh token moved from localStorage to an httpOnly cookie, which

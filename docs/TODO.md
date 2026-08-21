@@ -451,6 +451,44 @@ gap): TIPP, gratitude, one-good-thing, intention, the CBT thought record, crisis
 insight reel, wind-down, the mindful mini-games, baseline assessment, trusted contact, the
 standalone player.
 
+### Admin: the two tabs with no test at all (2026-08-21)
+
+Prompted by a fair question — had admin been tested? It had: 12 e2e tests across 10 tabs,
+green in CI. But a count showed **two tabs named in no test at all** (Media, Oracle) and
+**9 of 29 admin routes** named nowhere. Two of those nine mattered more than the rest.
+
+- **Media** is the pipeline that decides whether premium narration is a real file or
+  silence — `services/media.playback_url` returns `""` for an un-entitled item, and every
+  `ambience.*` key still ships empty, which is why the web mixer had to synthesise its
+  four layers. The test uploads to a key, asserts the PUBLIC `/media/catalog` (the
+  endpoint clients actually read) now carries a url, then clears it and asserts the key
+  still EXISTS with no url — Clear must hand the key back, not delete it, or clients lose
+  their fallback.
+- **Disabling an account** is the one admin action that changes what a real person can do,
+  and `/admin/users/{id}/active` was named in no test anywhere. The dialog promises
+  "They'll be signed out and locked out"; the test proves the second half by signing the
+  account in before and after, and proves re-enabling restores access so a mistake is
+  recoverable. It also pins the two-step guard: the confirm stays disabled until a reason
+  is typed.
+
+**Verified by mutation:** removing `!reason.trim()` from the confirm's `disabled` — making
+access revocable in one stray click — fails with "the confirm was live before a reason was
+given".
+
+Three method notes, all mistakes worth not repeating: `docker compose run` without
+`--build` runs the image's BAKED copy of the tests, so edits appear to have no effect (two
+runs were spent on that); a `Buffer.from("... ...")` written through a script put real
+control bytes into a source file, and the upload endpoint validates only the EXTENSION and
+non-emptiness anyway; and the media `<input type=file>` is hidden inside a
+`<label class="btn">`, so it can be filled but never asserted visible.
+
+Web e2e **61 → 63**, full suite green.
+
+**Still untested on admin:** the Oracle tab, and 7 remaining routes — `/digest/run`,
+`/content/{id}/narrate`, `/oracle/pending/{id}/expire`, `/prompts/{name}/revert`,
+`/prompts/{name}/versions/{v}/activate`, `/media/{id}` (the direct PATCH),
+`/users/{user_id}`.
+
 ### Habits, and the promise attached to marking one (2026-08-21)
 
 The last item on the write-flow list. The add is the least interesting part — goals with a
