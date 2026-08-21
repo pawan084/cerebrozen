@@ -4,6 +4,50 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — component tests reach the portal, and the resolver that made them honest (2026-08-21)
+
+**673 tests.** Three pieces of test infrastructure had to be fixed first, and
+each of them was silently wrong in a way that would have made the tests pass
+for the wrong reason — which is the failure this whole campaign exists to catch.
+
+1. **The `@/` alias pointed at `apps/app` for all four apps.** Every app defines
+   `@` as its own root, so a test rendering `apps/web`'s `CrisisLines` would
+   have imported **`apps/app`'s** `lib/crisis` — and passed, because the two
+   copies happen to agree. 56 files outside `apps/app` use `@/`. It now resolves
+   against the app the IMPORTER lives in, which is the only thing that says who
+   is asking. `tests/portal/Shell.test.tsx` is the proof: it imports
+   `@/lib/copy`, which exists only in the portal.
+2. **`vi.mock("next/link", …)` registered nothing, silently.** `next` is
+   installed per app and not at the repo root, so vitest cannot resolve the id
+   from a test file. The component then loaded the REAL module, whose hooks read
+   a router context that does not exist under `@testing-library`, and every
+   render died on *"Cannot read properties of null (reading 'useContext')"* with
+   nothing pointing at the cause. `next/link` and `next/navigation` are now
+   ALIASED to stubs in `tests/stubs/`.
+3. **React had to be pinned to the root copy.** All four apps carry their own
+   `node_modules/react`, and `resolve.dedupe` does not cover the subpath the
+   automatic JSX runtime imports.
+
+`tsconfig.json`'s `paths` now MIRROR the vitest aliases, so the typechecker
+resolves what the runtime resolves rather than a plausible-looking substitute.
+
+**What the tests themselves cover:**
+- **`CrisisLines`** — Tele-MANAS first whatever order the server sends, every
+  shipped number tappable, hyphens stripped from the `tel:` but kept on screen,
+  `rel="noreferrer"` on the web link (the opened page must not get a handle back
+  onto a page mid-crisis-conversation), and an aria-label that says a tap places
+  a CALL. Plus: the landing's copy is asserted **byte-identical** to the app's
+  below the header comment — the file claims to be a deliberate mirror, and the
+  landing is the FIRST surface someone in crisis reaches.
+- **Portal `Shell`** — the privacy wall renders verbatim on every route tested,
+  is named, and offers no way to dismiss it; the topbar names an unknown route
+  rather than rendering an unnamed shell; the scrim is a real `<button>` so it
+  is keyboard-reachable; the menu label follows its state; and the sidebar says
+  the numbers are illustrative.
+
+**Mutation sweep: 7 more, all 7 caught** — 34 across the campaign, 32 caught,
+2 proven equivalent.
+
 ## Done — component tests, and the 18+ gate Apple never met (2026-08-21)
 
 The unit suite covered `lib/` and nothing else. Components hold real logic, and

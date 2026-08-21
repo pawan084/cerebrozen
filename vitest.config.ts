@@ -1,5 +1,31 @@
 import { defineConfig } from "vitest/config";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+
+/**
+ * Resolve "@/…" against the app the IMPORTER lives in.
+ *
+ * All four apps define `@` as their own root, so a single static alias is
+ * wrong for three of them: a test rendering apps/web's CrisisLines would have
+ * pulled apps/app's lib/crisis instead and passed for the wrong reason — the
+ * exact failure mode these tests exist to catch. The importer's path is the
+ * only thing that says which app is asking.
+ */
+const APP_OF = /apps[\/](app|web|admin|portal)[\/]/;
+const EXTS = ["", ".ts", ".tsx", ".js", ".jsx", "/index.ts", "/index.tsx"];
+
+function resolveAppAlias(source: string, importer: string | undefined) {
+  const app = importer ? APP_OF.exec(importer)?.[1] : undefined;
+  // A test file importing "@/…" directly has no app in its path; apps/app is
+  // the only one whose tests do that, so it stays the default.
+  const base = resolve(__dirname, "apps", app ?? "app");
+  const rest = source.replace(/^@\//, "");
+  for (const ext of EXTS) {
+    const candidate = resolve(base, rest + ext);
+    if (existsSync(candidate)) return candidate;
+  }
+  return null;
+}
 
 // One runner for all four Next apps.
 //
@@ -11,7 +37,25 @@ export default defineConfig({
   // every render throws "React is not defined".
   esbuild: { jsx: "automatic" },
   resolve: {
-    alias: { "@": resolve(__dirname, "apps/app") },
+    alias: [
+      { find: /^@\//, replacement: "@/", customResolver: resolveAppAlias },
+      // Every app carries its own node_modules/react, so a component rendered
+      // from apps/portal got a DIFFERENT React than @testing-library/react did
+      // and every hook died on a null dispatcher ("Cannot read properties of
+      // null (reading 'useContext')"). `dedupe` below is not enough on its own
+      // because it does not cover the subpath the automatic JSX runtime
+      // imports, so react and react-dom are pinned to the root copy by hand.
+      { find: /^react$/, replacement: resolve(__dirname, "node_modules/react") },
+      { find: /^react\/(.*)$/, replacement: resolve(__dirname, "node_modules/react") + "/$1" },
+      { find: /^react-dom$/, replacement: resolve(__dirname, "node_modules/react-dom") },
+      { find: /^react-dom\/(.*)$/, replacement: resolve(__dirname, "node_modules/react-dom") + "/$1" },
+      // `next` is installed per app, never at the root, so vi.mock("next/link")
+      // cannot resolve the id from a test file and registers NOTHING — without
+      // an error. The component then loads the real module and dies on a router
+      // context that does not exist. Aliasing is the only version that works.
+      { find: /^next\/link$/, replacement: resolve(__dirname, "tests/stubs/next-link.tsx") },
+      { find: /^next\/navigation$/, replacement: resolve(__dirname, "tests/stubs/next-navigation.ts") },
+    ],
     // Component tests render apps/app components with @testing-library/react.
     // Without dedupe the component resolves `react` from apps/app/node_modules
     // while the test library resolves it from the root, and two React copies

@@ -1,5 +1,5 @@
 {
-  "//": "Root config for the test suite only. Each app keeps its own tsconfig; this one exists so `tsc --noEmit` can typecheck tests/ the way CI already typechecks all four apps.",
+  "//": "Root config for the test suite only. Each app keeps its own tsconfig; this one exists so `tsc --noEmit` can typecheck tests/ the way CI already typechecks all four apps. Its `paths` MIRROR the aliases in vitest.config.ts, so the typechecker resolves exactly what the runtime does: '@/*' can be any of the four app roots (the runtime picks by importer, which tsc cannot do, so it tries them in order), and next/link + next/navigation point at the same stubs the tests render against.",
   "compilerOptions": {
     "target": "ES2022",
     "lib": [
@@ -20,7 +20,16 @@
     ],
     "paths": {
       "@/*": [
-        "./apps/app/*"
+        "./apps/app/*",
+        "./apps/web/*",
+        "./apps/admin/*",
+        "./apps/portal/*"
+      ],
+      "next/link": [
+        "./tests/stubs/next-link.tsx"
+      ],
+      "next/navigation": [
+        "./tests/stubs/next-navigation.ts"
       ]
     },
     "jsx": "react-jsx"
