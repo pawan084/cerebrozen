@@ -4,6 +4,36 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the Android write flows now actually run on CI (2026-08-21)
+
+Fourteen of the twenty-two instrumented tests are WRITE flows, and they need a
+real account against a real backend — a journal entry that is not stored
+anywhere proves nothing. `BackendFixture.signInOrSkip` calls `assumeTrue`, so
+with no API beside the emulator they SKIPPED and the job went green. That was
+the right trade when CI had no backend. It stopped being right the moment those
+fourteen became the tests that matter: **a green Android job meant eight tests
+passed and fourteen quietly did not run.**
+
+- The emulator's debug build already points at `http://10.0.2.2:8000` — its
+  alias for the host loopback — so publishing the API on the runner is all it
+  takes. No `adb reverse`, no build-config change.
+- `docker compose up -d --build db api` before the emulator step, with
+  `backend/.env` copied from `.env.example` (blank keys on purpose: these tests
+  assert the keyless behaviour). Readiness is proved by an actual
+  **authenticated round trip**, not a socket check — a port that accepts a
+  connection but is a different service is a trap this repo has already hit.
+- **`scripts/check-android-skips.py` is the gate that keeps it honest.**
+  `assumeTrue` is the ONLY skip mechanism in the suite — there is no `@Ignore`
+  anywhere — so any skip means the backend was unreachable and the write flows
+  silently did not run again. Missing XML fails too: "no results" and
+  "everything passed" must never look the same. Exercised against fixtures for
+  all three outcomes (clean → 0, skipped → 1, missing → 1) before it shipped.
+- Timeout 25 → 40 minutes, since fourteen tests that previously skipped now do
+  real network work, and the API image has to build.
+
+Same shape as the two path-filter holes closed this week: the job was green,
+and green meant less than it looked.
+
 ## Done — web unit coverage, third wave: 97.6% (2026-08-21)
 
 **74.3% → 97.6%; 554 → 632 tests.** The four Next apps went from no unit tests

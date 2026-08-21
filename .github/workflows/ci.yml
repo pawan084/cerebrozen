@@ -383,7 +383,9 @@ jobs:
     needs: changes
     if: needs.changes.outputs.android == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # 25 was enough when every write-flow test skipped. Building the API image
+    # and running the fourteen that now talk to it needs more room.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -400,6 +402,29 @@ jobs:
             | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      # Fourteen of the twenty-two instrumented tests are WRITE flows: a
+      # journal entry that is not stored anywhere proves nothing, so they need
+      # a real account against a real backend. Without one `BackendFixture`
+      # calls `assumeTrue` and they SKIP — which is what happened on every CI
+      # run until now, so a green Android job meant eight tests had passed and
+      # fourteen had quietly not run. The emulator's debug build already points
+      # at http://10.0.2.2:8000, its alias for the host loopback, so publishing
+      # the API on the runner is all that is needed — no adb reverse.
+      - name: Provision API env
+        # Blank keys on purpose: everything degrades without them, and these
+        # tests assert the keyless behaviour.
+        run: cp backend/.env.example backend/.env
+      - name: Start the backend the write flows need
+        run: |
+          docker compose up -d --build db api
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:8000/health >/dev/null && break
+            sleep 3
+          done
+          # Fail here rather than three assertions later. A port that accepts a
+          # connection but is a different service is a trap this repo has hit.
+          curl -sf http://localhost:8000/health
+          curl -sf -X POST http://localhost:8000/auth/login             -d 'username=pawan@cerebro.app&password=demo12345' >/dev/null
       # API 34 matches the handset the suite was written against (CPH2681,
       # Android 14). `google_apis` rather than `default`: the crisis-region test
       # reads TelephonyManager, and while the emulator has no SIM — so it takes
@@ -415,6 +440,18 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           working-directory: apps/android
           script: ./gradlew :app:connectedDebugAndroidTest --no-daemon --stacktrace
+      # The gate that keeps this honest. `assumeTrue` is the ONLY skip mechanism
+      # in the suite — there is no @Ignore anywhere — so a skip here means the
+      # backend was unreachable and the write flows silently did not run again.
+      - name: Every instrumented test actually ran
+        if: always()
+        run: python3 scripts/check-android-skips.py
+      - name: Backend logs on failure
+        if: failure()
+        run: docker compose logs --tail 100 api
+      - name: Tear down the backend
+        if: always()
+        run: docker compose down -v
       - name: Upload instrumented results on failure
         if: failure()
         uses: actions/upload-artifact@v4
