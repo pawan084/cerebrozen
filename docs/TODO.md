@@ -451,6 +451,42 @@ gap): TIPP, gratitude, one-good-thing, intention, the CBT thought record, crisis
 insight reel, wind-down, the mindful mini-games, baseline assessment, trusted contact, the
 standalone player.
 
+### Habits, and the promise attached to marking one (2026-08-21)
+
+The last item on the write-flow list. The add is the least interesting part — goals with a
+second field — so the test is aimed at the sentence on `Api.setHabitToday`: *"Idempotent
+server-side and undoable — a mis-tap is never permanent."* That is a claim about a control
+people press while distracted, on a screen whose whole framing is "flexible, not a
+streak", and an undo that silently did nothing would be a quiet betrayal of it.
+
+- add, mark, and **un-mark** through the screen, asking the server after each
+- marking the same day twice must not add a second day
+
+The second assertion reads `recent_days`, not a counter, because `HabitOut` deliberately
+has neither a count nor a streak field — *"the schema shouldn't be able to say 'you broke
+it'"*. That absence is what the test relies on, so it reads the seven-day window rather
+than inventing something to count.
+
+**Verified by mutation:** collapsing `if (done) "POST" else "DELETE"` to always-POST — an
+un-mark that does nothing — fails the suite. Worth recording precisely: it fails at the UI
+assertion ("never appeared on screen: Mark today") rather than at the server one, which is
+the correct ordering, since a button whose un-mark never fires also never flips back. The
+server assertion stays as the backstop for the other failure shape — the button flips and
+nothing is sent.
+
+Throwaway account, because `Api` exposes no habit delete: the backend has
+`DELETE /habits/{id}` and nothing on Android calls it, so a habit added to the demo
+account could not be removed and the next device walk would screenshot it. Adding a client
+method purely so a test can clean up would be changing the product to suit the test.
+
+Instrumented suite **20 → 22**, stable across repeated full runs. Demo account verified
+pristine after: 0 habits, 0 goals, Sleep Reset still day 4.
+
+**The write-flow list is now empty.** 8 → 22 instrumented tests over this stretch:
+journal, goals, sleep, trusted contact, safety plan, memory CRUD, export, account
+deletion, programme enrolment, consent toggles, habits — each driven through the UI and
+verified against the server, three of them mutation-checked.
+
 ### The consent toggles — is the switch connected to anything? (2026-08-21)
 
 The last claim with no client-side proof, and the one where a silent failure is worst:
