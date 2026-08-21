@@ -149,3 +149,93 @@ describe("the token", () => {
     expect(getToken()).toBeNull();
   });
 });
+
+describe("signing out", () => {
+  it("clears locally even when the revoke fails", async () => {
+    // POST /auth/logout bumps token_version, invalidating every outstanding
+    // token. But a failed revoke must never strand someone signed in on a
+    // shared machine — the local clear runs either way.
+    const { logout, setToken, getToken } = await freshApi();
+    setToken("t-1");
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+    await expect(logout()).resolves.toBeUndefined();
+    expect(getToken()).toBeNull();
+  });
+
+  it("clears locally on success too", async () => {
+    const { logout, setToken, getToken } = await freshApi();
+    setToken("t-1");
+    fetchMock.mockResolvedValue(response(200, {}));
+    await logout();
+    expect(getToken()).toBeNull();
+  });
+});
+
+describe("whether a usable session exists", () => {
+  it("is a real round-trip, not a storage lookup", async () => {
+    // The refresh token is httpOnly and deliberately unreadable here. A
+    // storage check would call a revoked token "a session", render the whole
+    // shell, and then throw the operator out on the first request.
+    const { hasSession } = await freshApi();
+    fetchMock.mockResolvedValue(response(200, { access_token: "t-1" }));
+    await expect(hasSession()).resolves.toBe(true);
+    expect(fetchMock).toHaveBeenCalled();
+  });
+
+  it("is false when the cookie is gone or revoked", async () => {
+    const { hasSession } = await freshApi();
+    fetchMock.mockResolvedValue(response(401, {}));
+    await expect(hasSession()).resolves.toBe(false);
+  });
+
+  it("is false rather than throwing when the API is unreachable", async () => {
+    const { hasSession } = await freshApi();
+    fetchMock.mockImplementation(() => {
+      throw new TypeError("Failed to fetch");
+    });
+    await expect(hasSession()).resolves.toBe(false);
+  });
+});
+
+describe("uploading an asset", () => {
+  function file() {
+    return new File(["bytes"], "calm.mp3", { type: "audio/mpeg" });
+  }
+
+  it("sends multipart without a hand-set Content-Type", async () => {
+    // The browser has to add the boundary itself; stamping JSON over it
+    // produces a body the server cannot parse.
+    const { upload, setToken } = await freshApi();
+    setToken("t-1");
+    fetchMock.mockResolvedValue(response(200, { key: "ambience.rain" }));
+    await upload("/admin/media", file());
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.body).toBeInstanceOf(FormData);
+    expect(init.headers?.["Content-Type"]).toBeUndefined();
+  });
+
+  it("surfaces the server's own reason for refusing", async () => {
+    // "File exceeds 25 MB" has to reach the admin rather than "413".
+    const { upload, setToken } = await freshApi();
+    setToken("t-1");
+    fetchMock.mockResolvedValue(response(413, { detail: "File exceeds 25 MB." }));
+    await expect(upload("/admin/media", file())).rejects.toThrow("File exceeds 25 MB.");
+  });
+
+  it("falls back to a status line when the body is not JSON", async () => {
+    const { upload, setToken } = await freshApi();
+    setToken("t-1");
+    fetchMock.mockResolvedValue(response(500));
+    await expect(upload("/admin/media", file())).rejects.toThrow("Request failed: 500");
+  });
+
+  it("calls an unreachable API offline, not a bad upload", async () => {
+    const { upload, setToken } = await freshApi();
+    setToken("t-1");
+    fetchMock.mockImplementation(() => {
+      throw new TypeError("Failed to fetch");
+    });
+    const err = await upload("/admin/media", file()).catch((e) => e);
+    expect(err.kind).toBe("offline");
+  });
+});

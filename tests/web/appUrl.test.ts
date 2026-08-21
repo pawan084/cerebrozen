@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { APP_URL, appHref } from "../../apps/web/lib/appUrl";
+import { API_URL } from "../../apps/web/lib/api";
 import { getThemeMode, setThemeMode } from "../../apps/app/lib/theme";
 
 describe("deep links from the landing into the app", () => {
@@ -66,5 +67,19 @@ describe("theme preference", () => {
   it("ignores a junk value rather than rendering an unknown theme", () => {
     window.localStorage.setItem("theme_mode", "midnight-mauve");
     expect(getThemeMode()).toBe("system");
+  });
+});
+
+describe("where the landing sends its API calls", () => {
+  it("has a default, so a missing build ARG cannot leave it undefined", () => {
+    // NEXT_PUBLIC_API_URL is inlined by `next build` and set as a Docker build
+    // ARG. Without the fallback an unset ARG produces "undefined/waitlist" —
+    // a broken form on the one page that has to convert.
+    expect(API_URL).toBeTruthy();
+    expect(API_URL).toMatch(/^https?:\/\//);
+  });
+
+  it("does not end in a slash, since callers append paths directly", () => {
+    expect(API_URL.endsWith("/")).toBe(false);
   });
 });

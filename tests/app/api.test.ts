@@ -258,3 +258,126 @@ describe("signing out has to take everything personal with it", () => {
     ).toBe(true);
   });
 });
+
+describe("the sign-in messages — register D22", () => {
+  // Every non-OK response used to map to "Invalid email or password.", so an
+  // outage or a rate limit told people their credentials were wrong and
+  // invited a pointless password reset. Only 400/401 mean that.
+  it.each([400, 401])("blames the credentials for %i, and only then", async (status) => {
+    const { signIn } = await freshApi();
+    fetchMock.mockResolvedValue(response(status, {}));
+    await expect(signIn("a@b.c", "nope")).rejects.toThrow("Invalid email or password.");
+  });
+
+  it("explains a rate limit as a rate limit", async () => {
+    const { signIn } = await freshApi();
+    fetchMock.mockResolvedValue(response(429, {}));
+    await expect(signIn("a@b.c", "x")).rejects.toThrow(/wait a minute/);
+  });
+
+  it("reassures rather than accuses on a 5xx", async () => {
+    const { signIn } = await freshApi();
+    fetchMock.mockResolvedValue(response(503, {}));
+    await expect(signIn("a@b.c", "right")).rejects.toThrow(/Nothing is wrong with your account/);
+  });
+
+  it("prefers the server's detail for anything else", async () => {
+    const { signIn } = await freshApi();
+    fetchMock.mockResolvedValue(response(418, { detail: "This account is disabled." }));
+    await expect(signIn("a@b.c", "x")).rejects.toThrow("This account is disabled.");
+  });
+
+  it("still says something when the error body is not JSON", async () => {
+    const { signIn } = await freshApi();
+    fetchMock.mockResolvedValue(response(418));
+    await expect(signIn("a@b.c", "x")).rejects.toThrow(/Couldn't sign in just now/);
+  });
+
+  it("posts form-encoded with `username`, as OAuth2 requires", async () => {
+    const { signIn } = await freshApi();
+    fetchMock.mockResolvedValue(response(200, { access_token: "a", refresh_token: "r" }));
+    await signIn("a@b.c", "secret");
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers["Content-Type"]).toBe("application/x-www-form-urlencoded");
+    expect(String(init.body)).toContain("username=a%40b.c");
+  });
+
+  it("stores the session on success", async () => {
+    const { signIn, hasSession } = await freshApi();
+    fetchMock.mockResolvedValue(response(200, { access_token: "a", refresh_token: "r-1" }));
+    await signIn("a@b.c", "secret");
+    expect(hasSession()).toBe(true);
+  });
+});
+
+describe("the other ways in", () => {
+  it("signs up and keeps the session", async () => {
+    const { signUp, hasSession } = await freshApi();
+    fetchMock.mockResolvedValue(response(201, { access_token: "a", refresh_token: "r-1" }));
+    await signUp("new@b.c", "password123", "New");
+    expect(hasSession()).toBe(true);
+  });
+
+  it("surfaces the server's reason for refusing a sign-up", async () => {
+    // "Email already registered" has to reach the person; a generic failure
+    // would send them to the reset flow for an account they do not have.
+    const { signUp } = await freshApi();
+    fetchMock.mockResolvedValue(response(400, { detail: "Email already registered." }));
+    await expect(signUp("a@b.c", "x", "N")).rejects.toThrow("Email already registered.");
+  });
+
+  it.each([
+    ["signInApple", "Apple sign-in failed. Try email instead."],
+    ["signInGoogle", "Google sign-in failed. Try email instead."],
+  ])("%s points back at email when the provider fails", async (fn, message) => {
+    // The providers are inert until the owner configures them, so this is the
+    // path most users would actually hit — it must name a way forward.
+    const mod: any = await freshApi();
+    fetchMock.mockResolvedValue(response(401, {}));
+    await expect(mod[fn]("token")).rejects.toThrow(message);
+  });
+
+  it.each(["signInApple", "signInGoogle"])("%s stores the session when it works", async (fn) => {
+    const mod: any = await freshApi();
+    fetchMock.mockResolvedValue(response(200, { access_token: "a", refresh_token: "r-1" }));
+    await mod[fn]("token", "Name");
+    expect(mod.hasSession()).toBe(true);
+  });
+
+  it("asks for a one-time code, and says so plainly when it cannot", async () => {
+    const { requestOtp } = await freshApi();
+    fetchMock.mockResolvedValue(response(429, {}));
+    await expect(requestOtp("a@b.c")).rejects.toThrow(/Couldn't send a code/);
+  });
+
+  it("distinguishes an invalid code from a failure to send one", async () => {
+    const { verifyOtp } = await freshApi();
+    fetchMock.mockResolvedValue(response(400, {}));
+    await expect(verifyOtp("a@b.c", "000000")).rejects.toThrow("Invalid or expired code.");
+  });
+
+  it("keeps the session after a verified code", async () => {
+    const { verifyOtp, hasSession } = await freshApi();
+    fetchMock.mockResolvedValue(response(200, { access_token: "a", refresh_token: "r-1" }));
+    await verifyOtp("a@b.c", "123456");
+    expect(hasSession()).toBe(true);
+  });
+});
+
+describe("onboarding state", () => {
+  it("remembers that onboarding finished, and can be reset", async () => {
+    const { setOnboarded, hasOnboarded, resetOnboarding } = await freshApi();
+    expect(hasOnboarded()).toBe(false);
+    setOnboarded();
+    expect(hasOnboarded()).toBe(true);
+    resetOnboarding();
+    expect(hasOnboarded()).toBe(false);
+  });
+
+  it("is cleared by a sign-out, since it belongs to the person", async () => {
+    const { setOnboarded, hasOnboarded, clearSession } = await freshApi();
+    setOnboarded();
+    clearSession();
+    expect(hasOnboarded()).toBe(false);
+  });
+});

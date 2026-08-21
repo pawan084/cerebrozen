@@ -4,6 +4,50 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — web unit coverage, third wave: 97.6% (2026-08-21)
+
+**74.3% → 97.6%; 554 → 632 tests.** The four Next apps went from no unit tests
+and no coverage instrumentation at all to this in one day.
+
+- **`mixer.ts` (0 → 99.5%).** Needed a Web Audio stand-in, which was the reason
+  it kept being deferred. The point of the fake is not that noise sounds like
+  rain — it is that an uploaded server asset SUPERSEDES the synthesised layer
+  (both playing would be two rains over each other), that the master opens at
+  Android's 0.7 rather than louder, and that volumes ramp rather than jump.
+  The four presets are asserted against `SoundscapeMixer.kt` by id, order and
+  vector.
+- **`portal/lib/api.ts` (63 → 95.6%).** Including `unknownColumns`, which is
+  the safeguard that lets the portal refuse an HR export carrying a
+  `diagnosis` column WITHOUT UPLOADING IT — forgiving about form ("Access
+  Start", a BOM, CRLF) and strict about meaning. Plus the launch checklist,
+  which must not tick "Organisation profile" while the privacy contact — the
+  address a regulator or member would use — is blank.
+- **`admin/lib/api.ts` (65 → 97.3%)** — logout clearing locally either way,
+  `hasSession` as a real round-trip (the refresh cookie is httpOnly and
+  unreadable, so a storage check would render the whole shell and then throw
+  the operator out on the first request), and the multipart upload path.
+- **`apps/app/lib/api.ts` (56 → 96%)** — the auth helpers, including register
+  D22: only 400/401 may blame the credentials. An outage or a rate limit
+  telling someone their password is wrong sends them to a pointless reset.
+- **`web/lib/api.ts` 0 → 100%** (two lines, but an unset build ARG would
+  otherwise produce `undefined/waitlist` on the one page that has to convert).
+
+**Final: 632 tests, 97.6% lines, 90.8% branches. Per app: web 100%, app 97.7%,
+admin 97.3%, portal 97%.**
+
+**Mutation testing across all three waves: 27 mutants, 25 caught, 2 proven
+EQUIVALENT rather than missed** — worth writing down, because "a survivor means
+a weak test" is only usually true:
+- `setAssets` storing `""` instead of skipping it changes nothing, since
+  `start()` gates on truthiness anyway.
+- Moving admin's `clearToken()` out of `finally` changes nothing, because the
+  bare `catch {}` above it swallows and control falls through regardless.
+- The one REAL survivor was mine: "ramps the master" asserted that SOME node had
+  ramped, and the per-layer ramps in `applyVolumes` were carrying it, so a
+  mutant that jumped the master straight to `.value` still passed. Now asserted
+  on the master node specifically, and on the target value. That is the whole
+  argument for mutation testing — the test read fine and proved nothing.
+
 ## Done — web unit coverage, second wave (2026-08-21)
 
 **49.5% → 74.3%; 442 → 554 tests.** Six more modules, chosen because each one

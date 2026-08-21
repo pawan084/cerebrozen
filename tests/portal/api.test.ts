@@ -226,3 +226,168 @@ describe("signing out", () => {
     expect(hasSession()).toBe(false);
   });
 });
+
+describe("refusing a CSV before it leaves the machine", () => {
+  // Duplicated from the server on purpose. The server's copy is the one that
+  // decides, but this one lets the portal refuse a file WITHOUT UPLOADING IT —
+  // an HR export carrying a `diagnosis` column should never leave the
+  // administrator's laptop, and a check that runs after the upload has already
+  // failed at exactly that.
+  it("accepts the four eligibility columns", async () => {
+    const { unknownColumns } = await freshApi();
+    expect(unknownColumns("email,external_ref,access_start,access_end\na@b.c,1,,")).toEqual([]);
+  });
+
+  it("names a column that does not belong", async () => {
+    const { unknownColumns } = await freshApi();
+    expect(unknownColumns("email,diagnosis\na@b.c,anxiety")).toEqual(["diagnosis"]);
+  });
+
+  it("names every extra column, not just the first", async () => {
+    const { unknownColumns } = await freshApi();
+    expect(unknownColumns("email,diagnosis,salary,manager")).toEqual([
+      "diagnosis", "salary", "manager",
+    ]);
+  });
+
+  it("is forgiving about form — case, spaces and padding", async () => {
+    // "Access Start" is what a spreadsheet exports; refusing it would send an
+    // administrator hunting for a problem that is not there.
+    const { unknownColumns } = await freshApi();
+    expect(unknownColumns(" Email , Access Start ,ACCESS_END")).toEqual([]);
+  });
+
+  it("survives the BOM Excel puts at the front of a CSV", async () => {
+    const { unknownColumns } = await freshApi();
+    expect(unknownColumns("\ufeffemail,external_ref")).toEqual([]);
+  });
+
+  it("reads only the header row", async () => {
+    const { unknownColumns } = await freshApi();
+    expect(unknownColumns("email\ndiagnosis\nsalary")).toEqual([]);
+  });
+
+  it("handles CRLF, which is what Windows exports", async () => {
+    const { unknownColumns } = await freshApi();
+    expect(unknownColumns("email,diagnosis\r\na@b.c,x")).toEqual(["diagnosis"]);
+  });
+
+  it("ignores an empty trailing column rather than reporting it", async () => {
+    const { unknownColumns } = await freshApi();
+    expect(unknownColumns("email,")).toEqual([]);
+  });
+
+  it("says nothing about an empty file", async () => {
+    const { unknownColumns } = await freshApi();
+    expect(unknownColumns("")).toEqual([]);
+  });
+});
+
+describe("the launch checklist", () => {
+  async function withServer(org: Record<string, unknown>) {
+    const mod = await freshApi();
+    window.localStorage.setItem(PORTAL_REFRESH_KEY, "r-1");
+    fetchMock.mockImplementation(async (url: string) => {
+      const u = String(url);
+      if (u.endsWith("/auth/refresh")) return response(200, { access_token: "a", refresh_token: "r" });
+      if (u.endsWith("/org")) return response(200, org);
+      return response(200, []);
+    });
+    return mod;
+  }
+
+  const completeOrg = {
+    legal_entity: "Acme Ltd",
+    primary_contact_email: "ops@acme.test",
+    privacy_contact_email: "privacy@acme.test",
+    small_cell_suppression: true,
+    reporting_threshold: 8,
+    region: "IN",
+  };
+
+  it("reports the threshold and region the org actually has", async () => {
+    const { getLaunchState } = await withServer(completeOrg);
+    const state = await getLaunchState();
+    expect(state.threshold).toBe(8);
+    expect(state.region).toBe("IN");
+  });
+
+  it("ticks the profile step only when every contact is filled in", async () => {
+    const { getLaunchState } = await withServer(completeOrg);
+    const done = (await getLaunchState()).steps.find((s) => s.key === "profile")!.done;
+    expect(done).toBe(true);
+  });
+
+  it("leaves the profile step unticked when a contact is missing", async () => {
+    // The privacy contact is the one a regulator or a member would use. A
+    // checklist that ticked itself without one would be telling the
+    // administrator they are ready when they are not.
+    const { getLaunchState } = await withServer({ ...completeOrg, privacy_contact_email: "" });
+    const done = (await getLaunchState()).steps.find((s) => s.key === "profile")!.done;
+    expect(done).toBe(false);
+  });
+
+  it("treats suppression being OFF as an unfinished privacy step", async () => {
+    const { getLaunchState } = await withServer({ ...completeOrg, small_cell_suppression: false });
+    const done = (await getLaunchState()).steps.find((s) => s.key === "privacy")!.done;
+    expect(done).toBe(false);
+  });
+
+  it("gives every step a label and a link to somewhere", async () => {
+    const { getLaunchState } = await withServer(completeOrg);
+    for (const step of (await getLaunchState()).steps) {
+      expect(step.label.trim()).not.toBe("");
+      expect(step.href.startsWith("/")).toBe(true);
+    }
+  });
+});
+
+describe("the endpoint wrappers", () => {
+  async function signedIn() {
+    const mod = await freshApi();
+    window.localStorage.setItem(PORTAL_REFRESH_KEY, "r-1");
+    fetchMock.mockImplementation(async (url: string) =>
+      String(url).endsWith("/auth/refresh")
+        ? response(200, { access_token: "a", refresh_token: "r" })
+        : response(200, { ok: true }),
+    );
+    return mod;
+  }
+
+  it("each hits the path its name promises", async () => {
+    const mod: any = await signedIn();
+    const cases: [string, string][] = [
+      ["getOrg", "/org"],
+      ["getSummary", "/org/summary"],
+      ["getGroups", "/org/groups"],
+      ["getGroupTotals", "/org/groups/totals"],
+      ["getMembers", "/org/members"],
+      ["getProgrammes", "/org/programmes"],
+      ["getAdmins", "/org/admins"],
+      ["getAudit", "/org/audit"],
+    ];
+    for (const [fn, path] of cases) {
+      fetchMock.mockClear();
+      await mod[fn]();
+      const called = fetchMock.mock.calls.map(([u]) => String(u)).filter((u) => !u.endsWith("/auth/refresh"));
+      expect(called.some((u) => u.endsWith(path)), `${fn} did not call ${path}`).toBe(true);
+    }
+  });
+
+  it("sends writes with the right method and body", async () => {
+    const mod: any = await signedIn();
+    fetchMock.mockClear();
+    await mod.patchOrg({ reporting_threshold: 10 });
+    const write = fetchMock.mock.calls.find(([u]) => String(u).endsWith("/org"))!;
+    expect(write[1].method).toBe("PATCH");
+    expect(JSON.parse(write[1].body)).toEqual({ reporting_threshold: 10 });
+  });
+
+  it("ends a membership by id, with DELETE", async () => {
+    const mod: any = await signedIn();
+    fetchMock.mockClear();
+    await mod.endMembership("m-1");
+    const call = fetchMock.mock.calls.find(([u]) => String(u).includes("/org/members/m-1"))!;
+    expect(call[1].method).toBe("DELETE");
+  });
+});
