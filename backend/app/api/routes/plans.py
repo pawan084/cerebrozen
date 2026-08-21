@@ -1,7 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db, utcnow
@@ -28,8 +28,29 @@ async def get_active_plan(
 ):
     plan = await _active_plan(db, user)
     if plan is None:
-        # Generate one on first access so the app always has a plan.
-        plan = await agentic.generate_plan(db, user)
+        # Generate one on first access so the app always has a plan — but do it
+        # ONE AT A TIME per user.
+        #
+        # This is a GET that writes, and concurrent callers all saw "no active
+        # plan" and all generated: five parallel requests made five plans, and
+        # since `generate_plan` deactivates whatever it finds, the last commit
+        # won and the other four were orphaned. That is not merely untidy. A
+        # client that had already rendered one of the losers went on ticking
+        # steps against a plan the server no longer considered active, so the
+        # tick landed on a dead row and vanished on the next load — which is
+        # exactly what the browser write-path test caught (PATCH 200, then
+        # /plans/active reporting nothing done).
+        #
+        # An advisory lock rather than a partial unique index: it needs no
+        # migration, it is released with the transaction, and re-checking under
+        # it makes late arrivals adopt the winner instead of racing it.
+        if db.bind is not None and db.bind.dialect.name == "postgresql":
+            await db.execute(
+                text("SELECT pg_advisory_xact_lock(hashtext(:k))"), {"k": str(user.id)}
+            )
+            plan = await _active_plan(db, user)
+        if plan is None:
+            plan = await agentic.generate_plan(db, user)
         await db.commit()
         await db.refresh(plan)
     return plan

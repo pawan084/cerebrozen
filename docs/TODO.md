@@ -4,6 +4,38 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — web write-path e2e, and the vanishing plan tick (2026-08-21)
+
+A route-coverage count found four `apps/app` routes reached by no test — `/safety-plan`,
+`/plan`, `/goals`, `/programs` — every one of them a WRITE. Covering them found a real
+backend bug, which is the entire argument for covering them.
+
+- **`GET /plans/active` minted a plan per concurrent caller.** It creates one when the
+  account has none; concurrent readers all saw none and all generated, and because
+  `generate_plan` deactivates whatever it finds, the last commit won. Measured: **six
+  parallel reads → six plans, one active.** The symptom is not stray rows. A client
+  holding a loser went on ticking steps against a plan the server no longer called
+  active — `PATCH /plans/steps/{id}` answered **200**, the checkbox went green, and the
+  next load showed a different plan with nothing done. Progress silently evaporated.
+  Fixed with a per-user `pg_advisory_xact_lock` plus a re-check under it, so late
+  arrivals adopt the winner instead of racing it — no migration, released with the
+  transaction. Pinned by `tests/test_plan_concurrency.py`; **both tests were confirmed
+  to fail with the lock removed**, and six parallel reads now yield one plan.
+- **Found by the browser, not by review.** `app.spec.ts::ticking a plan step reaches the
+  server` failed on its first run and stayed failed — PATCH 200, then `/plans/active`
+  reporting nothing done. Two wrong diagnoses came first (a stale login, then the API
+  itself), both ruled out by a control on the dev stack showing the same plan id across
+  a second login. `app.spec.ts` is now **16 tests, all passing**.
+- **Latent, NOT fixed: `GET /recommendations/mine` seeds on read** and dedupes by
+  reading existing slugs first — a read-then-write with no unique constraint behind it
+  (`recommendations` has plain indexes on `user_id`/`practice_slug`, nothing unique).
+  Tried to reproduce a duplicate: **three rounds of twelve parallel reads, all 200, two
+  rows and two slugs every time.** So it is a theoretical window, not a demonstrated
+  bug, and it is recorded rather than locked — adding a lock for an unreproducible race
+  buys nothing measurable. If duplicate suggestions are ever reported, start here.
+- **The admin excerpt GET also writes** (an audit row per read) and that is correct:
+  two reads of someone's private words *should* be two log lines.
+
 ## Done — V2 device walk 1 (2026-08-15 night, OnePlus CPH2681, live backend via adb reverse)
 
 Fresh install → full V2 walk, screenshots in the session scratchpad. **Verified on glass:**

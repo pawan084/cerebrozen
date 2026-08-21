@@ -1,6 +1,7 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, APIRequestContext, Page } from "@playwright/test";
 
 const APP = process.env.APP_URL || "http://app:3002";
+const API = process.env.API_URL || "http://api:8000";
 
 // Guided imagery ships eight prompts; skipping through all of them lands on
 // the closing card (mirrors LINES in app/(authed)/games/imagery/page.tsx).
@@ -535,6 +536,130 @@ test.describe("Web app (authenticated client)", () => {
     const off = await page.locator('.chip[aria-pressed="false"]').first()
       .evaluate((el) => getComputedStyle(el).backgroundColor);
     expect(on, "selected and unselected chips paint the same background").not.toBe(off);
+  });
+
+  // ── Write paths ─────────────────────────────────────────────────────────
+  //
+  // A route-coverage count on 2026-08-21 found these four reached by nothing:
+  // /safety-plan, /plan, /goals and /programs — every one of them a WRITE. The
+  // shape below is the one the Android suite settled on: drive the UI, then ask
+  // the SERVER, because a browser client that renders optimistically will show
+  // you a success it never sent. /plan is the proof that this matters — its
+  // step toggle flips locally first and only reconciles afterwards.
+
+  /** Sign in as the account `createAccount` just made, for direct API reads. */
+  async function token(request: APIRequestContext, email: string) {
+    const r = await request.post(`${API}/auth/login`, {
+      form: { username: email, password: "password123" },
+    });
+    expect(r.ok(), "could not sign the test account in against the API").toBeTruthy();
+    return (await r.json()).access_token as string;
+  }
+
+  test("a safety plan saves the words the person typed", async ({ page, request }) => {
+    // CLAIMS_MAP: "My safety plan — yours, in your words". Android proves this
+    // from its client; the browser had nothing.
+    const email = `e2e-plan-${Date.now()}@test.app`;
+    await createAccount(page, email);
+    const words = `Warning sign ${Date.now()}`;
+
+    await page.goto(`${APP}/safety-plan`, { waitUntil: "networkidle" });
+    await page.getByLabel("Warning signs I notice").fill(words);
+    await page.getByRole("button", { name: "Save" }).first().click();
+    await expect(page.getByText("Saved.").first()).toBeVisible({ timeout: 15_000 });
+
+    const t = await token(request, email);
+    const stored = await (await request.get(`${API}/safety-plan/me`, {
+      headers: { Authorization: `Bearer ${t}` },
+    })).json();
+    expect(
+      JSON.stringify(stored),
+      "the screen said Saved but the plan never reached the server",
+    ).toContain(words);
+  });
+
+  test("ticking a plan step reaches the server, not just the checkbox", async ({ page, request }) => {
+    // `/plan`'s toggle is deliberately optimistic — it flips the row, then
+    // reconciles, and reverts on failure. So the UI going green proves nothing
+    // on its own, which is exactly why this asserts the stored plan.
+    const email = `e2e-step-${Date.now()}@test.app`;
+    await createAccount(page, email);
+
+    await page.goto(`${APP}/plan`, { waitUntil: "networkidle" });
+    // A fresh account already gets a plan — the keyless fallback in
+    // `services/agentic._fallback_plan` still returns steps, so the e2e stack
+    // has one without an LLM key. The build button is only here for the case
+    // where it does not.
+    const build = page.getByRole("button", { name: "Make today's plan" });
+    if (await build.isVisible().catch(() => false)) await build.click();
+
+    // A CHECKBOX, not a button. The first version of this asked for
+    // `getByRole("button")` and reported "no plan steps to tick" against a page
+    // that was showing three of them — the role was wrong, not the page.
+    const tick = page.getByRole("checkbox", { name: /^Mark .* done$/ }).first();
+    await expect(tick, "no plan steps to tick — this would pass vacuously").toBeVisible({
+      timeout: 20_000,
+    });
+    await tick.click();
+
+    const t = await token(request, email);
+    await expect(async () => {
+      const plan = await (await request.get(`${API}/plans/active`, {
+        headers: { Authorization: `Bearer ${t}` },
+      })).json();
+      expect(
+        (plan.steps ?? []).some((s: any) => s.done),
+        "the step showed as done but no step is done on the server",
+      ).toBeTruthy();
+    }).toPass({ timeout: 15_000 });
+  });
+
+  test("a goal added in the browser comes back from the server", async ({ page, request }) => {
+    const email = `e2e-goal-${Date.now()}@test.app`;
+    await createAccount(page, email);
+    const title = `Goal ${Date.now()}`;
+
+    await page.goto(`${APP}/goals`, { waitUntil: "networkidle" });
+    await page.getByLabel("Add a goal").fill(title);
+    await page.getByRole("button", { name: "Add goal" }).click();
+    await expect(page.getByText(title)).toBeVisible({ timeout: 15_000 });
+
+    const t = await token(request, email);
+    const goals = await (await request.get(`${API}/goals`, {
+      headers: { Authorization: `Bearer ${t}` },
+    })).json();
+    expect(goals.map((g: any) => g.title), "the goal never reached /goals").toContain(title);
+  });
+
+  test("enrolling in a programme, and leaving it, both stick", async ({ page, request }) => {
+    // Leaving is the half worth proving: Home reads the active programme, so a
+    // leave that only cleared the screen would keep telling someone to continue
+    // something they quit.
+    const email = `e2e-prog-${Date.now()}@test.app`;
+    await createAccount(page, email);
+    const t = await token(request, email);
+    const active = async () =>
+      (await (await request.get(`${API}/programs/active`, {
+        headers: { Authorization: `Bearer ${t}` },
+      })).json()).program;
+
+    await page.goto(`${APP}/programs`, { waitUntil: "networkidle" });
+    const start = page.getByRole("button", { name: "Start this journey" }).first();
+    await expect(start, "no programme offered to start").toBeVisible({ timeout: 20_000 });
+    await start.click();
+    await expect(page.getByRole("button", { name: "Leave this journey" })).toBeVisible({
+      timeout: 15_000,
+    });
+    expect(await active(), "enrolling did not produce an active programme").toBeTruthy();
+
+    await page.getByRole("button", { name: "Leave this journey" }).click();
+    // Not "Start this journey is visible" — that button sits on every OTHER
+    // programme in the list and was visible throughout, so asserting it proved
+    // nothing. The leave button DISAPPEARING is the unambiguous signal.
+    await expect(page.getByRole("button", { name: "Leave this journey" })).toHaveCount(0, {
+      timeout: 15_000,
+    });
+    expect(await active(), "the programme is still active after leaving it").toBeFalsy();
   });
 
   test("every chip is a tap target, not a decoration", async ({ page }) => {
