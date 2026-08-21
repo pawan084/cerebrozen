@@ -4,6 +4,46 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the waitlist, the ritual primitives (2026-08-21)
+
+**711 tests; component coverage 0 → 62%.** Two more components, both chosen
+because they hold a promise that fails quietly.
+
+- **`Waitlist`** is the landing's only conversion point, and its sharpest edge
+  is stated in its own comment: *"A 429 or 5xx still carries a JSON body —
+  parsing it and announcing success would tell someone they're on the list when
+  they aren't."* Only 2xx means the address was recorded. Also covered: the
+  honeypot gives a bot a fake success and never calls the API (simulated with
+  `fireEvent`, because the field carries `pointer-events: none` and `userEvent`
+  correctly refuses to touch it — which is exactly why the field works); a
+  failure keeps what was typed, because erasing it turns a retry into a re-type
+  and that is where people give up; and the real, visible `<label>` from audit
+  E20, since `aria-label` alone left everyone else with a placeholder that
+  vanishes on the first keystroke.
+- **`RitualSteps`** — the brain dump's promise from the inside: nothing is sent
+  while typing, nothing is sent when moving on, and the write happens only on
+  an explicit Save. A failed save keeps the words on screen, which matters more
+  here than anywhere: it is the most unguarded writing anyone does all day. Plus
+  the breath patterns — `SLOW_EXHALE` must keep the exhale LONGER than the
+  inhale, because that asymmetry is the part with actual evidence behind it and
+  equalising it would turn a sourced pattern into an invented one — and the
+  runner counting one breath per CYCLE rather than per phase (the comment
+  explains that the obvious alternative makes the updater impure and React
+  double-invokes it in StrictMode, so the count runs at double speed in dev).
+- The landing's `CrisisLines` is now RENDERED as well as byte-compared. The
+  comparison proves the two files agree; only rendering proves the landing's
+  copy works from `apps/web`, which it could not have before the alias became
+  importer-aware.
+
+**Mutation sweep: 7 more, 6 caught and 1 proven equivalent** — removing
+`saveToJournal`'s own `!text.trim()` guard changes nothing, because the button
+already carries `disabled={!text.trim() || …}` and cannot be clicked. Running
+total across the campaign: **41 mutants, 38 caught, 3 equivalent.**
+
+**Still uncovered:** `ThoughtSort`, `JourneyPath`, `OfflineProgram`,
+`GuidedTour`, `InterventionCard`, the admin console's single 2,000-line page,
+and the landing's smaller pieces.
+
 ## Done — component tests reach the portal, and the resolver that made them honest (2026-08-21)
 
 **673 tests.** Three pieces of test infrastructure had to be fixed first, and

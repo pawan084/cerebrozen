@@ -5,6 +5,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { CrisisLines } from "../../apps/app/components/CrisisLines";
+import { CrisisLines as LandingCrisisLines } from "../../apps/web/components/CrisisLines";
 import { CRISIS_LINES } from "../../apps/app/lib/crisis";
 
 afterEach(cleanup);
@@ -112,5 +113,25 @@ describe("the landing's copy is a real mirror", () => {
     expect(body("apps/web/components/CrisisLines.tsx")).toBe(
       body("apps/app/components/CrisisLines.tsx"),
     );
+  });
+});
+
+describe("the landing's copy renders too, not just matches", () => {
+  // The byte comparison above proves the two files agree. It does not prove
+  // either of them WORKS from apps/web — that component resolves its own
+  // "@/lib/crisis", and until the alias became importer-aware it would have
+  // been reaching into apps/app.
+  it("renders the landing's numbers, Tele-MANAS first", () => {
+    render(<LandingCrisisLines />);
+    const links = screen.getAllByRole("link");
+    expect(links[0].textContent).toContain("Tele-MANAS");
+    for (const a of links) {
+      expect(a.getAttribute("href")).toMatch(/^(tel:[+\d]+|https?:\/\/)/);
+    }
+  });
+
+  it("labels a call as a call on the landing as well", () => {
+    render(<LandingCrisisLines lines={[{ name: "Tele-MANAS", number: "14416" }]} />);
+    expect(screen.getByLabelText("Call Tele-MANAS on 14416")).toBeTruthy();
   });
 });
