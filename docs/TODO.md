@@ -451,6 +451,46 @@ gap): TIPP, gratitude, one-good-thing, intention, the CBT thought record, crisis
 insight reel, wind-down, the mindful mini-games, baseline assessment, trusted contact, the
 standalone player.
 
+### The consent toggles — is the switch connected to anything? (2026-08-21)
+
+The last claim with no client-side proof, and the one where a silent failure is worst:
+`test_consent_off_blocks_reads_and_writes_but_never_deletion` shows the SERVER honours
+`ai_memory`, but nothing checked whether the switch on the privacy screen reaches it. This
+repo has shipped a control wired to nothing before — `setTrustedContact` existed and
+nothing on Android called it — and a consent toggle is the worst place for that: the
+person believes they withdrew something they did not.
+
+`ConsentFlowE2ETest` drives the actual `AppSwitch` and then asks the server, rather than
+calling `updateConsent` (which would test the API, already tested):
+
+- a fresh account has granted **nothing** — the default the product claims, and the
+  baseline without which a toggle test could pass by accident
+- the switch moves the server in **both** directions, off included — withdrawing is the
+  half that costs the product something, so it is the half worth proving
+- with memory off, a write is refused **and a delete still succeeds** — consent off must
+  never trap data someone asked to remove
+
+**Verified by mutation.** Replacing the toggle's `Api.updateConsent(...)` with an empty
+block — the exact `setTrustedContact` failure — fails the suite with "the switch read On
+but the server did not record the grant". A test for a wired-up control that cannot detect
+an unwired one is decoration.
+
+`turnOff` was added beside `turnOn` in `DeviceE2E`, both now one `setToggle` with the
+frame-timing reasoning `turnOn` already carried.
+
+**The first run failed usefully:** it wrote a memory before granting consent and got the
+server's own "AI memory is switched off in your privacy settings" — because a fresh
+account consents to nothing. The gate reminded the test of the product's documented
+default.
+
+Instrumented suite **17 → 20**, stable across repeated full runs. Demo account verified
+unchanged after (consent intact, Sleep Reset still day 4); the consent tests run on a
+throwaway account because consent state is rendered on the check-in screen, so flipping it
+on the demo account would change what a device walk screenshots.
+
+**Still not exercised end-to-end:** habits — the last item on the list, and the least
+interesting of them.
+
 ### The privacy claims, proven from the client too (2026-08-21)
 
 Four `CLAIMS_MAP` rows named a mechanism and a BACKEND test, and none of them was proven

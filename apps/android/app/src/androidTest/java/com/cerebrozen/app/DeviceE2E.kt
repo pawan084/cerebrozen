@@ -254,20 +254,42 @@ internal fun ComposeTestRule.tapExactText(text: String): SemanticsNodeInteractio
  * in the other with the click identical in both. Clicked once, then waited for
  * — never clicked again in the loop, which would toggle it back off.
  */
-internal fun ComposeTestRule.turnOn(matcher: SemanticsMatcher, timeoutMs: Long = 10_000) {
+internal fun ComposeTestRule.turnOn(matcher: SemanticsMatcher, timeoutMs: Long = 10_000) =
+    setToggle(matcher, on = true, timeoutMs = timeoutMs)
+
+/**
+ * Switch [matcher]'s toggle OFF, and wait for it to actually read as off.
+ *
+ * The mirror of [turnOn], and every word of its reasoning applies unchanged —
+ * a click and the state it produces are still two different frames, and the
+ * semantics action is still the thing to invoke rather than a coordinate tap.
+ * Consent toggles need this direction: switching a category off is the half of
+ * "you are in control" that actually costs the product something, so it is the
+ * half worth proving.
+ */
+internal fun ComposeTestRule.turnOff(matcher: SemanticsMatcher, timeoutMs: Long = 10_000) =
+    setToggle(matcher, on = false, timeoutMs = timeoutMs)
+
+private fun ComposeTestRule.setToggle(
+    matcher: SemanticsMatcher,
+    on: Boolean,
+    timeoutMs: Long = 10_000,
+) {
+    val want = if (on) ToggleableState.On else ToggleableState.Off
+    val wanted = if (on) "On" else "Off"
     val node = onNode(matcher)
     runCatching { node.performScrollTo() }
     fun state() = runCatching {
         node.fetchSemanticsNode().config.getOrNull(SemanticsProperties.ToggleableState)
     }.getOrNull()
-    if (state() == ToggleableState.On) return
+    if (state() == want) return
 
     fun settle(untilMs: Long): Boolean {
         val deadline = System.currentTimeMillis() + untilMs
         while (System.currentTimeMillis() < deadline) {
             runCatching { mainClock.advanceTimeBy(250) }
             runCatching { waitForIdle() }
-            if (state() == ToggleableState.On) return true
+            if (state() == want) return true
             Thread.sleep(100)
         }
         return false
@@ -288,7 +310,7 @@ internal fun ComposeTestRule.turnOn(matcher: SemanticsMatcher, timeoutMs: Long =
     val where = runCatching { node.fetchSemanticsNode().boundsInRoot.toString() }.getOrDefault("<unreadable>")
     val displayed = runCatching { node.assertIsDisplayed(); true }.getOrDefault(false)
     assertTrue(
-        "the toggle never read as On - neither its own OnClick action nor a tap moved it " +
+        "the toggle never read as $wanted - neither its own OnClick action nor a tap moved it " +
             "(state: ${state()}, displayed: $displayed, bounds: $where)",
         false,
     )
