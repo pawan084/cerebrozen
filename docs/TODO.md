@@ -451,6 +451,55 @@ gap): TIPP, gratitude, one-good-thing, intention, the CBT thought record, crisis
 insight reel, wind-down, the mindful mini-games, baseline assessment, trusted contact, the
 standalone player.
 
+### Android write flows, on hardware against a real server (2026-08-21)
+
+The gap a count exposed: of 83 `Session` API methods, **75 were pinned by unit tests at
+the URL/contract level and only 4 were exercised as a flow on a device**. Contract-pinning
+proves the request is shaped right; it does not prove the button is wired to it, that the
+screen reflects the result, or that the entry survives the trip — and every defect the
+device walks found was of that second kind.
+
+`WriteFlowE2ETest` adds four, each shaped the same way: **drive the UI, then ask the
+SERVER.** Asserting a row appeared in a list would pass against a purely local optimistic
+update, which this app can genuinely do — it ships an offline queue.
+
+- **journal** — compose an entry, then read `/journal` back and delete it
+- **goals** — add one, read `/goals`, then release it (goals have no DELETE)
+- **trusted contact** — the one write where a wrong DEFAULT is dangerous rather than
+  annoying: `notify_consent` decides whether `escalation.on_crisis` messages this person
+  at the worst moment of someone's life, and the API comment records that it once
+  hardcoded `true`. Now asserted from the client side, and the prior value restored after
+- **sleep** — save a night through the screen's own disabled-until-chosen button, then
+  read it back
+
+**They SKIP without a backend, and that is a stated trade.** CI's Android job is an
+emulator with no `api` beside it, so a hard requirement would turn a green pipeline red
+for an expected absence. This mirrors the rule the iOS live-backend tests already follow.
+Their real value is on a handset or any runner that brings a backend. Reachability is an
+authenticated round trip, not a socket check — a port that answers but is a different
+service is a trap this repo has hit before.
+
+**Two bugs found, both in the test harness rather than the app** — which is the honest
+result and worth recording as such:
+
+1. `requireText(title)` after tapping Add matched the draft still sitting in the INPUT, so
+   the assertion passed instantly and raced a POST that took 2.5s. The test reported "the
+   goal never reached /goals" against a server that had stored it. Now it waits for the
+   cleared field — the screen's own success signal (register B89).
+2. **`resetToFirstRun` did not clear the in-memory session.** `Session` holds the access
+   token in a `@Volatile` field and `init()` does not reset it, so a prefs wipe left the
+   process still authenticated. Nothing noticed while every instrumented test was a guest;
+   adding one that signs in turned it into `GuestAppE2ETest` failing on every full-suite
+   run while passing alone. That is an order dependency, not a flake — and it is very
+   likely what the "intermittent" failure recorded on 2026-08-20 actually was (same
+   assertion, same shape), though that instance was never proven.
+
+Full suite now **12/12, stable over three consecutive runs** (was 8 tests). 543 unit tests
+green.
+
+**Still not exercised end-to-end:** programme enrolment, memory edit/delete, export,
+account deletion, habits, the safety plan.
+
 ### The two disabled buttons — not a compliance fix, a legibility one (2026-08-21)
 
 The last two flags on the Dawn walk were "Previous" on step 1 of TIPP (1.94:1) and of the

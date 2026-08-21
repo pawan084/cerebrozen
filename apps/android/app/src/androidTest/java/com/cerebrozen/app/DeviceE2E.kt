@@ -20,6 +20,9 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.test.platform.app.InstrumentationRegistry
@@ -119,6 +122,16 @@ internal object DeviceE2E {
      * be running this task at all.
      */
     fun resetToFirstRun(context: Context) {
+        // Sign out BEFORE wiping the prefs. `Session` holds the access token in
+        // memory (`@Volatile private var access`) and `init()` does not clear
+        // it, so a prefs wipe alone leaves the process still authenticated —
+        // the next test gets a signed-in app while believing it has a first
+        // run. Nothing noticed while every instrumented test was a guest;
+        // adding one that signs in (WriteFlowE2ETest) turned it into
+        // `GuestAppE2ETest` failing on every full-suite run while passing
+        // alone, which is the shape of an order dependency rather than a flake.
+        Session.init(context)
+        runCatching { Session.signOut() }
         for (name in listOf("cerebro", "cerebro_secure")) {
             context.getSharedPreferences(name, Context.MODE_PRIVATE).edit().clear().commit()
         }
@@ -324,5 +337,54 @@ internal fun ComposeTestRule.tapWhenEnabled(text: String, exact: Boolean = true,
         "\"$text\" never became enabled ($matched clickable nodes matched it; " +
             "toggles on screen: $toggles)",
         false,
+    )
+}
+
+/**
+ * Type into the field carrying [label].
+ *
+ * `AppTextField` renders its label as an `OutlinedTextField` label, so the
+ * editable node is the one whose semantics contain that text — targeting the
+ * label Text alone finds a node that cannot receive input. Scrolls first,
+ * because a composer's second field is usually below the fold on a 720x1604
+ * screen.
+ */
+internal fun ComposeTestRule.typeInto(label: String, text: String) {
+    waitUntil(20_000) {
+        mainClock.advanceTimeBy(300)
+        onAllNodes(hasSetTextAction() and hasText(label, substring = true))
+            .fetchSemanticsNodes().isNotEmpty()
+    }
+    val field = onAllNodes(hasSetTextAction() and hasText(label, substring = true))
+        .onFirst()
+    runCatching { field.performScrollTo() }
+    field.performClick()
+    field.performTextInput(text)
+    mainClock.advanceTimeBy(300)
+}
+
+/**
+ * Wait until [text] is gone from every EDITABLE node.
+ *
+ * The trap this closes: after typing a title and tapping Add, asserting that
+ * the title is "on screen" matches the draft still sitting in the input, so the
+ * assertion passes instantly and the test races the POST behind it. Goals clear
+ * the draft on SUCCESS (`GoalsScreen`, register B89), so an empty field is the
+ * screen's own statement that the server answered — which is the thing worth
+ * waiting for.
+ */
+internal fun ComposeTestRule.awaitFieldCleared(text: String, timeoutMs: Long = 25_000) {
+    val deadline = System.currentTimeMillis() + timeoutMs
+    while (System.currentTimeMillis() < deadline) {
+        mainClock.advanceTimeBy(300)
+        val stillTyped = runCatching {
+            onAllNodes(hasSetTextAction() and hasText(text, substring = true))
+                .fetchSemanticsNodes().isNotEmpty()
+        }.getOrDefault(true)
+        if (!stillTyped) return
+        Thread.sleep(150)
+    }
+    throw AssertionError(
+        "the draft still holds \"$text\" after ${timeoutMs}ms — the save never reported success",
     )
 }
