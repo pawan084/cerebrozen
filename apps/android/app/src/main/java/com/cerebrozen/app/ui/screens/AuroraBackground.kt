@@ -100,7 +100,16 @@ internal fun AuroraBackground(
     // the themed accents are deep on Dawn, so lower alphas keep them as pale
     // lavender/teal washes over the cream base instead of muddy stains.
     val night = AppTheme.isNight
-    val orbAlphas = if (night) floatArrayOf(0.16f, 0.12f, 0.05f) else floatArrayOf(0.10f, 0.08f, 0.04f)
+    // Dawn's orbs are lighter than they were. They are decoration, but they sit
+    // UNDER page text, and on a light ground a tint only ever subtracts
+    // luminance: measured on a CPH2681 they were taking 8.6-9.9% of the
+    // surface's luminance away, which dropped the `--warm` eyebrows on Today
+    // and Sleep insights to 4.42:1 and 4.48:1 against a 4.5 floor. The token
+    // itself is fine (4.88 on the bare surface, and check-contrast.mjs passes
+    // it on every neutral ground) — it was the wash that broke the assumption
+    // underneath it, so the wash is what moved. Night is untouched: its orbs
+    // ADD luminance to a dark ground, so they help its text rather than hurt it.
+    val orbAlphas = if (night) floatArrayOf(0.16f, 0.12f, 0.05f) else floatArrayOf(0.06f, 0.05f, 0.025f)
     // The page floor. Opaque normally; a scrim when a scene video is playing under
     // it, or the video could never be seen. SCENE_SCRIM_ALPHA is a legibility
     // number, not a taste one: body text and card strokes have to stay readable
@@ -135,7 +144,8 @@ internal fun AuroraBackground(
                         0 -> primaryTint
                         1 -> Violet
                         else -> Cyan
-                    }.copy(alpha = if (night) 0.20f else 0.13f),
+                    // Specks, same reasoning as the orbs above.
+                    }.copy(alpha = if (night) 0.20f else 0.08f),
                     radius = (if (index % 4 == 0) 1.8f else 1.1f).dp.toPx(),
                     center = androidx.compose.ui.geometry.Offset(size.width * x, size.height * y + travel.dp.toPx()),
                 )

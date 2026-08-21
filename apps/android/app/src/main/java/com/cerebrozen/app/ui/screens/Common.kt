@@ -1154,8 +1154,22 @@ internal fun FocusCard(
                 // card's lower half out silver on Night and sank the tertiary
                 // link into it. Tokens resolve per palette, so both themes get
                 // the soft diagonal wash the prototype shows.
+                // Half strength on Dawn. The stops are correct per palette, but
+                // on a LIGHT ground a tint can only subtract luminance, and at
+                // full strength this one took the card's ground down to
+                // #ECE2ED — enough to drop the `--warm` eyebrow on it to
+                // 4.24:1 against a 4.5 floor (measured, CPH2681). Night keeps
+                // the full wash: there the stops sit on a dark card and the
+                // same text is a pale pink, so the wash costs it nothing.
                 if (pastel) Modifier.background(
-                    Brush.linearGradient(listOf(AccentSoft, FieldFill, AccentSoft)),
+                    Brush.linearGradient(
+                        if (AppTheme.isNight) listOf(AccentSoft, FieldFill, AccentSoft)
+                        else listOf(
+                            AccentSoft.copy(alpha = 0.5f),
+                            FieldFill.copy(alpha = 0.5f),
+                            AccentSoft.copy(alpha = 0.5f),
+                        ),
+                    ),
                 ) else Modifier,
             )
             .background(

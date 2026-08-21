@@ -478,21 +478,31 @@ a wash over the base surface. **Pixels were right and the arithmetic was wrong**
 mirror of the filled-pill case where the arithmetic was right and the pixels were wrong.
 Neither instrument is sufficient alone.
 
-**Not fixed, deliberately.** The first attempt darkened Dawn's `warm` to `#954454` (which
-clears every measured surface at ≥5.16) and `ContrastTest::dawnPalette_pinsTheCanonicalLightValues`
-rejected it — correctly. That palette mirrors `design/tokens.css` byte for byte, and
+**Fixed at the right layer — the wash, not the token.** The first attempt darkened Dawn's
+`warm` to `#954454` and `ContrastTest::dawnPalette_pinsTheCanonicalLightValues` rejected it,
+correctly: that palette mirrors `design/tokens.css` byte for byte, and
 `scripts/check-contrast.mjs` already passes 108 pairings including `warm` on every neutral
-ground it is allowed to land on. **The token meets its contract; the wash breaks the
-assumption underneath it.** Changing a cross-stack brand colour in one client to fix three
-Android eyebrows would be fixing the wrong layer, and `EyebrowMuted` — which clears at
-5.66-5.90 — is info-blue in Dawn, a design change rather than a fix.
+ground it is allowed to land on. The token meets its contract. What broke the assumption
+underneath it was the wash, so the wash is what moved:
 
-The proportionate options, for whoever picks this up: lighten the wash beneath those
-eyebrows, or darken `--warm` in `design/tokens.css` and propagate (`sync-tokens.mjs`
-handles the four `globals.css` copies; Android and iOS are by hand). There is precedent
-for the second — tokens.css line 15 records `warm #B4596B→#A45161` for this same reason.
-A miss of 0.02-0.26 on decorative label text did not seem worth a brand change made
-unilaterally.
+- **`AuroraBackground`'s Dawn orbs** were taking 8.6–9.9% of the surface's luminance away
+  from under page text. On a LIGHT ground a tint can only subtract, so decoration that is
+  free on Night is not free here. Dawn alphas `0.10/0.08/0.04 → 0.06/0.05/0.025`, specks
+  `0.13 → 0.08`. Night untouched — there the orbs ADD luminance to a dark ground, so they
+  help its text rather than hurt it.
+- **`FocusCard(pastel = true)`'s wash** took the card's ground to `#ECE2ED`. Half strength
+  on Dawn only; Night keeps the full gradient, where the same eyebrow is a pale pink on a
+  dark card and the wash costs it nothing.
+
+Measured after, on the handset: **4.42 → 4.56**, **4.48 → 4.59**, **4.24 → 4.71**. Night
+re-checked on the same three screens (5.87 / 5.71 / 6.61) — unchanged, as the branches
+require. Full Dawn re-walk: **8 contrast flags → 5**, and the mid-range list is now only
+the two WCAG-exempt disabled buttons. The soft diagonal wash is still visibly there; it is
+lighter, not gone.
+
+Worth keeping: the fix that was rejected was the one that changed a shared brand colour
+for three Android eyebrows. The gate that stopped it was a palette-pinning test, not a
+contrast test — the value was legal, it just was not Android's to choose.
 
 ### The last contrast flags, chased to two root causes (2026-08-21)
 
