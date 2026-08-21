@@ -59,4 +59,26 @@ internal object BackendFixture {
 
     /** Run a suspending block, failing the test rather than swallowing. */
     fun <T> onServer(block: suspend () -> T): T = runBlocking { block() }
+
+    /**
+     * Sign up a throwaway account and become it.
+     *
+     * For any test whose state cannot be put back LOSSLESSLY. Leaving and
+     * re-enrolling a programme is the example that taught this: the cleanup
+     * looked complete — the same programme was active again — but `day` is
+     * derived from `started_at`, so the demo account silently went from day 4
+     * to day 1 and the next device walk would have screenshotted a different
+     * product. "Restored" has to mean the state is the same, not that a row
+     * exists again.
+     *
+     * The account is never cleaned up here on purpose: a test that deletes its
+     * own account cannot then assert anything about it, and these rows are tiny
+     * and obviously named. `AccountDeletionE2ETest` deletes its own because
+     * deleting IS the assertion.
+     */
+    fun asThrowaway(prefix: String): String {
+        val email = "e2e-$prefix-${System.currentTimeMillis()}@cerebro.app"
+        runBlocking { Session.signUp(email, "throwaway-12345", "E2E $prefix") }
+        return email
+    }
 }

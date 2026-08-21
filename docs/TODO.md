@@ -451,6 +451,43 @@ gap): TIPP, gratitude, one-good-thing, intention, the CBT thought record, crisis
 insight reel, wind-down, the mindful mini-games, baseline assessment, trusted contact, the
 standalone player.
 
+### The privacy claims, proven from the client too (2026-08-21)
+
+Four `CLAIMS_MAP` rows named a mechanism and a BACKEND test, and none of them was proven
+from the app. That gap matters here specifically: this repo has already shipped a screen
+wired to nothing — `setTrustedContact` existed and nothing on Android ever called it, so
+nobody had been asked for consent at all. A claim is only as good as the client calling
+the endpoint that makes it true.
+
+- **"My safety plan — yours, in your words"** — type a warning sign, wait for the screen's
+  own "Saved.", then read `/safety-plan/me` back and assert the words are in it. Restores
+  the section afterwards.
+- **"Edit or delete any of it"** — add a memory, edit it, delete it, assert it is gone.
+- **"Export or delete everything from inside the app"** — the export has to carry real
+  rows; a well-formed but EMPTY document would pass a status check and betray the promise.
+- **The same claim, the destructive half** — `AccountDeletionE2ETest` signs up a
+  throwaway account, writes a check-in to it, deletes the account, and proves the
+  credentials stop working. A soft delete that leaves sign-in intact would satisfy "the
+  row is gone" and fail the promise. It lives in its own class deliberately: a `@Before`
+  that signs into the demo account, sitting next to a test that deletes whatever it is
+  signed into, is one editing mistake away from wiping the fixture.
+
+**The lesson of this slice was about cleanup, not coverage.** The programme test first ran
+against the demo account, left the programme and re-enrolled it, and looked clean — the
+same programme was active again. But `day` is derived from `started_at`, so the account
+silently went from **day 4 to day 1**, and the next device walk would have screenshotted a
+different product. "Restored" has to mean the state is the same, not that a row exists
+again. That test now runs on a throwaway account (`BackendFixture.asThrowaway`), and the
+demo account's enrolment was put back to the seed's documented day.
+
+Verified after a full run: demo account still `Sleep Reset day 4 of 7`, 0 stray goals, 0
+stray memories, 0 leftover `e2e-delete-*` users.
+
+Instrumented suite **12 → 17**, stable across repeated full runs. 543 unit tests green.
+
+**Still not exercised end-to-end:** habits, and the consent toggles that gate memory
+("Turn memory off and it forgets" is still backend-only from the client's side).
+
 ### Android write flows, on hardware against a real server (2026-08-21)
 
 The gap a count exposed: of 83 `Session` API methods, **75 were pinned by unit tests at
