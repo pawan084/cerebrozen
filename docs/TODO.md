@@ -4,6 +4,48 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the incident runbook (WC-19, 2026-08-22)
+
+[INCIDENT_RUNBOOK.md](INCIDENT_RUNBOOK.md). The audit found item 19 mis-scoped:
+`BREACH_RUNBOOK.md` covers a personal-data breach and has its own DPDP clock;
+nothing covered *something is broken now*.
+
+**Severity is defined by user harm, not by which container is red.** S1 is "a
+person in crisis cannot reach help from the app, or the app says something false
+about safety" — and it is the only rung with a hard rule: live until disproven,
+no waiting for business hours.
+
+**The most useful fact in an incident, verified rather than assumed: the crisis
+numbers are compiled into each client.** `apps/app/lib/crisis.ts`,
+`CrisisDirectory.kt` and the iOS twin all hold literal targets, so **a total
+backend outage does not take the crisis door down** — the screen opens, resolves
+the region and dials with the API, database and LLM all dead. That is what you
+tell people during an S2, and it is why S1 is rarer than it looks.
+
+There is a table of what an outage *does* touch: the safety plan works offline;
+scanning stops if nothing is being written; and with the LLM down the scan
+**degrades rather than stops**, because `services/safety.py` runs the keyword net
+as a FLOOR under the classifier, flagging `elevated` conservatively if the floor
+itself errors.
+
+**The detection section says there is no alerting**, because there is not
+(WC-18). It names what exists to detect *with* — `/health`, `/ready` returning
+503 when Postgres is gone, the `request_id` a user can quote back, and the
+`error_event` fingerprints from WC-17 — and then names the smallest fix: one
+external checker on `/ready`, one row of config.
+
+**The rota is deliberately blank.** Inventing one would be worse than admitting
+there isn't one, so §0 is a table of owner slots. One of them cannot be filled
+by anybody yet: **clinical escalation is blocked on WC-3** (no named clinical
+advisor), which makes 19 gated on 3 rather than on engineering.
+
+Also documented: the port-8000 impostor, `| tail` swallowing an exit code, and
+the killed-container-shares-a-database trap — all three cost real time in this
+repo, and all three are the kind of thing that only ever gets written down
+during an incident if it was written down before one.
+
+Every technical claim was re-checked against the code and names its file.
+
 ## Done — nudge durability, the rest of WC-24 (2026-08-22)
 
 **763 passed / 2 skipped, coverage 96%; `services/nudges.py` 97%.**
