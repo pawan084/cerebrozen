@@ -4,6 +4,47 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the two device-walk findings, fixed (2026-08-22)
+
+**549 JVM tests, 0 failures; coverage 96.17%. Both walked on the OnePlus, in
+English AND Hindi.**
+
+**The Trends charts looked broken while being honest.** `contiguousRuns()`
+refuses to join across days nobody logged — right, and staying. What was missing
+was any sign that a gap MEANT something: the line simply stopped, with lone days
+as free-floating dots, and it read as a rendering fault.
+
+Now each hole is bridged by a faint dotted segment (34% alpha, no vertex, no
+fill — it carries no value, so it still claims nothing about the missing day),
+and a caption under the chart names it in that card's own vocabulary: *"Dotted
+where you did not check in."* for mood, *"Dotted where you did not log a
+night."* for sleep. Both appear ONLY when the series actually has holes — an
+unbroken line has nothing to explain. The accessible description gains the same
+sentence, so a screen-reader user learns what the dots say to a sighted one.
+
+**The Sounds door promised the wrong pane.** *"Sounds for sleep · Rain, wind and
+quiet mixes"* opened the LIBRARY, while rain/wind/ocean are the Mixer's four
+layers behind the pill switch. The subtitle now names the whole hub:
+*"Sleep stories, soundscapes, and a mix you build."*
+
+**And the headings counted themselves.** The catalogue holds exactly one
+soundscape (Premium) and one sleep story — `_CONTENT` in seed.py, structural
+data, not a demo artifact. "Soundscapes" over a list of one overstated the
+catalogue, so `ContentList` now reports its size through `onCount` and the two
+headings are `plurals`, reading "Soundscape" / "Sleep story" at one. They stay
+plural until the list answers, so nothing flickers from singular on load.
+
+**The Hindi translation of the door subtitle had to move with it** — `values-hi`
+still carried *"बारिश, हवा और शांत मिक्स"* (rain, wind and quiet mixes), so
+changing only English would have left Hindi readers the original wrong promise.
+Retranslated, both new plurals added, and the three gap strings translated.
+Verified on device under `hi-IN`.
+
+Not fixed, deliberately: the only soundscape is Premium-locked, so a free user
+browsing Library sees one locked card. That is a catalogue/pricing decision, not
+a copy defect — inventing titles for audio that does not exist would be the
+dishonest fix.
+
 ## Done — the three ways a session can fail to renew (2026-08-22)
 
 **Android JVM suite 546 tests, 0 failures; logic coverage 96.17%.**

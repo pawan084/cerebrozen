@@ -91,6 +91,41 @@ class TrendsLogicTest {
         assertEquals(emptyList<IntRange>(), contiguousRuns(emptyList()))
     }
 
+    // A chart that breaks its line is honest; a chart that LOOKS broken is not
+    // read as honest. The caption and the dotted bridge both key off "is there
+    // more than one run", so that condition is what these pin.
+
+    @Test
+    fun `an unbroken line has nothing to explain`() {
+        // No gap note, no dotted segment: one run means the line never stops,
+        // and a caption about absent days would be noise on a full week.
+        val runs = contiguousRuns(
+            listOf("2026-08-01", "2026-08-02", "2026-08-03", "2026-08-04"),
+        )
+        assertEquals(1, runs.size)
+        assertTrue("an unbroken series needs no gap caption", runs.size <= 1)
+    }
+
+    @Test
+    fun `every gap gets exactly one bridge`() {
+        // The dotted connectors are drawn from runs.zipWithNext(), so N runs
+        // must produce N-1 bridges — one per hole, never one past the end.
+        val runs = contiguousRuns(
+            listOf("2026-08-01", "2026-08-04", "2026-08-05", "2026-08-09"),
+        )
+        assertEquals(listOf(0..0, 1..2, 3..3), runs)
+        assertEquals("three runs leave two holes to bridge", 2, runs.zipWithNext().size)
+    }
+
+    @Test
+    fun `a bridge joins the last logged day to the next one, never across itself`() {
+        // Each connector spans the real endpoints either side of the silence,
+        // so it cannot imply a reading on a day nobody logged.
+        val runs = contiguousRuns(listOf("2026-08-01", "2026-08-02", "2026-08-06"))
+        val bridges = runs.zipWithNext().map { (before, after) -> before.last to after.first }
+        assertEquals(listOf(1 to 2), bridges)
+    }
+
     @Test
     fun `an unparseable date breaks the run rather than bridging it`() {
         val runs = contiguousRuns(listOf("2026-08-01", "not-a-date", "2026-08-03"))

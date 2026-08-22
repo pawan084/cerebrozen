@@ -483,6 +483,11 @@ internal fun ContentList(
     /** Where the guest-gate state's "Sign in / Sign up" goes; null renders the
      * gate without a button (the copy still names the account requirement). */
     onSignIn: (() -> Unit)? = null,
+    /** How many items this list actually holds, once the catalogue answers.
+     * The heading above a list belongs to the caller, and a static plural over
+     * a list of one is a small claim about the size of the catalogue that the
+     * catalogue does not support. */
+    onCount: ((Int) -> Unit)? = null,
 ) {
     var items by remember(kind) { mutableStateOf<JSONArray?>(null) }
     var error by remember(kind) { mutableStateOf<String?>(null) }   // B35: keyed like the fetch
@@ -495,7 +500,7 @@ internal fun ContentList(
     LaunchedEffect(kind, reloadKey) {
         error = null
         runCatching { Api.content(kind) }
-            .onSuccess { items = it; guestGated = false }
+            .onSuccess { items = it; guestGated = false; onCount?.invoke(it.length()) }
             .onFailure { guestGated = it.isGuestGate(); error = it.userMessage(loadFailed) }
     }
     // Register narration URLs as a side effect of loading, not during render — the
@@ -1187,15 +1192,26 @@ fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}, startInMixer
         val minutesTemplate = stringResource(R.string.common_minutes)
         val ambientMeta = stringResource(R.string.sounds_meta_ambient)
         val storyMeta = stringResource(R.string.sleep_meta_story)
-        // The first list gets its header like the two sections after it.
-        Text(stringResource(R.string.sounds_soundscapes_header), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+        // The first list gets its header like the two sections after it. Both
+        // headings count what is under them: the catalogue currently holds ONE
+        // soundscape, and "Soundscapes" over a single row overstated it. Plural
+        // until the list answers, so nothing flickers from singular on load.
+        var soundscapeCount by rememberSaveable { mutableStateOf(2) }
+        var storyCount by rememberSaveable { mutableStateOf(2) }
+        Text(
+            androidx.compose.ui.res.pluralStringResource(R.plurals.sounds_soundscapes_header_n, soundscapeCount),
+            style = MaterialTheme.typography.titleMedium, color = TextSoft,
+        )
         ContentList("soundscape", { d -> if (d > 0) minutesTemplate.format(d) else ambientMeta },
             onItemTap = { playAs(it, "soundscape") }, favs = favs, onFav = toggleFav,
-            onSignIn = { onOpen("auth") })
-        Text(stringResource(R.string.sounds_sleep_stories_header), style = MaterialTheme.typography.titleMedium, color = TextSoft)
+            onSignIn = { onOpen("auth") }, onCount = { soundscapeCount = it })
+        Text(
+            androidx.compose.ui.res.pluralStringResource(R.plurals.sounds_sleep_stories_header_n, storyCount),
+            style = MaterialTheme.typography.titleMedium, color = TextSoft,
+        )
         ContentList("sleep", { d -> if (d > 0) minutesTemplate.format(d) else storyMeta },
             onItemTap = { playAs(it, "sleep") }, favs = favs, onFav = toggleFav,
-            onSignIn = { onOpen("auth") })
+            onSignIn = { onOpen("auth") }, onCount = { storyCount = it })
         // Only promise narration where the deployment can actually speak.
         if (!ttsAvailable) {
             Text(stringResource(R.string.sounds_narration_note),

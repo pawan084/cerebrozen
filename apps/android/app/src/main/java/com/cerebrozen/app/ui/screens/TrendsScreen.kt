@@ -27,6 +27,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
@@ -302,6 +303,7 @@ internal fun TrendsScreen(onBack: () -> Unit) {
                         )
                     },
                     notEnough = stringResource(R.string.trends_mood_not_enough, data.mood.logged),
+                    gapNote = stringResource(R.string.trends_chart_gap_note),
                 )
 
                 TrendCard(
@@ -313,6 +315,7 @@ internal fun TrendsScreen(onBack: () -> Unit) {
                         stringResource(R.string.trends_sleep_summary, durationLabel(it.toInt(), stringResource(R.string.unit_hour_short), stringResource(R.string.unit_minute_short)), data.sleep.logged)
                     },
                     notEnough = stringResource(R.string.trends_sleep_not_enough, data.sleep.logged),
+                    gapNote = stringResource(R.string.trends_chart_gap_note_sleep),
                 )
 
                 // V3: which feelings actually showed up, as COUNTS.
@@ -447,6 +450,10 @@ private fun TrendCard(
     range: Pair<Float, Float>?,
     summary: String?,
     notEnough: String,
+    /** Names what a break in the line means, in this card's own vocabulary —
+     *  a missed check-in and a missed night are not the same absence. Shown
+     *  only when the series actually has holes. */
+    gapNote: String,
 ) {
     SectionCard {
         Text(title, style = MaterialTheme.typography.titleMedium, color = TextSoft)
@@ -466,6 +473,12 @@ private fun TrendCard(
             style = MaterialTheme.typography.bodyMedium,
             color = if (summary != null) TextPrimary else TextMuted,
         )
+        // A chart that refuses to join across unlogged days looks broken until
+        // something says the gaps are the point. Only when there ARE gaps —
+        // an unbroken line needs no explaining.
+        if (contiguousRuns(series.points.map { it.date }).size > 1) {
+            Text(gapNote, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+        }
     }
 }
 
@@ -494,7 +507,7 @@ private fun Sparkline(
         points.size,
         points.firstOrNull()?.date.orEmpty(),
         points.lastOrNull()?.date.orEmpty(),
-    )
+    ) + if (runs.size > 1) " " + stringResource(R.string.trends_chart_a11y_gaps) else ""
 
     Canvas(modifier.semantics { contentDescription = description }) {
         val w = size.width
@@ -506,6 +519,19 @@ private fun Sparkline(
             if (points.size == 1) w / 2f else w * index / (points.size - 1).toFloat()
         fun yFor(value: Float) = h - ((value - low) / span).coerceIn(0f, 1f) * (h * 0.86f) - h * 0.07f
 
+        // Bridge each gap with a faint dotted segment. The line still refuses to
+        // claim a value for a day nobody logged — the dots carry no vertex and
+        // no fill — but the break now reads as an absence rather than as a
+        // rendering fault, which is how the solid-only version read on a phone.
+        runs.zipWithNext().forEach { (before, after) ->
+            drawLine(
+                accent.copy(alpha = 0.34f),
+                Offset(xFor(before.last), yFor(values[before.last])),
+                Offset(xFor(after.first), yFor(values[after.first])),
+                strokeWidth = 1.5f,
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 7f)),
+            )
+        }
         runs.forEach { run ->
             if (run.first == run.last) {
                 // A lone day is a dot: drawing a line through one point would be

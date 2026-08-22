@@ -497,11 +497,22 @@
     <string name="sounds_title">ध्वनियाँ</string>
     <string name="sounds_section_library">लाइब्रेरी</string>
     <string name="sounds_section_mixer">मिक्सर</string>
+    <string name="trends_chart_a11y_gaps">जहाँ कोई प्रविष्टि नहीं थी, वहाँ रेखा टूट जाती है।</string>
+    <string name="trends_chart_gap_note">जिन दिनों आपने चेक-इन नहीं किया, वहाँ बिंदुदार।</string>
+    <string name="trends_chart_gap_note_sleep">जिन रातों को आपने दर्ज नहीं किया, वहाँ बिंदुदार।</string>
     <string name="sounds_intro">दौड़ते मन को धीमा करने के लिए साउंडस्केप और नींद की कहानियाँ।</string>
     <string name="sounds_favourites_header">पसंदीदा</string>
     <string name="sounds_meta_favourite">पसंदीदा</string>
     <string name="sounds_meta_ambient">लगातार एंबिएंट</string>
     <string name="sounds_sleep_stories_header">नींद की कहानियाँ</string>
+    <plurals name="sounds_soundscapes_header_n">
+        <item quantity="one">साउंडस्केप</item>
+        <item quantity="other">साउंडस्केप</item>
+    </plurals>
+    <plurals name="sounds_sleep_stories_header_n">
+        <item quantity="one">नींद की कहानी</item>
+        <item quantity="other">नींद की कहानियाँ</item>
+    </plurals>
     <string name="sounds_narration_note">जिन शीर्षकों में वाचन है, वे अपना ऑडियो चलाते हैं; बाक़ी एक शांत एंबिएंट ध्वनि चलाते हैं।</string>
     <string name="sounds_fading_out_in">%1$s में धीमे-धीमे बंद</string>
     <string name="sounds_sleep_timer_short">स्लीप टाइमर: %1$d मि</string>
@@ -1328,7 +1339,7 @@
     <string name="ob_disclosure_cta">जारी रखें</string>
 
     <!-- V2-d part 2: Sleep split -->
-    <string name="sleep_sounds_door_sub">बारिश, हवा और शांत मिक्स</string>
+    <string name="sleep_sounds_door_sub">नींद की कहानियाँ, साउंडस्केप, और अपनी बनाई मिक्स</string>
     <string name="sleep_details_door_sub">डायरी, चार्ट और आपकी रिदम</string>
     <string name="sleep_details_back">‹ आज रात पर वापस</string>
     <!-- V2-e -->

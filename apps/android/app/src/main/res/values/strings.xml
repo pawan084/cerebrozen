@@ -488,6 +488,16 @@
     <string name="sleep_milestone_first">First night logged — the picture starts here.</string>
     <string name="sleep_milestone_week">A week of nights — the picture is forming.</string>
     <string name="sounds_soundscapes_header">Soundscapes</string>
+    <!-- The catalogue is small and honest about it: one soundscape reads "Soundscape",
+         not "Soundscapes" over a list of one. -->
+    <plurals name="sounds_soundscapes_header_n">
+        <item quantity="one">Soundscape</item>
+        <item quantity="other">Soundscapes</item>
+    </plurals>
+    <plurals name="sounds_sleep_stories_header_n">
+        <item quantity="one">Sleep story</item>
+        <item quantity="other">Sleep stories</item>
+    </plurals>
     <string name="sounds_offline_banner">You\'re offline — the Mixer plays from the device, no connection needed.</string>
     <string name="sounds_offline_action">Open Mixer</string>
     <string name="sounds_recent_chip">Pick up where you left off · %1$s</string>
@@ -1894,6 +1904,14 @@
     <string name="trends_link_none">Across %1$d nights, no clear link either way.</string>
     <string name="trends_why">These are trends over what you wrote down, not measurements. Gaps are left as gaps: a day you didn\'t log is missing from the line, never drawn as a low.</string>
     <string name="trends_chart_a11y">Line chart of %1$d logged days, from %2$s to %3$s.</string>
+    <!-- Appended to the chart description only when the series has holes in it, so a
+         screen-reader user learns the same thing the dotted segments say to a sighted one:
+         the line stops because there was no entry, not because the reading was zero. -->
+    <string name="trends_chart_a11y_gaps">The line breaks where there was no entry.</string>
+    <!-- Caption under a chart that has gaps. Without it the broken line reads as a
+         rendering fault rather than as the absence it is (device walk, 2026-08-22). -->
+    <string name="trends_chart_gap_note">Dotted where you did not check in.</string>
+    <string name="trends_chart_gap_note_sleep">Dotted where you did not log a night.</string>
     <string name="trends_open">See your trends</string>
     <string name="you_trends_title">Trends</string>
     <string name="you_trends_subtitle">Your check-ins and nights, over time</string>
@@ -2209,7 +2227,10 @@ everything.</string>
     <string name="trends_moods_total">%1$d check-ins in the last %2$d days — counted, never scored.</string>
 
     <!-- V2-d part 2: the Sleep split (Tonight / Your sleep) -->
-    <string name="sleep_sounds_door_sub">Rain, wind and quiet mixes</string>
+    <!-- Names the whole hub, not one pane. This used to read "Rain, wind and quiet mixes" —
+         which describes the MIXER, while the row opens the Library. A device walk landed on
+         one Premium-locked soundscape under a subtitle promising mixes that were a tab away. -->
+    <string name="sleep_sounds_door_sub">Sleep stories, soundscapes, and a mix you build</string>
     <string name="sleep_details_door_sub">Diary, chart and your rhythm</string>
     <string name="sleep_details_back">‹ Back to tonight</string>
     <!-- V2-e: in-context reminders ask -->
