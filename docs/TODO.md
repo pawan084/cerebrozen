@@ -4,6 +4,57 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the Play Billing client (WC-10, 2026-08-22)
+
+**`:app:check` exit 0, coverage 96.31%, 15 new tests. Verified on the handset:
+the client connects to Play and offers nothing, so no paywall door is drawn.**
+
+The last piece of the Android money path. `services/playstore.py` could verify a
+purchase; nothing in the app could produce one.
+
+**Split by testability, not by layer.** `net/Billing.kt` holds the rules and
+imports no SDK, so decisions about somebody's money run in CI;
+`net/BillingBridge.kt` holds every Play Services call and is excluded from the
+coverage scope with the same reasoning as `PushKt` and
+`CereBroMessagingService` — it cannot run off-device.
+
+**The rule that carries the money: acknowledge only what the server honoured.**
+Play auto-refunds any purchase not acknowledged within three days, which makes
+acknowledgement a decision with two opposite ways to be wrong:
+- Acknowledge too eagerly and a purchase the backend REFUSED is kept anyway —
+  the user paid, got nothing, and the automatic refund that should have rescued
+  them was suppressed.
+- Treat an outage as a refusal and a paying customer is refunded three days
+  later because their train went into a tunnel — their money comes back, and
+  they silently lose what they bought.
+
+So `Verification` has three values, not two: ACCEPTED, REJECTED (a 4xx — the
+server looked and said no) and UNAVAILABLE (5xx, timeout, offline — decides
+nothing, retry next launch). A pending purchase — someone at a kiosk halfway
+through paying — is neither verified nor acknowledged.
+
+**"Restore purchases" is not a feature here.** It is the same reconcile pass,
+run on launch: an already-acknowledged purchase is re-verified (that is how a
+reinstall gets its tier back) but not acknowledged twice.
+
+**The paywall door came back on the condition that removed it.** Audit H1 deleted
+the premium row for free members because "a door to a screen whose only content
+is 'billing isn't wired' is an upsell to nothing", and left a note saying it
+returns with Play Billing. It now returns only when Play has something
+purchasable — so an unconfigured build still shows no door, which the device
+walk confirms. Same rule for the buy button inside the screen.
+
+**The client does NOT flip the UI to premium after a purchase.** Play takes the
+money; the SERVER sets the tier, and the screen re-reads `/auth/me`. The three
+outcomes each get their own honest line, in English and Hindi.
+
+`obfuscatedAccountId` is set on every purchase — that is what lets the server
+refuse a purchase bought for a different account. Without it the backend falls
+back to token uniqueness alone, which is weaker.
+
+**Still external**: creating the IAP products in Play Console (and WC-8's
+keystore/account). The code path is complete and connects to Play today.
+
 ## Done — Play receipt validation, the missing half of WC-15 (2026-08-22)
 
 **755 passed / 2 skipped, coverage 96%; `services/playstore.py` at 99%.**

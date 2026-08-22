@@ -577,10 +577,14 @@ fun PremiumScreen(onBack: () -> Unit) {
     var tier by remember { mutableStateOf(Session.cachedTier()) }
     var sponsored by remember { mutableStateOf(Session.cachedSponsored()) }
     var resolved by remember { mutableStateOf(false) }
+    var accountId by remember { mutableStateOf("") }
     LaunchedEffect(Unit) {
         runCatching { Api.me() }.onSuccess { me ->
             tier = me.optString("subscription_tier").ifBlank { "free" }
             sponsored = me.optBoolean("sponsored")
+            // Travels with the purchase as obfuscatedAccountId; the server
+            // refuses a purchase bought for a different account (WC-15).
+            accountId = me.optString("id")
             Session.rememberEntitlement(tier, sponsored)
         }
         resolved = true
@@ -592,6 +596,37 @@ fun PremiumScreen(onBack: () -> Unit) {
     // tier resolves so the cached guess is never what fires it.
     LaunchedEffect(resolved, tier, sponsored) {
         if (resolved && !sponsored && tier == "free") Analytics.track("paywall_view")
+    }
+
+    // WC-10: ask Play what it will actually sell. Nothing configured in Play
+    // Console means no offers, which keeps the honest note below instead of
+    // showing a button that opens an empty sheet (audit H1's dead CTA).
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var offers by remember { mutableStateOf(com.cerebrozen.app.net.BillingBridge.offers) }
+    var buyState by remember { mutableStateOf("") }
+    var buyNotice by remember { mutableStateOf("") }
+    // stringResource is @Composable, so the labels a click handler needs are
+    // read here rather than inside the lambda.
+    val workingLabel = stringResource(R.string.premium_buy_working)
+    val verifyingLabel = stringResource(R.string.premium_buy_verifying)
+    val deferredLabel = stringResource(R.string.premium_verify_deferred)
+    val rejectedLabel = stringResource(R.string.premium_verify_rejected)
+    LaunchedEffect(Unit) {
+        runCatching { com.cerebrozen.app.net.BillingBridge.loadOffers(context) }
+        offers = com.cerebrozen.app.net.BillingBridge.offers
+        // A purchase can complete while the app was closed (or on another
+        // device). Reconciling on open is what turns "restore purchases" into
+        // something that happens by itself.
+        runCatching { com.cerebrozen.app.net.BillingBridge.reconcileNow(context) }
+            .onSuccess { report ->
+                if (report.entitled > 0) {
+                    runCatching { Api.me() }.onSuccess { me ->
+                        tier = me.optString("subscription_tier").ifBlank { "free" }
+                        Session.rememberEntitlement(tier, me.optBoolean("sponsored"))
+                    }
+                }
+            }
     }
 
     PremiumSubPage(
@@ -630,14 +665,53 @@ fun PremiumScreen(onBack: () -> Unit) {
                     stringResource(R.string.premium_annual_note), featured = true)
                 PlanCard(stringResource(R.string.premium_monthly), stringResource(R.string.premium_monthly_price),
                     stringResource(R.string.premium_monthly_note), featured = false)
-                // No dead CTA: the permanently-disabled "Start free trial"
-                // button walked users into a paywall where nothing could be
-                // bought (audit H1). Until Play Billing is configured, the
-                // honest state is pricing for transparency + the note — a
-                // PrimaryButton returns with the Play Console setup (external
-                // blocker, ledgered in TODO.md).
-                Text(stringResource(R.string.premium_billing_note),
-                    style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                // Still no dead CTA. The button exists only while Play has
+                // something purchasable to offer; with no Play Console products
+                // the offers list is empty and the honest note stays, which is
+                // exactly the state audit H1 left this screen in.
+                if (offers.isNotEmpty()) {
+                    PrimaryButton(
+                        text = if (buyState.isBlank()) stringResource(R.string.premium_buy_cta)
+                               else buyState,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = buyState.isBlank(),
+                    ) {
+                        Analytics.track("paywall_cta")
+                        val activity = context as? android.app.Activity
+                        val product = offers.first()
+                        if (activity == null || accountId.isBlank()) return@PrimaryButton
+                        buyState = workingLabel
+                        // The purchase sheet is Play's; when it closes,
+                        // reconcile decides what actually happened. The UI does
+                        // NOT flip to premium here — the server sets the tier.
+                        if (!com.cerebrozen.app.net.BillingBridge.launch(activity, product, accountId)) {
+                            buyState = ""
+                            return@PrimaryButton
+                        }
+                        scope.launch {
+                            buyState = verifyingLabel
+                            val report = runCatching {
+                                com.cerebrozen.app.net.BillingBridge.reconcileNow(context)
+                            }.getOrNull()
+                            buyState = ""
+                            when {
+                                report == null -> Unit
+                                report.entitled > 0 -> runCatching { Api.me() }.onSuccess { me ->
+                                    tier = me.optString("subscription_tier").ifBlank { "free" }
+                                    Session.rememberEntitlement(tier, me.optBoolean("sponsored"))
+                                }
+                                report.rejected > 0 -> buyNotice = rejectedLabel
+                                report.needsRetry -> buyNotice = deferredLabel
+                            }
+                        }
+                    }
+                    if (buyNotice.isNotBlank()) {
+                        Text(buyNotice, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                    }
+                } else {
+                    Text(stringResource(R.string.premium_billing_note),
+                        style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                }
             }
         }
     }

@@ -572,6 +572,15 @@ fun CereBroApp() {
     androidx.compose.runtime.LaunchedEffect(current) {
         com.cerebrozen.app.net.ErrorTracking.currentRoute = current
     }
+    // WC-10: ask Play what it will sell, and settle any purchase made while the
+    // app was closed or on another device. Both are silent no-ops without Play
+    // Services or configured products, so nothing here gates startup.
+    val billingContext = LocalContext.current
+    androidx.compose.runtime.LaunchedEffect(com.cerebrozen.app.net.Session.signedIn) {
+        if (!com.cerebrozen.app.net.Session.signedIn) return@LaunchedEffect
+        runCatching { com.cerebrozen.app.net.BillingBridge.loadOffers(billingContext) }
+        runCatching { com.cerebrozen.app.net.BillingBridge.reconcileNow(billingContext) }
+    }
     // Honor the notification's promise: navigate to the deeplink the nudge
     // carried. Signed-out sessions never reach this point, so the route waits
     // on the bus until the NavHost exists.

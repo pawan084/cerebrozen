@@ -236,6 +236,12 @@ val coverageExcludes = listOf(
     // Its one decision (save through the same /moods write the forms use, or
     // open the app when the save can't succeed) rides the covered Api.checkIn.
     "com/cerebrozen/app/notify/QuickLogActivity*",
+    // The Play Billing SDK adapter. Every call in it needs Play Services and a
+    // Play Console product to answer, so it cannot run off-device — the same
+    // category as the two above. The DECISIONS it would otherwise hide (verify
+    // before acknowledge, a rejection is not an outage, leave pending sales
+    // alone) live in net/Billing.kt, which IS covered by BillingTest.
+    "com/cerebrozen/app/net/BillingBridge*",
     // The Play-services Task→coroutine bridge in notify/Push.kt (file-level
     // private, so it compiles into PushKt). It can only run against a real
     // FirebaseMessaging instance, which needs the config file above; the
@@ -349,6 +355,7 @@ val jacocoLogicCoverageVerification by tasks.registering {
 tasks.named("check") { dependsOn(jacocoLogicCoverageVerification) }
 
 dependencies {
+    implementation(libs.billing.ktx)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

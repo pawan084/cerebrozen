@@ -72,7 +72,7 @@ open.
 > | 7 | **Half.** Android walked on the CPH2681 (55 screens, 2026-08-22). iOS not walked — needs item 6's Mac | `docs/TODO.md` device-walk entries |
 > | 8 | **Code ready · account external.** `signingConfigs` reads `releaseKeystore`; the keystore and Console account are the missing half | `apps/android/app/build.gradle.kts:106` |
 > | 9 | **Open · external, and split.** Entitlements DO declare `applesignin` + `healthkit`; `GIDClientID` is genuinely absent from `Info.plist` | `CereBro.entitlements`, `Info.plist` |
-> | 10 | **Open · confirmed.** No Play Billing dependency in the Android build at all | `build.gradle.kts` has no `billing` |
+> | 10 | **Client DONE 2026-08-22 · products external.** `billing-ktx` 7.1.1, `net/Billing.kt` (rules, unit-tested) + `net/BillingBridge.kt` (SDK, excluded like `PushKt`). Verified on the handset: the client connects to Play (Finsky bound `InAppBillingService` to the app) and, with no Console products, offers nothing — so no paywall door is drawn at all. Creating the IAP products remains external | `net/Billing.kt`, `BillingTest.kt` (15) |
 > | 11 | **Closed as written.** Org RBAC is real: `ROLE_BENEFITS_OWNER` / `ROLE_PROGRAMME_ADMIN` / `ROLE_ANALYST`, a `role` column per membership, `ROLES_CAN_WRITE` enforced. `User.is_admin` survives as the INTERNAL admin-dashboard flag, which is a different thing from portal roles | `models/organization.py:46,106` |
 > | 12 | **Open · confirmed.** Portal auth is email + password; the Caddyfile still comments the portal host out | `apps/portal/lib/api.ts:125`, `deploy/Caddyfile:64` |
 > | 13 | **Open · owner.** `/org/summary` and suppressed group totals exist; which aggregates an employer may see is still undecided | `api/routes/organizations.py:137` |

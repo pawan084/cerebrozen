@@ -9,8 +9,11 @@ navigationCompose = "2.8.5"
 dataStore = "1.1.1"
 firebaseBom = "33.7.0"
 googleServices = "4.4.2"
+# Play Billing: the client half of WC-15. The server verifies what this sells.
+billing = "7.1.1"
 
 [libraries]
+billing-ktx = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "billing" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }

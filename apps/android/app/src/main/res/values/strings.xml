@@ -1088,7 +1088,19 @@
     <string name="premium_cta">Start free trial</string>
     <!-- The old line was developer-speak ("wired", "Play Console setup") shipped
          to users (audit K). Same honesty, human words. -->
+    <!-- Shown when Play has nothing purchasable to offer — no Play Console
+         products configured yet. Kept as the fallback rather than deleted: a
+         button that opens an empty sheet is the dead CTA audit H1 removed. -->
     <string name="premium_billing_note">Purchases aren\'t available in this version of the app yet.</string>
+    <string name="premium_buy_cta">Subscribe with Google Play</string>
+    <string name="premium_restore_cta">Restore a purchase</string>
+    <string name="premium_buy_working">Talking to Google Play…</string>
+    <!-- After Play takes the money, the SERVER decides the tier — so the app
+         says what is happening rather than flipping the UI optimistically. -->
+    <string name="premium_buy_verifying">Confirming your subscription…</string>
+    <string name="premium_buy_failed">Google Play couldn\'t complete that. Nothing was charged.</string>
+    <string name="premium_verify_deferred">Bought — we\'ll finish confirming it next time you\'re online.</string>
+    <string name="premium_verify_rejected">That purchase couldn\'t be applied to this account. Google Play will refund it automatically.</string>
     <!-- Premium paid for by an organisation. No prices, because there is
          nothing for this member to buy, and no cancel link, because there is
          nothing they can cancel. -->

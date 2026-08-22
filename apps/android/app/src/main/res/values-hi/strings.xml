@@ -651,6 +651,13 @@
     <string name="premium_monthly_note">कभी भी रद्द करें</string>
     <string name="premium_cta">निःशुल्क ट्रायल शुरू करें</string>
     <string name="premium_billing_note">ऐप के इस संस्करण में ख़रीदारी अभी उपलब्ध नहीं है।</string>
+    <string name="premium_buy_cta">Google Play से सब्सक्राइब करें</string>
+    <string name="premium_restore_cta">खरीद बहाल करें</string>
+    <string name="premium_buy_working">Google Play से बात हो रही है…</string>
+    <string name="premium_buy_verifying">आपकी सब्सक्रिप्शन की पुष्टि हो रही है…</string>
+    <string name="premium_buy_failed">Google Play यह पूरा नहीं कर सका। कोई शुल्क नहीं लिया गया।</string>
+    <string name="premium_verify_deferred">खरीद हो गई — अगली बार ऑनलाइन होने पर पुष्टि पूरी कर देंगे।</string>
+    <string name="premium_verify_rejected">यह खरीद इस अकाउंट पर लागू नहीं हो सकी। Google Play अपने आप रिफ़ंड कर देगा।</string>
     <string name="premium_sponsored_eyebrow">आपके संगठन द्वारा भुगतान</string>
     <string name="premium_sponsored_title">पहले से खुला हुआ</string>
     <string name="premium_sponsored_intro">इस सीट का भुगतान आपका संगठन करता है, इसलिए यहाँ कुछ खरीदना या रद्द करना नहीं है। पूरी लाइब्रेरी और असीमित दैनिक बातचीत इस खाते पर पहले से खुली हैं।</string>

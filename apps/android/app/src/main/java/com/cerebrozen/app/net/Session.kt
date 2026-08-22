@@ -941,6 +941,25 @@ object Api {
     suspend fun updateProfile(patch: JSONObject): JSONObject =
         JSONObject(Session.api("/users/me", "PATCH", patch))
 
+    /**
+     * Hand a Play purchase to the server, which decides the tier.
+     *
+     * The two strings go through EXACTLY as Play produced them: the signature
+     * is over those bytes, so re-serialising the JSON — even into an identical
+     * object — breaks verification. `backend/tests/test_playstore.py` asserts
+     * the same contract from the other side.
+     */
+    suspend fun verifyPlayPurchase(originalJson: String, signature: String): JSONObject =
+        JSONObject(
+            Session.api(
+                "/users/me/subscription/verify-play",
+                "POST",
+                JSONObject()
+                    .put("purchase_payload", originalJson)
+                    .put("purchase_signature", signature),
+            ),
+        )
+
     suspend fun consent(): JSONObject = JSONObject(Session.api("/users/me/consent"))
     suspend fun updateConsent(patch: JSONObject): JSONObject =
         JSONObject(Session.api("/users/me/consent", "PATCH", patch))

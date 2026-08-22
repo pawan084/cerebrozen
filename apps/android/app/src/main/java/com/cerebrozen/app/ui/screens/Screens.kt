@@ -361,7 +361,12 @@ fun YouScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
         // a screen whose only content is "billing isn't wired" is an upsell to
         // nothing. The row returns with Play Billing; members who already have
         // premium (sponsored or bought elsewhere) keep their manage door.
-        if (sponsored || tier != "free") {
+        // WC-10: the row returns with Play Billing, exactly as the note above
+        // said it would — and on the same condition that removed it. A free
+        // member sees it only when Play has something purchasable to offer, so
+        // an unconfigured build still shows no door to an upsell it cannot
+        // honour.
+        if (sponsored || tier != "free" || com.cerebrozen.app.net.BillingBridge.purchasable) {
             Box(Modifier.padding(top = 8.dp)) {
                 PremiumNavRow(stringResource(R.string.you_premium_title), premiumSubtitle,
                     icon = Icons.Outlined.WorkspacePremium) { onOpen("premium") }
