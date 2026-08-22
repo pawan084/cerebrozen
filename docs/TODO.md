@@ -4,6 +4,46 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the portal's shared vocabulary (2026-08-22)
+
+**950 tests; overall coverage 90.0%, `portal/components/ui.tsx` 0% → 100%.**
+
+The primitives every portal route is built from. Small components, but three of
+the contracts in them are the kind that rot quietly:
+
+- **The privacy-wall notice quotes `lib/copy`, not a paraphrase.** It is
+  repeated on every reporting surface so an administrator never has to remember
+  which page the rule was stated on — and it names the three mechanisms
+  (anonymous group totals, minimum cohort thresholds, small-cell suppression)
+  rather than promising privacy in general. "We take privacy seriously" is not a
+  claim anyone can check; a threshold is.
+- **Charts carry their meaning in text.** A proportion bar has a required
+  accessible name — the prop is not optional, because a bare bar is unreadable
+  to anyone not looking at it. A bar chart announces ONCE for the whole plot,
+  describing shape and peak; eight individually announced bars are noise, and
+  the test asserts exactly one `role="img"` across eight bars.
+- **The tone classes stay clean.** `tone ? \`badge ${tone}\` : "badge"` rather
+  than a template with a hole in it — the naive version emits `"badge "` or
+  `"badge undefined"`, and a CSS rule written against the exact class silently
+  stops matching. Both `Badge` and `Notice` are pinned across every tone plus
+  the toneless case.
+
+Also: a metric with no comparison renders no delta element at all (an empty span
+still takes layout and still reads as something), decorative glyphs stay
+`aria-hidden`, and `PageIntro` puts exactly one `h1` per route — the eyebrow
+stays out of the heading structure rather than competing with the title.
+
+**Mutation sweep: 15 mutants, 15 caught, first pass.**
+
+Running total: **122 mutants, 118 caught, 4 proven equivalent, 5 real weaknesses
+found and fixed.**
+
+Remaining uncovered, by mass: `apps/app/components/ui.tsx` (0%, **dead — no
+importer**), `apps/web/components/Glyphs.tsx` (0%, **dead**),
+`apps/web/components/PhoneMock.tsx` (0%, live), `admin/components/icons.tsx`
+(0%), `Shell.tsx` (78%), `app/lib/social.ts` (79%, the Google/Apple SDK
+handshakes), `app/components/icons.tsx` (58%).
+
 ## Done — every other way into an account (2026-08-22)
 
 **`AuthPanel.tsx` 77.2% → 98.8%.**
