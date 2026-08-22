@@ -505,14 +505,8 @@
     <string name="sounds_meta_favourite">पसंदीदा</string>
     <string name="sounds_meta_ambient">लगातार एंबिएंट</string>
     <string name="sounds_sleep_stories_header">नींद की कहानियाँ</string>
-    <plurals name="sounds_soundscapes_header_n">
-        <item quantity="one">साउंडस्केप</item>
-        <item quantity="other">साउंडस्केप</item>
-    </plurals>
-    <plurals name="sounds_sleep_stories_header_n">
-        <item quantity="one">नींद की कहानी</item>
-        <item quantity="other">नींद की कहानियाँ</item>
-    </plurals>
+    <string name="sounds_soundscape_header_one">साउंडस्केप</string>
+    <string name="sounds_sleep_story_header_one">नींद की कहानी</string>
     <string name="sounds_narration_note">जिन शीर्षकों में वाचन है, वे अपना ऑडियो चलाते हैं; बाक़ी एक शांत एंबिएंट ध्वनि चलाते हैं।</string>
     <string name="sounds_fading_out_in">%1$s में धीमे-धीमे बंद</string>
     <string name="sounds_sleep_timer_short">स्लीप टाइमर: %1$d मि</string>

@@ -489,15 +489,14 @@
     <string name="sleep_milestone_week">A week of nights — the picture is forming.</string>
     <string name="sounds_soundscapes_header">Soundscapes</string>
     <!-- The catalogue is small and honest about it: one soundscape reads "Soundscape",
-         not "Soundscapes" over a list of one. -->
-    <plurals name="sounds_soundscapes_header_n">
-        <item quantity="one">Soundscape</item>
-        <item quantity="other">Soundscapes</item>
-    </plurals>
-    <plurals name="sounds_sleep_stories_header_n">
-        <item quantity="one">Sleep story</item>
-        <item quantity="other">Sleep stories</item>
-    </plurals>
+         not "Soundscapes" over a list of one.
+
+         Two plain strings, chosen in code by count == 1, rather than <plurals>. Android's
+         plural buckets are language rules, not arithmetic: in Hindi `quantity="one"` matches
+         BOTH 0 and 1, so a plural would have titled an EMPTY list "Soundscape" in Hindi while
+         reading correctly in English. Lint's ImpliedQuantity caught exactly that. -->
+    <string name="sounds_soundscape_header_one">Soundscape</string>
+    <string name="sounds_sleep_story_header_one">Sleep story</string>
     <string name="sounds_offline_banner">You\'re offline — the Mixer plays from the device, no connection needed.</string>
     <string name="sounds_offline_action">Open Mixer</string>
     <string name="sounds_recent_chip">Pick up where you left off · %1$s</string>

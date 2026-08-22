@@ -4,6 +4,38 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — `:app:check` is green, and lint caught a bug I had shipped (2026-08-22)
+
+**`:app:check` exit 0 — 0 errors, 458 warnings.** That is the WHOLE Android gate,
+`lintDebug` and `testReleaseUnitTest` included.
+
+Two things worth recording, one of them a mistake.
+
+**I broke the gate in the previous commit and reported it green.** The Sounds
+headings used `<plurals>`, and `:app:check` failed with two `ImpliedQuantity`
+errors — both mine, in `values-hi`. I had run `:app:testDebugUnitTest` and the
+coverage gate and called that "gates green"; the gate for a resource change is
+the one that reads resources. Exactly the failure this repo already has a note
+about.
+
+**Lint was right, and about a real defect rather than a style rule.** Android's
+plural buckets are language rules, not arithmetic: Hindi's `quantity="one"`
+matches **0 as well as 1**. So the plural would have titled an EMPTY soundscape
+list *"साउंडस्केप"* (singular) for Hindi readers while reading correctly in
+English — a locale-specific bug in code whose entire purpose was to stop a
+heading overstating its list. Replaced with two plain strings chosen by
+`count == 1`, which means one in every locale. Re-walked on the handset in both
+`en-US` and `hi-IN`: **Soundscape / Sleep story** and
+**साउंडस्केप / नींद की कहानी**.
+
+**The gate's recorded state was stale.** The working notes said `:app:check` was
+red on two counts — untranslated Hindi strings and the release unit tests needing
+the debug-only `ui-test-manifest`. Neither fails today: `MissingTranslation` does
+not appear in the report at all, and `testReleaseUnitTest` passes. Before this
+commit the only errors in the whole report were the two I had just added, which
+means the gate has been usable for some time and was being routed around on the
+strength of an old note.
+
 ## Done — the two device-walk findings, fixed (2026-08-22)
 
 **549 JVM tests, 0 failures; coverage 96.17%. Both walked on the OnePlus, in

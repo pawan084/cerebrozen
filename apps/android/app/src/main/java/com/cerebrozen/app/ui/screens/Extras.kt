@@ -1196,17 +1196,28 @@ fun SoundsScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}, startInMixer
         // headings count what is under them: the catalogue currently holds ONE
         // soundscape, and "Soundscapes" over a single row overstated it. Plural
         // until the list answers, so nothing flickers from singular on load.
+        //
+        // Chosen with an if, not <plurals>: plural buckets are language rules
+        // rather than arithmetic, and Hindi's "one" bucket covers 0 AND 1 — so a
+        // plural titled an EMPTY list "Soundscape" in Hindi while reading fine in
+        // English (lint ImpliedQuantity). count == 1 means one, in every locale.
         var soundscapeCount by rememberSaveable { mutableStateOf(2) }
         var storyCount by rememberSaveable { mutableStateOf(2) }
         Text(
-            androidx.compose.ui.res.pluralStringResource(R.plurals.sounds_soundscapes_header_n, soundscapeCount),
+            stringResource(
+                if (soundscapeCount == 1) R.string.sounds_soundscape_header_one
+                else R.string.sounds_soundscapes_header,
+            ),
             style = MaterialTheme.typography.titleMedium, color = TextSoft,
         )
         ContentList("soundscape", { d -> if (d > 0) minutesTemplate.format(d) else ambientMeta },
             onItemTap = { playAs(it, "soundscape") }, favs = favs, onFav = toggleFav,
             onSignIn = { onOpen("auth") }, onCount = { soundscapeCount = it })
         Text(
-            androidx.compose.ui.res.pluralStringResource(R.plurals.sounds_sleep_stories_header_n, storyCount),
+            stringResource(
+                if (storyCount == 1) R.string.sounds_sleep_story_header_one
+                else R.string.sounds_sleep_stories_header,
+            ),
             style = MaterialTheme.typography.titleMedium, color = TextSoft,
         )
         ContentList("sleep", { d -> if (d > 0) minutesTemplate.format(d) else storyMeta },
