@@ -4,6 +4,40 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the multi-worker nudge claim is now tested (WC-24 partial, 2026-08-22)
+
+**726 passed / 2 skipped, coverage 96%.**
+
+`_nudge_dispatcher` carried a load-bearing claim in its docstring — *"Safe with
+multiple workers: dispatch_due claims due rows with FOR UPDATE SKIP LOCKED, so
+each nudge is sent exactly once"* — and nothing tested it. That claim is what
+stands between the in-process loop and running more than one API instance, and
+if it were wrong the symptom is a wellness app sending "time to check in" twice.
+Spam, from the product whose whole posture is that it does not nag.
+
+**The claim holds.** Three tests run two real dispatchers against one real
+Postgres row and count deliveries: two concurrent workers deliver exactly once
+and the loser reports `considered == 0` honestly rather than a phantom pass; the
+loser SKIPS rather than blocking (without `skip_locked` every instance would
+serialise behind the slowest delivery, which on a bad SMTP day is the whole
+dispatch interval); and the sequential case — one instance finishing before the
+next starts — is stopped by the status filter rather than the lock.
+
+**Both mutants die**, each caught by the test written for it: deleting the row
+claim fails the double-send test, and downgrading `SKIP LOCKED` to a plain `FOR
+UPDATE` fails the blocking test. Lock behaviour cannot be tested against a mock,
+so these use the live database the rest of the suite already needs.
+
+**So WC-24 is smaller than it reads.** The item says "move nudge dispatch off the
+in-process loop onto a durable scheduler before multi-instance deployment", and
+the correctness half of that — double-sending — is already handled and now
+proven. What genuinely remains is scheduling DURABILITY, which is a different
+concern: a nudge scheduled for 09:00 while every instance is down goes out late
+on the next tick rather than at 09:00 (`scheduled_for <= now` means it is not
+lost, only late), and there is no backoff for a delivery that failed
+transiently — `status = "failed"` is terminal. Neither needs a scheduler vendor
+to fix, and neither is a double-send.
+
 ## Done — error tracking on both clients (WC-17, 2026-08-22)
 
 **Web: 1,183 tests, 98.6% coverage, `lib/errors.ts` at 100%, 71 e2e green.
