@@ -4,6 +4,50 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the journey path and the intervention card (2026-08-22)
+
+**777 tests; overall coverage 72.9%, `apps/app/components` at 70.8%.** Both of
+these carry a product ethic in their comments, and now in a test.
+
+- **`JourneyPath`** — a day gone by is *"passed"*, never *"completed"*: an
+  enrollment counts days from its start date and records nothing per day, so the
+  app does not know whether anyone actually did Tuesday, only that Tuesday has
+  been and gone. Calling it completed would be congratulating someone for the
+  passage of time. And **nothing is ever locked** — every day opens, in any
+  order, on any day, because "the person who needs Friday's wind-down tonight is
+  often exactly the person who has not opened Monday". The tests drive both:
+  every node is a live control on day one, a future day's guide opens, and the
+  rendered copy contains no lock, tick, streak or score. `aria-current="step"`
+  is asserted to be on exactly one node. The serpentine `nodeBias` is checked
+  against the Kotlin the Android path draws from — both clients derive their
+  nodes AND their connecting line from it.
+- **`InterventionCard`** — the reason arrives from the server already worded and
+  frozen, and the client never recomputes or paraphrases it. Proven with a
+  wording the client has never seen, which a lookup table would have replaced.
+  It is an offer, not an alert: dismissal hides the card BEFORE the POST (a card
+  that lingers while the network answers is still on screen at the moment
+  someone said no), and a failed fetch renders nothing rather than an error
+  banner about a missing suggestion.
+
+**Mutation sweep: 9 tried, 8 caught immediately — and one REAL test weakness,
+the second of the campaign.** "An error becomes a suggestion" survived, and the
+reason is worth writing down: `waitFor(() => expect(container.textContent).toBe(""))`
+checks IMMEDIATELY, and the card is empty on the initial render regardless, so
+the assertion passed before the fetch had even settled. Both "renders nothing"
+tests were passing vacuously. They now wait for the call to land and flush the
+microtasks before asserting emptiness — and both mutants are caught.
+
+Running total: **55 mutants, 52 caught, 3 proven equivalent, 2 real weaknesses
+found and fixed.**
+
+Also caught by the typechecker rather than by a test: `JourneyPath` has no
+`days` prop — the count IS `guides.length` — so a `days={7}` in one test was
+being silently ignored.
+
+**Still uncovered:** `GuidedTour`, `ui.tsx`, `AppHeader`, the admin console's
+single 2,000-line page, and the landing's smaller pieces (`Faq`, `MobileNav`,
+`SiteFooter`, `PhoneMock`).
+
 ## Done — Thought Sort and the offline programmes (2026-08-22)
 
 **742 tests; component coverage 62 → 69%.** Both of these components are mostly
