@@ -4,6 +4,46 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the three ways a session can fail to renew (2026-08-22)
+
+**Android JVM suite 546 tests, 0 failures; logic coverage 96.17%.**
+
+A device walk on the OnePlus opened the app on a full Home screen under
+*"You're offline — showing your last copy"* on a phone with working WiFi. I
+reported that as a high-severity bug: a signed-out session being blamed on the
+network. **That was wrong, and the tests that prove it are the deliverable.**
+
+`SessionRefreshFailureTest` pins the three outcomes of a failed
+`/auth/refresh` apart, because from outside the app they look identical:
+
+| refresh outcome | what happens | right? |
+|---|---|---|
+| `401` / `403` | `signOut()`, `signedIn=false`, no stale banner | correct |
+| `IOException` | 503 "check your connection", session kept | correct |
+| `404` (server answered) | 503 "check your connection", session kept | what I hit |
+
+A genuinely expired token has always been handled correctly — it ends the
+session and the UI falls through to the welcome screen. What the walk hit was
+the third row: a stray `uvicorn` on host `:8000` answering `/auth/refresh` with
+a 404. `refresh()` signs out only on 401/403, which is the right rule, so the
+session stayed and the cache was served.
+
+**No code change.** What survives of the finding is that a server which
+*answered* with a 404 or 500 is described to the user as one that could not be
+reached — and for an end user that is a fair summary of "the server said
+something useless". Inventing a fix to justify the original claim would have
+been worse than the claim.
+
+The three tests stay because they would catch the two changes that WOULD be
+bugs: a 401 serving stale data (a signed-out user reading someone's cached
+screen), or a network blip signing someone out.
+
+Also observed on the walk, not fixed: the Sounds Library shows one soundscape
+(Premium-locked) and one sleep story under plural headings, while the mixes the
+Sleep row promises live behind the Mixer tab; and the Trends charts read as
+broken when they are being honest — `contiguousRuns()` refuses to draw a slope
+across unlogged days, but nothing on the plot says a gap MEANS an absence.
+
 ## Done — the CSS the deleted components left behind (2026-08-22)
 
 **`apps/app/app/globals.css`: 57 lines of rules with no producer, gone.**
