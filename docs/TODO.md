@@ -4,6 +4,54 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — every other way into an account (2026-08-22)
+
+**`AuthPanel.tsx` 77.2% → 98.8%.**
+
+The 18+ gate was walked; nothing else on this panel was. What is now pinned:
+
+**The passwordless path, end to end.** The code goes to the address that was
+typed, the screen SAYS a code was sent rather than leaving a changed button as
+the only signal, and the field carries `inputMode="numeric"`,
+`autocomplete="one-time-code"` and `maxLength=6` — the difference between
+autofill offering the code and someone retyping six digits off a phone. Verify
+runs against the same address, reports the session as `"otp"` (possibly-new, as
+callers assume), and no password call is made on a path that never had one.
+Switching back to a password throws the half-typed code away, so the next send
+does not submit into a stale field.
+
+**The resend cooldown**, which existed entirely untested: it counts down instead
+of offering a button that will fail, ticks while the user waits, opens up at 60s,
+restarts the window on a resend, and its 1s interval dies with the panel.
+
+**The error copy.** `fetch` rejects with a bare `TypeError` when the API is
+unreachable, and "Failed to fetch" is a message for a console, not for someone
+trying to get into their account — that substitution is asserted, along with
+passing a real server message through untouched, and a fallback for a failure
+carrying no message at all. Retry re-runs the exact action that failed, on both
+the password and the code path, so nothing is retyped. An unconfigured provider
+(Apple, until a Services ID exists) is a `role="status"` notice, never an
+alert — pressing a button that is not wired yet is not a user error.
+
+**The password hint is guidance, never a gate** — a short password still
+submits, because the server owns the minimum and a client-side block would
+invent a second rule the API does not have.
+
+**Mutation sweep: 17 mutants, 15 caught, 2 survived — and they failed in
+different ways, which is the useful part.**
+- *"The hint becomes a gate"* survived because the MUTANT was wrong, not the
+  test: it inserted a duplicate of the line already below it, so behaviour was
+  identical. Rebuilt as a real client-side block on a short password — caught.
+- *"The length bands slide by one"* survived for real. Every case used
+  `short` / `nine char` / a passphrase, and moving the first threshold from 8
+  to 6 leaves all three reading exactly the same. A 7-character password would
+  have been told it was decent and then rejected by the server. **Boundaries are
+  pinned now** — 7, 8, 11, 12 — and both directions of the slide die.
+
+Two mutants of mine were also badly built earlier in this campaign; the pattern
+is worth naming: **a mutant that changes no behaviour proves nothing about the
+test that "missed" it.** Check the mutant before blaming the suite.
+
 ## Done — the portal's honesty layer, and a typecheck that could not see it (2026-08-22)
 
 **890 tests; overall coverage 86.6%, `portal/components/data.tsx` 97.7%.**
