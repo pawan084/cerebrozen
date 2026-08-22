@@ -31,6 +31,8 @@ logging.basicConfig(
     level=getattr(logging, settings.log_level.upper(), logging.INFO),
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
+from app.services import errors as error_tracking
+
 logger = logging.getLogger("cerebro.main")
 
 
@@ -49,8 +51,9 @@ async def _nudge_dispatcher() -> None:
                 queued = await digest_service.run_weekly_pass(db)
             if queued:
                 logger.info("Weekly digest: %d queued", queued)
-        except Exception:  # noqa: BLE001 - keep the loop alive
+        except Exception as exc:  # noqa: BLE001 - keep the loop alive
             logger.exception("Weekly digest pass failed")
+            error_tracking.capture(exc, where="job:weekly-digest")
         try:
             async with SessionLocal() as db:
                 outcome = await nudges_service.dispatch_due(db)
@@ -64,8 +67,9 @@ async def _nudge_dispatcher() -> None:
                     outcome.skipped,
                     outcome.failed,
                 )
-        except Exception:  # noqa: BLE001 - keep the loop alive
+        except Exception as exc:  # noqa: BLE001 - keep the loop alive
             logger.exception("Nudge dispatch pass failed")
+            error_tracking.capture(exc, where="job:nudge-dispatch")
         # Offline-queue replay records age out here rather than on a timer of
         # their own — the pass is idempotent and cheap, and one loop is one
         # thing to reason about when a worker misbehaves.
@@ -74,8 +78,9 @@ async def _nudge_dispatcher() -> None:
                 purged = await idempotency_service.purge_expired(db)
             if purged:
                 logger.info("Idempotency purge: %d expired", purged)
-        except Exception:  # noqa: BLE001 - keep the loop alive
+        except Exception as exc:  # noqa: BLE001 - keep the loop alive
             logger.exception("Idempotency purge failed")
+            error_tracking.capture(exc, where="job:idempotency-purge")
 
 
 @asynccontextmanager
@@ -90,8 +95,9 @@ async def lifespan(app: FastAPI):
             from app.agent.graph import get_graph
 
             await get_graph()
-        except Exception:  # noqa: BLE001 — degraded is fine; never fatal at boot
+        except Exception as exc:  # noqa: BLE001 — degraded is fine; never fatal at boot
             logger.exception("Oracle graph warmup failed; it will retry lazily")
+            error_tracking.capture(exc, where="job:oracle-warmup")
     dispatcher = None
     if settings.nudge_dispatch_interval_minutes > 0 and os.getenv("TESTING") != "1":
         dispatcher = asyncio.create_task(_nudge_dispatcher())
@@ -143,12 +149,28 @@ async def request_context(request: Request, call_next) -> Response:
     started = time.perf_counter()
     try:
         response = await call_next(request)
-    except Exception:  # noqa: BLE001 - convert unknown failures at the app boundary
+    except Exception as exc:  # noqa: BLE001 - convert unknown failures at the app boundary
         logger.exception(
             "request_failed method=%s path=%s request_id=%s",
             request.method,
             request.url.path,
             request_id,
+        )
+        # The stack trace above is for a human reading one incident. This is the
+        # same failure made countable: fingerprinted, scrubbed to an allow-list,
+        # and dispatched to whatever sinks are configured (WC-17). The route
+        # TEMPLATE is preferred over the raw path so an id in a URL never
+        # becomes an identifier in an error report.
+        route = request.scope.get("route")
+        error_tracking.capture(
+            exc,
+            where=error_tracking.where_for_request(
+                request.method,
+                getattr(route, "path", None),
+                request.url.path,
+            ),
+            request_id=request_id,
+            user_id=getattr(getattr(request.state, "user", None), "id", None),
         )
         response = JSONResponse(
             status_code=500,

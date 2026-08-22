@@ -90,6 +90,15 @@ screen says so rather than letting the user assume it follows their account.
   `deps.py` (`get_current_user` checks `token_version` for revocation; `get_current_admin`),
   `ratelimit.py`.
 - `api/routes/` — thin endpoint modules; `api/router.py` aggregates.
+- `services/errors.py` — **structured error tracking (WC-17, 2026-08-22).** An unhandled
+  request failure and every background-loop failure are fingerprinted and dispatched to a
+  list of sinks; `LogSink` is always registered, so the feature works with nothing configured
+  and CI exercises the real path. The report is built by **allow-list** (type, templated
+  route, request id, frame positions, an HMAC of the user id) rather than by scrubbing a rich
+  context — a deny-list fails open on the field nobody thought of, and on this product that
+  field holds a journal sentence. **No vendor is wired**: where an error sink lands is a DPDP
+  transfer/retention question before it is a pricing one, so the adapter seam
+  (`register_sink`, one `send` method) is built and the choice is left to the owner
 - `services/` — all business logic + provider adapters (22 modules; `prompts.py` is the
   versioned prompt registry every LLM call site reads through).
 - `models/` — SQLAlchemy ORM; `schemas/` — Pydantic I/O.

@@ -4,6 +4,55 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — error tracking, the half that is not a vendor decision (WC-17, 2026-08-22)
+
+**Backend: 722 passed / 2 skipped, coverage 96%. `services/errors.py` at 100%.**
+
+A production exception was a log line nobody reads. Now every unhandled request
+failure and every background-loop failure is **fingerprinted** (type + route +
+innermost frame, deliberately NOT the message, which would split one recurring
+bug into a thousand singletons because each quoted a different user's input) and
+dispatched to a list of sinks. `LogSink` is always registered, so this works
+with nothing configured and CI runs the real path rather than a stub.
+
+**No vendor is wired, on purpose.** WC-17 says "Sentry or equivalent", but an
+error sink receives fragments of a mental-health service's runtime, so **where
+it lands is a DPDP question** — transfer, retention, who at the vendor can read
+it — before it is a pricing one. That is the owner's call. What did not need
+deciding is what may leave the process at all, and that is written and tested.
+A vendor adapter is now a `Sink` with one `send` method, governed by the policy
+below.
+
+**Allow-list, never deny-list.** Nothing is scrubbed out of a rich context; a
+fixed set of fields is copied in:
+- the exception **type**, never its message — `asyncpg`, pydantic and
+  SQLAlchemy all quote the offending value, which here is a person's sentence;
+- stack frames as **positions only** (`file:line in function`), never their
+  locals — a local named `body` or `text` is exactly what must not travel;
+- the **route template** (`/journal/{entry_id}`), preferred over the raw path,
+  with a regex fallback for unrouted failures, so an id in a URL never becomes
+  an identifier in a report;
+- the user as a **12-char HMAC**, so "how many people hit this" is answerable
+  without anyone being named.
+No body, query string, header or cookie is copied at all.
+
+**26 tests, most asserting ABSENCE** — and against the whole serialised payload
+rather than the field a leak was expected in, because a leak arrives in the
+field nobody thought of. Four secret shapes are parametrised (address, bearer
+token, crisis phrase, phone number). One test drives a real 500 through the
+middleware and asserts the uuid in the URL did not travel while the request id
+the caller can quote to support did.
+
+Also pinned: a sink that throws cannot break the request, and an exception with
+no traceback is still reportable.
+
+Row added to CLAIMS_MAP — this is the crash reporter half of *"Support tooling
+shows counts and account state, not your words."*
+
+**Next for WC-17**, when the owner picks a destination: the same seam on both
+clients. Android already has a `Session` redaction list to reuse; the web app
+has none yet.
+
 ## Done — `:app:check` is green, and lint caught a bug I had shipped (2026-08-22)
 
 **`:app:check` exit 0 — 0 errors, 458 warnings.** That is the WHOLE Android gate,
