@@ -4,6 +4,43 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — churn made observable, without calling it churn (WC-16, 2026-08-22)
+
+**776 passed / 2 skipped, coverage 96%; `services/metrics.py` 99%.**
+
+WC-16 wants activation, retention and churn observable before money is spent on
+acquisition. Activation and retention already were (`/events` + Dn cohorts);
+the third was missing. `metrics.quiet_users` is it — people active in the
+earlier part of the window and not since.
+
+**The name is the design.** On a subscription tool a user who stops is churn and
+is bad by definition. On a mental-health companion some of them **got better**,
+which is the outcome the product exists for. Reporting the same number as churn
+would quietly make recovery look like loss, and a team optimising against it
+builds exactly the nagging this codebase refuses everywhere else — the
+dismissible upsell, the unbreakable streak, the notification that arrives
+whether or not it is true.
+
+So the field is named for the behaviour, and **the caveat travels inside the
+payload** rather than in a footnote: every answer carries `means`, including the
+withheld one, because a reader who sees `null` still needs to know what the
+field would have meant.
+
+**It refuses to report noise.** Under 20 people it returns `quiet: null` with
+`reason: "not_enough_people"` — the same instinct as the trends correlation
+withholding itself under seven overlapping nights. A number computed from four
+users is not a smaller truth, it is a different kind of statement.
+
+**Two population rules that keep other problems visible.** A newcomer active
+only in the recent window is not in the cohort — counting them would hide an
+ACTIVATION problem inside a retention one. Someone last seen before the window
+opened is not resurrected to be lost again, which would make the rate worse
+every month for as long as data is kept.
+
+Aggregate only, over the activity map retention already builds: no new
+collection, nothing per-person, so no consent question. 13 hermetic tests
+including both window boundaries (13 days vs 14).
+
 ## Done — the incident runbook (WC-19, 2026-08-22)
 
 [INCIDENT_RUNBOOK.md](INCIDENT_RUNBOOK.md). The audit found item 19 mis-scoped:

@@ -107,6 +107,80 @@ async def user_streak(db: AsyncSession, user_id: uuid.UUID, tz: str = "") -> dic
     return {"current": current, "best": best, "week": week}
 
 
+#: Below this many people, a "went quiet" rate is noise dressed as a finding.
+#: The same instinct as the trends correlation withholding itself under seven
+#: nights: a number computed from four users is not a smaller truth, it is a
+#: different kind of statement.
+_MIN_QUIET_COHORT = 20
+
+
+def quiet_users(
+    activity: dict[uuid.UUID, set[date]],
+    today: date,
+    *,
+    recent: int = 14,
+    prior: int = 45,
+) -> dict:
+    """People who were using CereBro and have stopped — WITHOUT calling it churn.
+
+    WC-16 asks for churn to be observable before money is spent on acquisition,
+    and this is the measurement. The name is deliberate, and so is the caveat
+    that travels with it in the payload.
+
+    On a subscription tool, a user who stops is a failure by definition. On a
+    mental-health companion they may have **got better** — which is the outcome
+    the product exists for. Reporting the same number as "churn" would quietly
+    make recovery look like loss, and a team that optimises against it ends up
+    building the nagging this codebase refuses everywhere else (the dismissible
+    upsell, the streak that cannot be broken, the notification that arrives
+    whether or not it is true).
+
+    So: a count and a rate, named for the behaviour rather than for a business
+    interpretation, with the ambiguity stated in the response rather than in a
+    footnote nobody reads. Aggregate only, over activity days already computed
+    for retention — no new collection, nothing per-person.
+    """
+    recent_floor = today - timedelta(days=recent - 1)
+    prior_floor = today - timedelta(days=prior - 1)
+
+    was_active = 0
+    went_quiet = 0
+    for days in activity.values():
+        # "Was here before" means active in the earlier stretch of the window,
+        # not merely having an account: a signup who never returned is an
+        # activation problem, and counting them here would hide that inside a
+        # retention one.
+        if not any(prior_floor <= d < recent_floor for d in days):
+            continue
+        was_active += 1
+        if not any(d >= recent_floor for d in days):
+            went_quiet += 1
+
+    if was_active < _MIN_QUIET_COHORT:
+        return {
+            "cohort": was_active,
+            "quiet": None,
+            "rate": None,
+            "reason": "not_enough_people",
+            "means": _QUIET_MEANS,
+        }
+    return {
+        "cohort": was_active,
+        "quiet": went_quiet,
+        "rate": round(went_quiet / was_active, 3),
+        "reason": None,
+        "means": _QUIET_MEANS,
+    }
+
+
+#: Shipped WITH the number, every time, because the number is ambiguous and the
+#: ambiguity is load-bearing.
+_QUIET_MEANS = (
+    "Active in the earlier part of the window and not since. On a wellness "
+    "product this is not the same as churn: some of these people are better."
+)
+
+
 async def overview(db: AsyncSession) -> dict:
     now = utcnow()
     today = now.date()
@@ -178,6 +252,8 @@ async def overview(db: AsyncSession) -> dict:
             "total": await signups_since(None),
         },
         "retention": {"d1": retention(1), "d7": retention(7), "d30": retention(30)},
+        # The other side of retention: who was here and is not now.
+        "quiet": quiet_users(activity, today),
         "engagement_7d": {
             "mood_logs": await count_since(MoodLog),
             "journal_entries": await count_since(JournalEntry),
