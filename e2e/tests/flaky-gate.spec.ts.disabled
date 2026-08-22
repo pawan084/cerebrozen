@@ -1,0 +1,20 @@
+import { test, expect } from "@playwright/test";
+
+/**
+ * A deliberately flaky test, kept DISABLED (`.disabled` extension, so Playwright
+ * never collects it) purely to prove the flake gate bites.
+ *
+ * Rename to `flaky-gate.spec.ts` and run the stack: the test fails on attempt 0,
+ * passes on the retry, and the run must still exit non-zero with the test
+ * reported as flaky. If it exits 0, `--fail-on-flaky-tests` has stopped working
+ * and every intermittent failure in this suite is being silently rescued again.
+ *
+ * Verified this way on 2026-08-22: exit 1, "1 flaky".
+ *
+ * It lives in the repo rather than in someone's scratch directory because the
+ * next person to doubt the gate should not have to invent this file — and a
+ * gate nobody can demonstrate is one nobody will trust enough to keep.
+ */
+test("fails once, then passes — the shape --fail-on-flaky-tests must catch", async ({}, testInfo) => {
+  expect(testInfo.retry, "attempt 0 fails on purpose; the retry passes").toBeGreaterThan(0);
+});

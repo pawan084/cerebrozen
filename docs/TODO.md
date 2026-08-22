@@ -4,6 +4,40 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — a flake is a defect, and the build now says so (WC-283, 2026-08-22)
+
+**71 e2e passed, exit 0. Gate proven to bite: exit 1 with the flag, exit 0
+without.**
+
+The item says CI does "silent reruns". Verified before acting, since three §0
+premises had already turned out wrong: `retries: 1` in
+`e2e/playwright.config.ts`, and no retries anywhere else (backend, Android and
+the web unit suite all treat a failure as a failure).
+
+Playwright *does* print "N flaky" in its summary, so the failure was not
+invisibility — it was **consequence**. A test that failed and then passed left
+the build green, so an intermittent failure cost nothing and was forgotten by
+the next run. Demonstrated rather than asserted: the same deliberately-flaky
+test exits **1** with `--fail-on-flaky-tests` and **0** without.
+
+**Retries stay at 1, and not as a rescue.** The retry is kept for what it TELLS
+us: "always broken" and "intermittent" need completely different
+investigations, and at `retries: 0` they look identical. With the flag, the run
+goes red either way — but the report says which kind of red it is.
+
+**The evidence that this is the right policy is in this repo.** The Android
+suite's twelve "AppNotIdleException flakes" (2026-08-15) were one real bug — a
+Compose click left an underdamped spring running and poisoned every later test
+in the JVM. Retrying past that would have hidden it indefinitely.
+
+**Quarantine is explicit or it does not happen.** `test.fixme` with a reason is
+visible in the report and in the diff; a silent rerun is neither. That is
+written next to the setting rather than in a wiki.
+
+`e2e/tests/flaky-gate.spec.ts.disabled` is committed — a deliberately flaky test
+that Playwright never collects, kept so the next person to doubt the gate can
+rename one file and watch it fail rather than having to invent it.
+
 ## Done — the admin dashboard says what the dispatcher now knows (2026-08-22)
 
 Follow-through on two things I added earlier today and left stranded behind the
