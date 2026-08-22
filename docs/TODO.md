@@ -4,6 +4,43 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — per-module coverage floors (WC-285, 2026-08-22)
+
+`backend/tests/coverage_floors.py`, wired into CI after the backend suite. All
+nine floors hold today.
+
+**The global gate protects an average, and an average is the wrong instrument
+for a critical path.** The backend is ~6,100 statements; `services/safety.py` is
+63 of them. Deleting every test for the keyword floor would move the global
+number by about one percentage point — straight through a gate set five points
+lower — while removing the code that decides whether an explicit self-harm
+phrase is seen at all. That is what "diluted" means, and it gets easier every
+time the codebase grows.
+
+Nine modules carry their own floor, each with the reason it has one recorded
+beside it: safety, crisis, consent, entitlements, errors (100%), organizations,
+playstore, nudges (95%), appstore (90% — its certificate-chain paths need
+Apple's real roots to exercise fully).
+
+**Floors are a ratchet, not an aspiration.** Each is set at or just under what
+the module actually had, so it can only be lowered deliberately — in a diff,
+with a reason someone can disagree with. An aspirational floor that has never
+been met is just a broken build people learn to ignore.
+
+**Proven to bite, three ways**: safety dropped to 60% fails (and the global
+average does NOT rescue it, which is the entire argument); a floor naming a file
+that no longer exists fails rather than passing vacuously; the real report
+passes.
+
+**It also found a bug in itself.** The checker printed `✓` and crashed with
+`UnicodeEncodeError` on this Windows host's cp1252 stdout — while passing
+cleanly in the Linux container. A tool that only works in CI is half a tool, so
+both streams are now reconfigured to UTF-8. Worth remembering for the other
+Python tooling here.
+
+Pairs with `tests/mutation/` (WC-277): coverage says the lines RAN, mutation
+says the tests would NOTICE. Neither is sufficient; both are cheap.
+
 ## Done — a flake is a defect, and the build now says so (WC-283, 2026-08-22)
 
 **71 e2e passed, exit 0. Gate proven to bite: exit 1 with the flag, exit 0

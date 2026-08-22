@@ -39,6 +39,8 @@ test-results/
 # source. The findings belong in docs/TODO.md; the PNGs do not belong in git.
 .artifacts/
 .coverage
+# The JSON report the per-module floor gate reads (backend/tests/coverage_floors.py).
+coverage.json
 htmlcov/
 
 # Scratch / references — not part of the production build

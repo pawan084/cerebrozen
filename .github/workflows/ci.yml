@@ -149,7 +149,16 @@ jobs:
         # Enforce a coverage floor so the suite can't silently regress. The
         # hermetic run sits at ~97%; the gate is set below that with headroom.
         # (prestart/seed + the LangGraph LLM agent are excluded via .coveragerc.)
-        run: pytest -q --cov=app --cov-report=term-missing --cov-fail-under=95
+        run: pytest -q --cov=app --cov-report=term-missing --cov-report=json:coverage.json --cov-fail-under=95
+
+      # The gate above protects an AVERAGE, which is the wrong instrument for a
+      # critical path: services/safety.py is 63 statements out of ~6,100, so
+      # deleting every test it has would move the global number by about one
+      # point — through a gate set five points lower. These floors are
+      # per-module and independent of how large the rest of the codebase gets.
+      - name: Per-module coverage floors
+        working-directory: backend
+        run: python tests/coverage_floors.py
 
       # Coverage says the lines ran; this says the tests would NOTICE if the
       # code were wrong. Only the two modules where a false pass costs most —
