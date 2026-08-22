@@ -4,6 +4,42 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the landing's accessibility pieces (2026-08-22)
+
+**821 tests; overall coverage 77.4%, `apps/web/components` 0 → 66.7%.** Three
+components whose whole point is an accessibility fix that a screenshot cannot
+show.
+
+- **`MobileNav` — audit E21.** A native `<details>`, chosen for good reasons (no
+  JS, no motion, works if a script fails) that **nothing ever closed**. Choosing
+  an in-page anchor like `#features` left the panel sitting open OVER the very
+  content the reader had just navigated to, with no outside-click and no Escape:
+  the only way out was finding "Menu" again underneath the panel covering it.
+  All three dismissals are now pinned, including that Escape returns focus to
+  the summary, that an interior non-link click does NOT close it (a reader
+  reaching for a link must not lose the menu), and that the handler is
+  DELEGATED — asserted with a link the component was never told about, which is
+  the version of this bug that would otherwise come back the next time someone
+  adds one.
+- **`Faq`.** A closed answer has to be `inert` AND `aria-hidden`, or it hands a
+  keyboard user a link they cannot see and a screen reader an answer the page
+  appears not to be showing. The React 18 subtlety is pinned too: `inert={false}`
+  would still render the attribute and trap the answer, so the component spreads
+  an object and the test asserts the attribute is ABSENT when open.
+- **`SiteFooter`**, which replaced four hand-copied blocks that had already
+  drifted. Every trust destination is pinned by href, the five app spaces are
+  asserted to cross to the app's own origin (`/journal` on the marketing site is
+  a 404), and each of the four `<nav>`s must keep its label — four unlabelled
+  navs in a footer is four identical landmarks to anyone navigating by them.
+  Including the `/delete-account` link: losing it from the footer would not
+  break a page, it would break a store listing.
+
+**Mutation sweep: 8 more, all 8 caught.** Running total: **63 mutants, 60
+caught, 3 proven equivalent, 2 real weaknesses found and fixed.**
+
+**Still uncovered:** `GuidedTour`, `ui.tsx`, `AppHeader`, `PhoneMock`,
+`BrandMark`, `AppStoreBadge`, and the admin console's single 2,000-line page.
+
 ## Done — the journey path and the intervention card (2026-08-22)
 
 **777 tests; overall coverage 72.9%, `apps/app/components` at 70.8%.** Both of
