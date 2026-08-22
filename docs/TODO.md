@@ -4,6 +4,50 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the CSS the deleted components left behind (2026-08-22)
+
+**`apps/app/app/globals.css`: 57 lines of rules with no producer, gone.**
+
+Follow-on to the two dead components. Every class in the "Screen building
+blocks" section was checked against the class tokens the app's own `.tsx` files
+actually emit — not a substring grep, which is what made the first pass wrong.
+
+**Two false positives the naive grep produced, worth recording:**
+- `hero-card` and `hero-title` "looked used" because `today-hero-title` and
+  `hero-orb` contain them as substrings. They are unrelated classes.
+- `page-head` and `hero-cta` ARE live — **in `apps/admin` and `apps/web`**,
+  which have their own stylesheets. Same names, different files; the copies in
+  `apps/app` had no producer. A repo-wide grep says "used" and is useless here;
+  the question is always per-app.
+
+Removed: `.page-head`, `.page-head-trailing`, the whole `.hero-card` family
+(`.accent-sleep`, `.accent-warm`, `.hero-tag`, `.hero-title`, `.hero-sub`,
+`.hero-cta`, `.hero-cta-play`, `:disabled`), `.grid-2` and its media query,
+`.section-title` (+ `h3`) and `.section-trailing`, the `.week-dot*` set, and
+`.mood-btn` / `.mood-emoji` / `.mood-name`.
+
+**Kept, deliberately:** `.page-title`, `.panel`, `.mood-row`, `.ui-row*` and
+`.ui-chip*` — other screens apply those by hand. `.mood-row` survives while the
+`.mood-btn` trio inside it does not: the check-in's tiles are
+`.mood-tile.checkin-tile`, and the trio belonged to the deleted HeroCard
+check-in.
+
+**Two dead members were hiding inside GROUPED selectors** elsewhere in the file
+— `.mood-btn.selected` in the selection-pop rule and its reduced-motion mirror,
+`.hero-cta` in the springy-press rule and both `:active` mirrors. A
+selector-level check found them after the block-level pass looked finished.
+`.ui-row:hover:not(.static)` lost its `:not()` too: `.static` had exactly one
+producer, the deleted Row's non-interactive variant.
+
+Three comments that cited removed rules were reworded rather than left lying —
+including the dark-panel contrast note, which explains itself by reference to
+what `.hero-card` used to do.
+
+**Gates: 1,156 unit tests pass, and the Docker Playwright stack — which builds
+all three Next apps — 71 passed.** Note what that does and does not prove: it
+proves nothing broke, not that nothing looks different. The static argument is
+the real one — a rule with no producer cannot change a render.
+
 ## Done — the two dead components are gone (2026-08-22)
 
 **1156 tests; overall coverage 95.8% → 98.8%.** No test was added: the number

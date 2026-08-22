@@ -675,52 +675,24 @@ select option { color: var(--ink); }
 }
 
 /* ============================================================
-   Screen building blocks (PageHeader / HeroCard / Panel / Row / Chip)
+   Screen building blocks (Panel / Row / Chip)
+
+   The PageHeader / HeroCard / WeekDots components these also served were
+   deleted 2026-08-22 (no importer anywhere in the repo), and their rules went
+   with them. What is left is what other screens still apply by hand:
+   `.page-title` (AppHeader, /support), `.panel` (/support), `.ui-row*` and
+   `.ui-chip*` (/account, /explore). Note `.page-head` and `.hero-cta` DO
+   survive in apps/admin and apps/web — different stylesheets, same names.
    ============================================================ */
-.page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 22px; }
 .page-title { font-family: var(--font-serif), Georgia, serif; font-weight: 600; font-size: clamp(28px, 5vw, 36px); line-height: 1.08; letter-spacing: -0.01em; margin-top: 4px; }
-.page-head-trailing { display: flex; gap: 10px; flex: 0 0 auto; padding-top: 6px; }
-
-/* Hero card — gradient panel, tag pill, serif headline, pill CTA. */
-.hero-card {
-  position: relative; overflow: hidden; border-radius: 26px; padding: 26px;
-  border: 1px solid var(--line); margin-bottom: 22px; color: #fff;
-  background:
-    linear-gradient(150deg, rgba(138, 123, 240, 0.34), rgba(166, 139, 255, 0.12)),
-    linear-gradient(180deg, var(--panel-top), var(--panel-base));
-}
-.hero-card.accent-sleep { background: linear-gradient(150deg, rgba(166, 139, 255, 0.4), rgba(90, 82, 201, 0.16)), linear-gradient(180deg, var(--panel-top), var(--panel-base)); }
-.hero-card.accent-warm { background: linear-gradient(150deg, rgba(240, 164, 140, 0.32), rgba(143, 230, 238, 0.12)), linear-gradient(180deg, var(--panel-top), var(--panel-base)); }
-.hero-tag {
-  display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em;
-  text-transform: uppercase; padding: 5px 12px; border-radius: 999px;
-  background: rgba(255, 255, 255, 0.16); margin-bottom: 14px;
-}
-.hero-title { font-family: var(--font-serif), Georgia, serif; font-weight: 600; font-size: clamp(26px, 4.5vw, 34px); line-height: 1.1; margin-bottom: 8px; }
-.hero-sub { color: rgba(255, 255, 255, 0.82); font-size: 14.5px; line-height: 1.5; max-width: 46ch; }
-.hero-cta {
-  display: inline-flex; align-items: center; gap: 8px; margin-top: 18px;
-  padding: 12px 20px; border-radius: 999px; border: none; font-weight: 700; font-size: 14px;
-  background: linear-gradient(180deg, #fff, var(--cream)); color: var(--ink);
-}
-.hero-cta-play { font-size: 11px; }
-
 .panel { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 20px; margin-bottom: 16px; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-@media (max-width: 560px) { .grid-2 { grid-template-columns: 1fr; } }
-
-.section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 26px 0 12px; }
-.section-title h3 { font-family: var(--font-serif), Georgia, serif; font-size: 22px; font-weight: 600; }
-.section-trailing { color: var(--muted-2); font-size: 13px; }
-
 .ui-row {
   display: flex; align-items: center; gap: 13px; width: 100%; text-align: left;
   padding: 15px 16px; border-radius: 16px; border: 1px solid var(--line);
   background: var(--card); color: var(--text); text-decoration: none;
   transition: border-color 0.15s, background 0.15s; margin-bottom: 10px;
 }
-.ui-row:hover:not(.static) { background: var(--card-strong); }
-.ui-row.emphasis { border-color: var(--lav); background: var(--card-strong); }
+.ui-row:hover { background: var(--card-strong); }
 .ui-row-icon {
   flex: 0 0 40px; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
   background: var(--card-strong); border: 1px solid var(--line); color: var(--soft); font-size: 18px;
@@ -736,25 +708,10 @@ select option { color: var(--ink); }
 .ui-chip { display: inline-flex; align-items: center; min-height: 48px; padding: 0 16px; border-radius: 13px; border: 1px solid var(--line); background: var(--card); color: var(--soft); font-weight: 600; font-size: 14px; }
 .ui-chip.active { background: var(--cream); color: var(--ink); border-color: transparent; }
 
-.week-dots { display: flex; gap: 10px; }
-.week-dot { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.week-dot .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--card-strong); border: 1px solid var(--line); }
-.week-dot .dot.on { background: var(--lav); border-color: transparent; }
-.week-dot em { font-style: normal; font-size: 10.5px; color: var(--muted-2); font-weight: 600; }
-
-/* Home hero mood check-in */
+/* The check-in's mood picker. Its own tiles are `.mood-tile.checkin-tile`
+   below; the `.mood-btn`/`.mood-emoji`/`.mood-name` trio that used to fill this
+   row belonged to the deleted HeroCard check-in and went with it. */
 .mood-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 18px 0 4px; }
-.mood-btn {
-  flex: 1 1 0; min-width: 66px; display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 12px 8px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06); color: #fff; transition: transform 0.15s, border-color 0.15s, background 0.15s;
-}
-.mood-btn:hover { transform: translateY(-2px); }
-.mood-btn.selected { border-color: #fff; background: rgba(255, 255, 255, 0.16); }
-.mood-emoji { font-size: 24px; line-height: 1; }
-.mood-name { font-size: 12.5px; font-weight: 600; color: rgba(255, 255, 255, 0.86); }
-.hero-cta:disabled { opacity: 0.5; cursor: default; }
-
 /* Talk — persistent AI disclosure note (mirrors iOS AIDisclosureBanner) */
 .ai-note {
   display: flex; align-items: flex-start; gap: 10px; margin-bottom: 16px;
@@ -795,8 +752,9 @@ select option { color: var(--ink); }
 .checkin-hero h2 { font-family: var(--font-serif), Georgia, serif; font-weight: 600; font-size: 30px; margin: 6px 0 18px; }
 
 /* The dark inset panels carry their own ink — see the palette note above, which
-   already says so. `.hero-card` sets `color: #fff` on the panel itself; these
-   three never did, and pinned only their eyebrows and paragraphs. Their
+   already says so. The deleted `.hero-card` set `color: #fff` on the panel
+   itself; these three never did, and pinned only their eyebrows and
+   paragraphs. Their
    HEADINGS were left to inherit `--text`, which is white in Night (so nothing
    showed) and near-black in Dawn — putting #211d20 on a #171019 panel at about
    1.1:1. Measured on the rebuilt app: "How are you arriving today?" 1.12:1,
@@ -997,7 +955,7 @@ select option { color: var(--ink); }
 .cz-breathe, .checkin-orb, .talk-orb, .media-hero .hero-orb { animation: czBreathe 4.5s ease-in-out infinite; }
 
 /* Selection pop — plays when a chip/tile gains its selected state. */
-.emoji-btn.sel, .mood-btn.selected, .pick.selected, .onb-chip.active, .ui-chip.active { animation: czPop 0.3s var(--cz-spring); }
+.emoji-btn.sel, .pick.selected, .onb-chip.active, .ui-chip.active { animation: czPop 0.3s var(--cz-spring); }
 
 /* Premium sidebar card — an occasional sheen sweep (~3.3s of a 5.5s cycle). */
 .premium-card { position: relative; overflow: hidden; }
@@ -1016,15 +974,15 @@ select option { color: var(--ink); }
 }
 
 /* Springy press on primary buttons. */
-.btn, .pill-btn, .hero-cta, .premium-btn, .social-btn { transition: transform 0.15s var(--cz-spring); }
-.btn:active:not([disabled]), .pill-btn:active, .hero-cta:active:not([disabled]),
+.btn, .pill-btn, .premium-btn, .social-btn { transition: transform 0.15s var(--cz-spring); }
+.btn:active:not([disabled]), .pill-btn:active,
 .premium-btn:active, .social-btn:active:not([disabled]) { transform: scale(0.97); }
 
 /* Reduce motion: the whole cz* vocabulary quiets down. */
 @media (prefers-reduced-motion: reduce) {
   .cz-in, .cz-breathe,
   .checkin-orb, .talk-orb, .media-hero .hero-orb,
-  .emoji-btn.sel, .mood-btn.selected, .pick.selected, .onb-chip.active, .ui-chip.active,
+  .emoji-btn.sel, .pick.selected, .onb-chip.active, .ui-chip.active,
   .premium-card::after, .cz-streak::after {
     animation: none;
   }
@@ -1032,7 +990,7 @@ select option { color: var(--ink); }
   .premium-card::after, .cz-streak::after { content: none; }
   .cz-in { transform: none; }
   /* Mirror the base press selectors' :not([disabled]) so this override outranks them. */
-  .btn:active:not([disabled]), .pill-btn:active, .hero-cta:active:not([disabled]),
+  .btn:active:not([disabled]), .pill-btn:active,
   .premium-btn:active, .social-btn:active:not([disabled]),
   .quick-tile:hover, .quick-tile:active { transform: none; transition: none; }
 }
