@@ -47,5 +47,9 @@
     "tests/**/*.ts",
     "tests/**/*.tsx",
     "vitest.config.ts"
+  ],
+  "//exclude": "tests/portal has its own project (tsconfig.portal.json) because '@/lib/api' exists in all four apps and the ordered `paths` above resolve it to apps/app — see that file's note.",
+  "exclude": [
+    "tests/portal"
   ]
 }

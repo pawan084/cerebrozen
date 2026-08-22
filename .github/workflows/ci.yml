@@ -282,7 +282,13 @@ jobs:
       # is unaffected (type imports are erased at transform time), which is why
       # the suite runs early for fast feedback and only the typecheck waits.
       - name: Typecheck the web test suite
-        run: npx tsc --noEmit
+        # Two projects, not one: tests/portal is excluded from the root config
+        # and typechecked separately, because "@/lib/api" exists in all four
+        # apps and tsc cannot resolve an alias by importer the way the vitest
+        # resolver does. See tsconfig.portal.json.
+        run: |
+          npx tsc --noEmit
+          npx tsc -p tsconfig.portal.json
 
   # ── iOS: SwiftUI UITests (Simulator) ──────────────────────────────────
   # The two live-backend tests (testCloudSync / testCloudChatAndPlan) self-skip

@@ -1,0 +1,15 @@
+{
+  "//": "Typecheck project for tests/portal ONLY. The root config maps '@/*' across all four app roots in order, because tsc cannot resolve an alias by which app the IMPORTER lives in — the thing vitest.config.ts does at runtime. That works while a specifier exists in exactly one app (apps/portal is the only one with lib/copy, so Shell resolves correctly), and breaks the moment two apps have the same one: `apps/portal/components/data.tsx` imports '@/lib/api', all four apps have a lib/api, and tsc picks apps/app's — which has no NotAnOrgAdminError. Ordering cannot fix it, because apps/app components import '@/lib/api' too and would break in the mirror image. So the portal's tests get their own project with '@/*' pinned to apps/portal, and the root config excludes them.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./apps/portal/*"],
+      "next/link": ["./tests/stubs/next-link.tsx"],
+      "next/navigation": ["./tests/stubs/next-navigation.ts"],
+      "react": ["./node_modules/@types/react"],
+      "react-dom": ["./node_modules/@types/react-dom"],
+      "react-dom/*": ["./node_modules/@types/react-dom/*"]
+    }
+  },
+  "include": ["tests/portal/**/*.ts", "tests/portal/**/*.tsx", "tests/stubs/**/*.ts", "tests/stubs/**/*.tsx"]
+}

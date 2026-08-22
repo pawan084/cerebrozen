@@ -4,6 +4,72 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the portal's honesty layer, and a typecheck that could not see it (2026-08-22)
+
+**890 tests; overall coverage 86.6%, `portal/components/data.tsx` 97.7%.**
+
+`data.tsx` was 252 lines at **0%** — and it is not decoration. It holds the one
+distinction the whole portal rests on: *"36 screens were built against
+`lib/mock.ts`, four of them now read the real `/org` API, and they look
+identical."* Every contract in that file is now pinned:
+
+- `SampleData` says *not your organisation*, explains WHY (the API does not
+  exist yet), and is asserted to stay LOUD — `.notice.warn` with `role="note"`,
+  not a caption under the numbers it disclaims.
+- `LiveData` states its own limits — aggregate totals, reporting threshold
+  applied — so the banner is a claim, not reassurance.
+- **A failed read never becomes invented numbers.** `LiveScreen` on error is
+  asserted to show the failure AND to render neither banner nor children. Both
+  halves, because only asserting the error would let a fallback slip in beside
+  it.
+- A 403 is a permission answer, not a fault: `NotAnOrgAdminError` reaches
+  `NoOrgAccess`, never "We couldn't load this".
+- Retry genuinely re-runs the load and clears the stale error first, so the
+  failure banner does not sit above a working spinner.
+- **A superseded read cannot overwrite a newer one** — the `cancelled` flag,
+  tested with two in-flight loads where the slow first one lands last.
+- `RequireSession` uses `replace`, not `push`: a push leaves the guarded route
+  in history, Back returns to it, the guard fires again, and the visitor loops.
+- Signing out clears the local session **even when the server cannot be told** —
+  a failed revoke must not leave someone signed in on a shared machine.
+- `useSave`: a failed write returns to `idle` (never `saved`) and says *Nothing
+  was changed*; a read-only role is told so rather than being sent to retry
+  forever. The rule the consent toggles set: *"a portal that claims a saved
+  threshold it did not save is worse than one that cannot save at all."*
+
+**The typecheck could not see any of this, and said nothing.** Pulling
+`data.tsx` into the root `tsc` program surfaced `TS2305: '@/lib/api' has no
+exported member 'NotAnOrgAdminError'`. The root `tsconfig` maps `@/*` across all
+four app roots IN ORDER, because tsc cannot resolve an alias by which app the
+importer lives in — the very thing `vitest.config.ts` does at runtime. That
+holds while a specifier exists in one app (`lib/copy` is portal-only, so `Shell`
+resolved correctly) and breaks when two apps have the same one. Reordering is no
+fix: `apps/app` components import `@/lib/api` too and would break in the mirror
+image. So **tests/portal now has its own project** (`tsconfig.portal.json`, `@/*`
+pinned to `apps/portal`), the root config excludes it, and CI runs both.
+
+**Mutation sweep: 13 mutants, 12 caught first pass, 1 survived — mine again.**
+The cancellation test resolved the stale promise and awaited a single
+microtask, which is not enough to land React's setState, so it passed whether or
+not the cleanup existed. Flushed inside `act` now; the mutant dies.
+
+Running total: **88 mutants, 85 caught, 3 proven equivalent, 4 real weaknesses
+found and fixed.**
+
+### Found on the way: two dead components, deletion NOT applied
+
+`apps/app/components/ui.tsx` (111 lines) and `apps/web/components/Glyphs.tsx`
+(42 lines) have **no importer and no symbol reference anywhere in the repo**.
+Both are orphans of removed sections — `ui.tsx` came in with "responsive
+sidebar shell + hero-card screens", and `Glyphs.tsx` paints into a
+`.bento-cell` class that no longer exists in any stylesheet. They are 153 lines
+of unrendered code sitting at 0% and dragging the coverage number down; testing
+them would flatter it for screens nobody can reach. **Deleting them was blocked
+by the sandbox's permission classifier, so they are still here** — this is an
+owner decision, not a silent omission. Next uncovered by mass after that:
+`portal/components/ui.tsx` (0%), `AuthPanel.tsx` (77%), `Shell.tsx` (78%),
+`app/lib/social.ts` (79%), `app/components/icons.tsx` (58%).
+
 ## Done — the body scan and 5-4-3-2-1 (2026-08-22)
 
 **856 tests; overall coverage 82.0%, `RitualSteps.tsx` 100%.**
