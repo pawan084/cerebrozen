@@ -4,6 +4,49 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — §0 re-verified item by item (2026-08-22)
+
+Three items in a row had turned out narrower than written (WC-17's scope,
+WC-24's premise, and a "lint is red" note two fixes out of date), so the
+critical path was audited rather than implemented against. Full table in
+[WORLD_CLASS.md](WORLD_CLASS.md) §0; evidence for each is a file, a grep or a
+passing gate rather than a memory of having done it.
+
+**Five entries were materially wrong.**
+
+- **6 (iOS never compiled) — stale, and wrong in the costly direction.** CI
+  compiles AND tests iOS on `macos-15` with `xcodebuild test` on every run. A
+  critical path that lists finished work misdirects exactly as badly as one that
+  omits real work.
+- **11 (replace `is_admin` with RBAC) — done.** Org RBAC is real: three roles, a
+  `role` column per membership, `ROLES_CAN_WRITE` enforced. `User.is_admin`
+  survives as the INTERNAL admin-dashboard flag, which is a different thing from
+  the portal roles the item was about.
+- **2 (run an outcome study) — larger than written.** There is no PHQ-9 or GAD-7
+  anywhere in the codebase; `services/assessment.py` is an LLM topic generator
+  over a motivations/goals taxonomy. The blocker is not "nobody has run a
+  study", it is that there is no instrument to measure with.
+- **15 (receipt validation) — half, and the half matters.** Apple is real
+  (`appstore.verify_transaction` does JWS + certificate-chain verification).
+  Play has nothing — no `androidpublisher` call anywhere — which pairs with item
+  10's missing Billing client.
+- **19 (incident runbook) — mis-scoped.** `BREACH_RUNBOOK.md` exists and covers a
+  DATA BREACH. The operational runbook this item asks for — who is paged, what a
+  crisis-path outage means, out-of-hours safety escalation — does not exist.
+
+**Confirmed still open, with evidence**: 1, 3 (owner), 8's keystore, 9's
+`GIDClientID`, 10, 12 (portal is still email+password and still commented out of
+the Caddyfile), 13, 14 (`backend/media/` holds nine narration files and nothing
+licensed), 18, 20, 22, 25 (no load harness exists at all).
+
+**Partial with the mechanism already built**: 16 (four-name event allow-list +
+Dn retention; churn unobserved), 21 (consent notice in 13 languages — the
+missing half is the native-speaker check, which is what the item actually
+names), 23 (Android 1,254/1,838 strings; web and iOS unlocalized), 24
+(correctness proven, durability open).
+
+Also spotted: the accessibility page claims **WCAG 2.2** while §0 says 2.1.
+
 ## Done — the multi-worker nudge claim is now tested (WC-24 partial, 2026-08-22)
 
 **726 passed / 2 skipped, coverage 96%.**

@@ -53,6 +53,50 @@ open.
 >   hardware on demand and is stable; CI has no handset, so it needs a managed
 >   device or emulator runner. See TODO's WC-281 entry.
 
+> **Re-verification, 2026-08-22 — all 25 checked against the code, one by one.**
+>
+> Three items in a row had been found narrower than written (WC-17's scope,
+> WC-24's premise, and a "lint is red" note that was two fixes out of date), so
+> the list was audited rather than implemented against. Numbering is untouched;
+> `WC-n` still means what it meant. **Evidence is a file, a grep or a passing
+> gate — not a memory of having done it.**
+>
+> | # | Verified state | Evidence |
+> |---|---|---|
+> | 1 | **Open · owner.** POSITIONING frames the stance ("companion, never clinician") and CLAIMS_MAP enforces the phrasing, but no single defended clinical claim is written down | `docs/POSITIONING.md` §positioning axes |
+> | 2 | **Open, and larger than written.** There is no PHQ-9 or GAD-7 in the codebase at all — `services/assessment.py` is an LLM topic generator over a motivations/goals taxonomy. The item is not "run a study", it is "there is no instrument to measure with" | `services/assessment.py` has no scored instrument |
+> | 3 | **Open · owner.** Recorded as pending in two places already | `POSITIONING.md` "no named clinical advisor" |
+> | 4 | **Closed.** `conftest` blanks provider keys unless `RUN_LLM_TESTS=1` | `backend/tests/conftest.py:30` |
+> | 5 | **Closed.** `CrisisPathDeviceTest.kt` runs the deeplink on hardware | `app/src/androidTest/.../CrisisPathDeviceTest.kt` |
+> | 6 | **Stale — this reads worse than reality.** CI compiles AND tests iOS on `macos-15` with `xcodebuild test` every run. "No iOS code has been compiled" has not been true since that job landed. What remains is a Mac for *interactive* work | `.github/workflows/ci.yml:300,315` |
+> | 7 | **Half.** Android walked on the CPH2681 (55 screens, 2026-08-22). iOS not walked — needs item 6's Mac | `docs/TODO.md` device-walk entries |
+> | 8 | **Code ready · account external.** `signingConfigs` reads `releaseKeystore`; the keystore and Console account are the missing half | `apps/android/app/build.gradle.kts:106` |
+> | 9 | **Open · external, and split.** Entitlements DO declare `applesignin` + `healthkit`; `GIDClientID` is genuinely absent from `Info.plist` | `CereBro.entitlements`, `Info.plist` |
+> | 10 | **Open · confirmed.** No Play Billing dependency in the Android build at all | `build.gradle.kts` has no `billing` |
+> | 11 | **Closed as written.** Org RBAC is real: `ROLE_BENEFITS_OWNER` / `ROLE_PROGRAMME_ADMIN` / `ROLE_ANALYST`, a `role` column per membership, `ROLES_CAN_WRITE` enforced. `User.is_admin` survives as the INTERNAL admin-dashboard flag, which is a different thing from portal roles | `models/organization.py:46,106` |
+> | 12 | **Open · confirmed.** Portal auth is email + password; the Caddyfile still comments the portal host out | `apps/portal/lib/api.ts:125`, `deploy/Caddyfile:64` |
+> | 13 | **Open · owner.** `/org/summary` and suppressed group totals exist; which aggregates an employer may see is still undecided | `api/routes/organizations.py:137` |
+> | 14 | **Open · confirmed.** `backend/media/` holds only `narration/` (9 generated files). Every catalogue key — `ambience.rain`, the pads, the beds — has no licensed audio behind it | `find backend/media -name '*.mp3'` → 9, all narration |
+> | 15 | **Half, and the missing half is Android.** Apple is real: `appstore.verify_transaction` does JWS + certificate-chain verification. **Play has nothing** — no `androidpublisher` call anywhere | `services/appstore.py:66`; no Google receipt code |
+> | 16 | **Partial.** `/events` ships with a four-name allow-list and admin metrics compute Dn retention. Activation and retention are observable; churn is not, and the vocabulary is deliberately tiny | `api/routes/events.py:22`, `services/metrics.py:126` |
+> | 17 | **Done 2026-08-22**, backend + web + Android, one policy. Transport (where a sink lands) is left as an owner DPDP decision | `services/errors.py`, `apps/app/lib/errors.ts`, `net/ErrorTracking.kt` |
+> | 18 | **Open.** `/ready` and `/health` exist and admin metrics aggregate; there is no uptime or latency monitoring and no alerting | `main.py:243` |
+> | 19 | **Partial, and mis-scoped.** `docs/BREACH_RUNBOOK.md` covers a DATA BREACH. The operational runbook this item asks for — who is paged, what a crisis-path outage means, out-of-hours safety escalation — does not exist | `docs/` has no incident/oncall runbook |
+> | 20 | **Open · owner.** The only scheduled deletion is `idempotency.purge_expired`; there is no per-data-class retention schedule | `services/idempotency.py:157` |
+> | 21 | **Text shipped, verification open.** The consent notice exists in **13 languages** (en + 12 Eighth-Schedule). What is missing is the native-speaker check, which is the half the item actually names | `apps/app/lib/consentNotice.ts` → 13 keys |
+> | 22 | **Open, and correctly claimed.** The accessibility page says "A formal WCAG 2.2 AA audit. We do not claim conformance today." Note the drift: the page says 2.2, §0 says 2.1 | `apps/web/app/accessibility/page.tsx:102` |
+> | 23 | **Partial.** Android is 1,254 of 1,838 strings (~68%); the consent notice is 13 languages; web and iOS are not localized | `values-hi/strings.xml` |
+> | 24 | **Correctness half proven 2026-08-22**, with mutants. What remains is durability: a nudge scheduled while every instance is down goes out late, and a transiently failed delivery is terminal with no backoff. Neither needs a scheduler vendor | `tests/test_nudge_concurrency.py` |
+> | 25 | **Open · confirmed.** No load test, harness or budget exists anywhere in the repo | no k6/locust/bench under `scripts/` or `backend/` |
+>
+> **What the audit changes.** Items **6** and **11** were wrong in the costly direction — both read as open and are in fact done, and a critical path
+> that lists finished work misdirects exactly as badly as one that omits real
+> work. Items **2**, **15** and **19** are each *larger or differently shaped*
+> than their sentence suggests: no instrument exists to run a study with, receipt
+> validation is done on Apple and absent on Play, and the runbook that exists is
+> about breaches rather than outages. Those five are the reason to re-read the
+> list before working from it.
+
 1. **[decide]** Choose the clinical claim you are willing to defend, in writing, in front of a regulator — everything in §1 follows from that one sentence.
 2. Run one real outcome study (pre/post PHQ-9 or GAD-7 on consenting users) so retention is measured against *getting better*, not against session count.
 3. Recruit a named clinical advisor and publish the name — an unsigned safety model is not a credential.
