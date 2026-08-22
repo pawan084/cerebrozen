@@ -4,6 +4,50 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the body scan and 5-4-3-2-1 (2026-08-22)
+
+**856 tests; overall coverage 82.0%, `RitualSteps.tsx` 100%.**
+
+The two runners in `RitualSteps` nobody was walking. `PromptSequence` (the body
+scan) auto-advances on a timer, and the two things that can go wrong there are
+both silent: running off the end of the array leaves a BLANK screen in front of
+someone lying in the dark, and a timer that outlives an unmount holds the torn
+-down phase alive. Both are pinned now, along with the rule the code comments
+state — *"a body scan you're stuck inside is not relaxing"*, so the skip button
+is asserted present from the FIRST prompt, not just at the end.
+
+`SensorySteps` behaves differently depending on where it is standing, and both
+behaviours are now tests: standalone in the Toolkit it LOOPS (the last step has
+to lead somewhere or the card is a wall), inside a ritual it HANDS OVER exactly
+once and does not quietly restart underneath someone who thinks they moved on.
+
+**Cross-client copy, a fourth surface:** the five sensory steps are hand-synced
+by comment across web, Android `strings.xml ground_step*` and iOS
+`Rituals.swift` — title AND hint compared against both. Plus the technique's own
+mechanism: it counts DOWN, 5→4→3→2→1, on every client. A client rendering it
+1-2-3-4-5 is running a different exercise under the same name.
+
+**The two body scans are asserted to DIVERGE.** `SCAN_PROMPTS` exists twice on
+purpose — the wind-down speaks to someone already in bed ("let the whole body
+sink into the bed"), the builder to someone in a chair at any hour ("let the
+chair take your weight"). The first four lines match; the last two must not. One
+shared constant would tell a person at their desk to sink into a bed.
+
+**Mutation sweep: 8 mutants, 7 caught first pass, 1 SURVIVED and exposed a real
+weakness in my own test.** The unmount test watched `console.error` for a
+setState-on-unmounted warning — React 18 removed that warning years ago, so
+deleting `return () => clearTimeout(t)` sailed straight through it. Rewritten to
+assert the pending-timer count directly (1 while mounted, 0 after unmount); the
+mutant is caught now, and the comment says why the symptom-based version was
+worthless.
+
+Running total: **75 mutants, 72 caught, 3 proven equivalent, 3 real weaknesses
+found and fixed.**
+
+Next by uncovered mass: `apps/app/components/ui.tsx` (0%), `portal/components/`
+`ui.tsx` + `data.tsx` (0%), `AuthPanel.tsx` (77%), `Shell.tsx` (78%),
+`app/lib/social.ts` (79%), the three icon/glyph files.
+
 ## Done — the guided tour, and a three-client promise (2026-08-22)
 
 **838 tests; overall coverage 79.9%, `apps/app/components` 78.8%.**
