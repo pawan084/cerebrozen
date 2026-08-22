@@ -4,6 +4,43 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the re-identification attack, and why it has no target (WC-73, 2026-08-22)
+
+**787 passed / 2 skipped, all 9 coverage floors held.**
+
+Item 73 asks for proof that the reporting threshold cannot be defeated by cohort
+slicing — the classic differencing attack: read a cohort, change it by one
+person, read it again, and the delta is that person. A minimum cohort size does
+nothing against it, because both reads sit above the threshold.
+
+Chasing it produced a better answer than "the threshold holds":
+
+> **There is nothing behavioural in the aggregate to re-identify.**
+
+Every figure an organisation can read counts MEMBERSHIP ROWS whose status the
+organisation itself set. `add_member` and the CSV import write `active`;
+`end_membership` writes `ended`; and **nothing anywhere transitions a membership
+because of something the member did**. The reporting surface never touches
+`MoodLog`, `JournalEntry`, `ChatMessage` or `SleepLog` at all. So the "activated"
+figure is the employer's own bookkeeping reflected back, and differencing it
+reveals only what the differencer just did.
+
+**The slicing vector is not expressible either.** Slicing needs one person
+counted in two cohorts. `OrgMembership` is unique on `(org_id, user_id)`, there
+is no route that changes a membership's group, and `add_member` 409s on anyone
+who already holds a seat — so the two overlapping cohorts cannot be built.
+`end_membership` marks `ended` rather than deleting, so the seat cannot be
+recycled into a different group either.
+
+**Four tests pin it**, and the last is the one that matters: two organisations
+of identical size report IDENTICALLY when every member of one uses the product
+constantly and nobody in the other has ever opened it. That converts a
+structural property into an enforced one — if a usage aggregate is ever added to
+this surface, that test fails and the file explains why it mattered.
+
+Structural properties rot silently, which is exactly why this is a test and not
+a paragraph. Row added to CLAIMS_MAP.
+
 ## Done — per-module coverage floors (WC-285, 2026-08-22)
 
 `backend/tests/coverage_floors.py`, wired into CI after the backend suite. All
