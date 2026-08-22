@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import utcnow
@@ -157,15 +157,68 @@ class DispatchOutcome:
     the person has no push token, no browser subscription and no email opt-in —
     an ops question about reach, not about delivery. ``failed`` means a device we
     hold a token for would not take it, which is the one an operator should chase.
+
+    ``expired`` is the fourth, added with the retry work: the nudge was never
+    delivered because it had become too LATE to mean anything. It is separated
+    from ``skipped`` deliberately — "we were down" and "this person has no
+    device" are different operational stories, and collapsing them would hide
+    an outage inside a reach statistic.
+
+    ``deferred`` counts the ones left for another pass: a transient failure that
+    has not used up its attempts. They are still ``scheduled``, so they are not
+    an ending at all, which is why they are excluded from ``considered``.
     """
 
     sent: int = 0
     skipped: int = 0
     failed: int = 0
+    expired: int = 0
+    deferred: int = 0
 
     @property
     def considered(self) -> int:
-        return self.sent + self.skipped + self.failed
+        """Nudges that reached an ENDING this pass. A deferred one has not."""
+        return self.sent + self.skipped + self.failed + self.expired
+
+
+#: How late a time-anchored nudge may be and still be worth sending.
+#:
+#: These are anchored to a time of day — a 09:00 check-in and a 19:00 wind-down
+#: (see ``schedule_default_nudges``). "Ease into the evening" delivered at 11am
+#: the next morning is not a late reminder, it is a wrong one, and a wellness
+#: app that pushes wrong things is a notification people turn off. Two hours is
+#: a judgement, not a measurement: long enough to survive a deploy or a restart,
+#: short enough that the message still matches the hour it describes.
+MAX_LATENESS = timedelta(hours=2)
+
+#: Kinds delivered however late they are. A safety follow-up is worth having
+#: at the wrong hour; a wind-down reminder is not.
+ALWAYS_DELIVER = frozenset({"safety"})
+
+#: Attempts before a delivery failure becomes final. Deliveries fail for
+#: reasons that pass (an FCM blip, a mail host refusing a connection) and for
+#: reasons that do not (a token the device revoked), and nothing in the response
+#: reliably separates them — so it retries a bounded number of times and then
+#: stops, rather than either giving up at the first blip or retrying forever.
+MAX_ATTEMPTS = 3
+
+#: Backoff between attempts. Deliberately minutes rather than seconds: the
+#: dispatcher itself only ticks every few minutes, so anything shorter would
+#: just mean "next tick" while pretending to be a schedule.
+RETRY_BACKOFF = (timedelta(minutes=10), timedelta(minutes=30))
+
+
+def _retry_delay(attempts: int) -> timedelta:
+    """Backoff for the attempt about to be scheduled (1-indexed)."""
+    index = min(max(attempts, 1), len(RETRY_BACKOFF)) - 1
+    return RETRY_BACKOFF[index]
+
+
+def too_late(nudge: Nudge, now: datetime) -> bool:
+    """Whether this nudge has missed the point of its own timing."""
+    if nudge.kind in ALWAYS_DELIVER:
+        return False
+    return (now - nudge.scheduled_for) > MAX_LATENESS
 
 
 async def dispatch_due(db: AsyncSession) -> DispatchOutcome:
@@ -178,12 +231,25 @@ async def dispatch_due(db: AsyncSession) -> DispatchOutcome:
     due = (
         await db.scalars(
             select(Nudge)
-            .where(Nudge.status == "scheduled", Nudge.scheduled_for <= now)
+            .where(
+                Nudge.status == "scheduled",
+                # A retry moves `next_attempt_at`, never `scheduled_for` — so
+                # due-ness reads whichever is in play while lateness keeps
+                # measuring against the time this was meant to arrive.
+                func.coalesce(Nudge.next_attempt_at, Nudge.scheduled_for) <= now,
+            )
             # Claim rows so concurrent workers/cron passes never double-send.
             .with_for_update(skip_locked=True)
         )
     ).all()
     for nudge in due:
+        # Before anything else: is this still worth sending? Checked here and
+        # not in the query so the row is claimed and given an honest ending,
+        # rather than being left `scheduled` and reconsidered every tick for
+        # the rest of its life.
+        if too_late(nudge, now):
+            nudge.status = "expired"
+            continue
         user = await db.get(User, nudge.user_id)
         if user is None:
             nudge.status = "failed"
@@ -211,7 +277,14 @@ async def dispatch_due(db: AsyncSession) -> DispatchOutcome:
                 nudge.status = "skipped"
             continue
         # A registered token that would not take it: a real delivery failure,
-        # not a routing question. `deliver` already tried it.
+        # not a routing question. `deliver` already tried it — but one refusal
+        # is not proof the device is gone, and treating it as proof is how a
+        # single FCM blip used to lose a nudge permanently.
+        nudge.attempts += 1
+        if nudge.attempts < MAX_ATTEMPTS:
+            nudge.next_attempt_at = now + _retry_delay(nudge.attempts)
+            # Still `scheduled`: this pass reached no ending for it.
+            continue
         nudge.status = "failed"
     # Tallied from the statuses rather than counted in the branches above: every
     # nudge leaves this loop with exactly one terminal status, so deriving the
@@ -221,6 +294,9 @@ async def dispatch_due(db: AsyncSession) -> DispatchOutcome:
         sent=sum(1 for n in due if n.status == "sent"),
         skipped=sum(1 for n in due if n.status == "skipped"),
         failed=sum(1 for n in due if n.status == "failed"),
+        expired=sum(1 for n in due if n.status == "expired"),
+        # Still scheduled after being looked at = left for another pass.
+        deferred=sum(1 for n in due if n.status == "scheduled"),
     )
     await db.commit()
     return outcome

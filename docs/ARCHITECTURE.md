@@ -327,6 +327,7 @@ region and companion style.
 
 | Contract | Backend | iOS |
 | --- | --- | --- |
+| Nudge endings | `services/nudges.DispatchOutcome` — `sent` / `skipped` (nobody to deliver to) / `failed` (a device refused, attempts exhausted) / `expired` (too late to mean anything) / `deferred` (blipped, retrying). `POST /admin/nudges/dispatch` returns the first three; the dispatcher logs all five |
 | Store product ids | `services/appstore.py` `_PRODUCT_TIERS` ⇄ `services/playstore.py` `_PRODUCT_TIERS` — the SAME four ids on both stores, so a subscriber who switches phones keeps the tier they paid for |
 | Assessment taxonomy | `services/assessment.py` | `Dummy.motivations` / `Dummy.goalCategories` |
 | Activity widget kinds | `services/activities.py` + Oracle tools | `ActivityDestination` in `ChatActivities.swift` ⇄ web `WIDGET_LINKS` (chat page) ⇄ android `widgetRoute` (TalkScreen.kt) |

@@ -4,6 +4,49 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — nudge durability, the rest of WC-24 (2026-08-22)
+
+**763 passed / 2 skipped, coverage 96%; `services/nudges.py` 97%.**
+
+The concurrency proof said a nudge is never sent twice. These two say it is not
+silently lost either — nor delivered so late it means the wrong thing. Both gaps
+were ones I flagged when auditing the item; neither needed a scheduler vendor.
+
+**A transient failure is no longer terminal.** One refused delivery marked a
+nudge `failed` forever, so a single FCM blip meant the person simply never got
+it. Deliveries fail for reasons that pass (a blip, a mail host refusing a
+connection) and reasons that do not (a revoked token), and nothing in the
+response reliably separates them — so it retries a bounded **3** times with a
+10-then-30-minute backoff and then stops honestly. Minutes, not seconds: the
+dispatcher only ticks every few minutes, so anything shorter would mean "next
+tick" while pretending to be a schedule.
+
+**A nudge too late to mean anything now expires.** The defaults are anchored to
+a time of day — a 09:00 check-in and a 19:00 wind-down. *"Ease into the evening"*
+delivered at 11am the next morning is not a late reminder, it is a wrong one,
+and a wellness app that pushes wrong things is a notification people turn off.
+`MAX_LATENESS` is **2 hours**: a judgement, not a measurement — long enough to
+survive a deploy or a restart, short enough that the message still matches the
+hour it describes. `safety` is exempt; a safety follow-up is worth having at the
+wrong hour.
+
+**`scheduled_for` never moves.** It means "when this was MEANT to arrive", and a
+retry writes `next_attempt_at` instead. Had a retry moved it, lateness would
+reset on every attempt and a nudge could crawl forward all day — arriving hours
+wrong and never expiring. That is its own test, and its own mutant.
+
+**Two new endings, kept separate on purpose.** `expired` is "we were down long
+enough that this stopped being true"; `deferred` is "a delivery blipped and will
+be retried". Both used to read as `failed`, which is the one an operator is
+supposed to chase. `deferred` is excluded from `considered` because it is not an
+ending at all. The dispatcher log now reports all five.
+
+**8 new tests, and 5 mutants — all 5 caught**: delivering a stale nudge anyway,
+making one blip terminal again, moving `scheduled_for` on retry, unbounded
+retries, and expiring safety nudges with the rest.
+
+Migration `c4e9b28d17fa` (head was `a7d3f10c9e64`).
+
 ## Done — the Play Billing client (WC-10, 2026-08-22)
 
 **`:app:check` exit 0, coverage 96.31%, 15 new tests. Verified on the handset:

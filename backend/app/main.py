@@ -62,10 +62,18 @@ async def _nudge_dispatcher() -> None:
             # different operational states.
             if outcome.considered:
                 logger.info(
-                    "Nudge dispatcher: %d sent, %d skipped, %d failed",
+                    "Nudge dispatcher: %d sent, %d skipped, %d failed, "
+                    "%d expired, %d deferred",
                     outcome.sent,
                     outcome.skipped,
                     outcome.failed,
+                    # Two endings the old line could not say: `expired` is "we
+                    # were down long enough that this stopped being true", and
+                    # `deferred` is "a delivery blipped and will be retried".
+                    # Both used to read as `failed`, which is the one an
+                    # operator is supposed to chase.
+                    outcome.expired,
+                    outcome.deferred,
                 )
         except Exception as exc:  # noqa: BLE001 - keep the loop alive
             logger.exception("Nudge dispatch pass failed")
