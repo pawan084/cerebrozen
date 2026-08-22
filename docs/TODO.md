@@ -4,6 +4,32 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the portal's two topbar menus (2026-08-22)
+
+**962 tests; overall coverage 90.7%, `Shell.tsx` 78.0% → 94.3%.**
+
+Both menus hang off the same corner and overlap when open, so opening either
+one has to close the other — and nothing makes that true except the two
+handlers, since the state is two independent booleans. Asserted in both
+directions, along with each menu closing on its own trigger and the org switcher
+closing behind a choice.
+
+The accessibility half is the part that would rot silently: `aria-haspopup` says
+the control opens a menu BEFORE it is pressed (otherwise it reads as a button
+that will simply do something), `aria-expanded` moves with the menu it
+describes and not with the other one, the items are `menuitem`s, **the unread
+count lives in the notification button's accessible name** rather than only in
+a dot — a dot is a visual affordance and nothing else — and the avatar's
+initials are `aria-hidden` behind an `sr-only` "Signed in as Ananya Kapoor,
+Benefits owner", because "AK" in a circle is two letters read aloud.
+
+Only unread items carry the New badge, and the count counts unread ones.
+
+**Mutation sweep: 13 mutants, 13 caught, first pass.**
+
+Running total: **135 mutants, 131 caught, 4 proven equivalent, 5 real weaknesses
+found and fixed.**
+
 ## Done — the portal's shared vocabulary (2026-08-22)
 
 **950 tests; overall coverage 90.0%, `portal/components/ui.tsx` 0% → 100%.**

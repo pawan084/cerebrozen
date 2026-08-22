@@ -10,6 +10,7 @@ import { resetRouter, routerState } from "../stubs/next-navigation";
 import Shell from "../../apps/portal/components/Shell";
 import { PRIVACY_WALL_SIDEBAR } from "../../apps/portal/lib/copy";
 import { NAV, PAGE_META } from "../../apps/portal/lib/nav";
+import { ADMIN, NOTIFICATIONS, ORGS } from "../../apps/portal/lib/mock";
 
 beforeEach(resetRouter);
 
@@ -143,5 +144,119 @@ describe("the page itself", () => {
   it("renders whatever it is wrapping", () => {
     render(<Shell><p>the actual page</p></Shell>);
     expect(screen.getByText("the actual page")).toBeTruthy();
+  });
+});
+
+describe("the two topbar menus", () => {
+  // Both hang off the same corner and overlap when open, so opening either one
+  // closes the other. The state is two independent booleans — nothing makes
+  // that true except the handlers, which is exactly why it is asserted.
+  it("keeps both shut until they are asked for", () => {
+    render(<Shell>page</Shell>);
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(screen.getByRole("button", { name: /^Acme Health/ }).getAttribute("aria-expanded")).toBe(
+      "false",
+    );
+  });
+
+  it("says the organisation switcher is a menu before it is opened", () => {
+    // aria-haspopup is the part a screen-reader user needs BEFORE pressing:
+    // otherwise the control reads as a button that will do something.
+    render(<Shell>page</Shell>);
+    const trigger = screen.getByRole("button", { name: /^Acme Health/ });
+    expect(trigger.getAttribute("aria-haspopup")).toBe("menu");
+  });
+
+  it("lists every organisation the account can switch to", async () => {
+    const user = userEvent.setup();
+    render(<Shell>page</Shell>);
+    await user.click(screen.getByRole("button", { name: /^Acme Health/ }));
+    expect(screen.getByRole("menu")).toBeTruthy();
+    for (const name of ORGS) {
+      expect(screen.getByRole("menuitem", { name })).toBeTruthy();
+    }
+  });
+
+  it("switches, and closes behind itself", async () => {
+    const user = userEvent.setup();
+    render(<Shell>page</Shell>);
+    await user.click(screen.getByRole("button", { name: /^Acme Health/ }));
+    await user.click(screen.getByRole("menuitem", { name: "CereBro Demo University" }));
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(screen.getByRole("button", { name: /^CereBro Demo University/ })).toBeTruthy();
+  });
+
+  it("carries the unread count in the button's name, not only in a dot", () => {
+    // The dot is a visual affordance and nothing else. Without the count in the
+    // accessible name there is no way to know anything is waiting.
+    render(<Shell>page</Shell>);
+    const unread = NOTIFICATIONS.filter((n) => !n.read).length;
+    expect(screen.getByRole("button", { name: `Notifications, ${unread} unread` })).toBeTruthy();
+  });
+
+  it("shows what is waiting, and marks only what is unread", async () => {
+    const user = userEvent.setup();
+    render(<Shell>page</Shell>);
+    await user.click(screen.getByRole("button", { name: /^Notifications/ }));
+    for (const n of NOTIFICATIONS) {
+      expect(screen.getByText(n.title)).toBeTruthy();
+    }
+    const unread = NOTIFICATIONS.filter((n) => !n.read).length;
+    expect(screen.getAllByText("New")).toHaveLength(unread);
+  });
+
+  it("closes the organisation menu when the notifications open", async () => {
+    const user = userEvent.setup();
+    render(<Shell>page</Shell>);
+    await user.click(screen.getByRole("button", { name: /^Acme Health/ }));
+    await user.click(screen.getByRole("button", { name: /^Notifications/ }));
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(screen.getByText(NOTIFICATIONS[0].title)).toBeTruthy();
+  });
+
+  it("closes the notifications when the organisation menu opens", async () => {
+    const user = userEvent.setup();
+    render(<Shell>page</Shell>);
+    await user.click(screen.getByRole("button", { name: /^Notifications/ }));
+    await user.click(screen.getByRole("button", { name: /^Acme Health/ }));
+    expect(screen.queryByText(NOTIFICATIONS[0].title)).toBeNull();
+    expect(screen.getByRole("menu")).toBeTruthy();
+  });
+
+  it("closes each menu when its own trigger is pressed again", async () => {
+    const user = userEvent.setup();
+    render(<Shell>page</Shell>);
+    const trigger = screen.getByRole("button", { name: /^Acme Health/ });
+    await user.click(trigger);
+    await user.click(screen.getByRole("button", { name: /^Acme Health/ }));
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("moves aria-expanded with the menu it describes", async () => {
+    const user = userEvent.setup();
+    render(<Shell>page</Shell>);
+    await user.click(screen.getByRole("button", { name: /^Acme Health/ }));
+    expect(screen.getByRole("button", { name: /^Acme Health/ }).getAttribute("aria-expanded")).toBe(
+      "true",
+    );
+    expect(screen.getByRole("button", { name: /^Notifications/ }).getAttribute("aria-expanded")).toBe(
+      "false",
+    );
+  });
+});
+
+describe("who is signed in", () => {
+  it("reads out the name and role that the initials stand for", () => {
+    // "AK" in a circle is two letters to a screen reader. The visible avatar is
+    // aria-hidden and the sr-only line carries the meaning.
+    render(<Shell>page</Shell>);
+    expect(screen.getByText(`Signed in as ${ADMIN.name}, ${ADMIN.role}`)).toBeTruthy();
+  });
+
+  it("keeps the initials themselves out of the reading", () => {
+    const { container } = render(<Shell>page</Shell>);
+    const avatar = container.querySelector(".avatar")!;
+    expect(avatar.textContent).toBe(ADMIN.initials);
+    expect(avatar.getAttribute("aria-hidden")).toBe("true");
   });
 });
