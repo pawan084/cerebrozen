@@ -4,6 +4,38 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the two dead components are gone (2026-08-22)
+
+**1156 tests; overall coverage 95.8% → 98.8%.** No test was added: the number
+moved because 110 statements of unrendered code left the denominator.
+
+`apps/app/components/ui.tsx` (111 lines) and `apps/web/components/Glyphs.tsx`
+(42 lines) had **no importer and no symbol reference anywhere in the repo**.
+Both were orphans of removed sections — `ui.tsx` arrived with "responsive
+sidebar shell + hero-card screens", and `Glyphs.tsx` was drawn to replace a 🆘
+emoji in a `.bento-cell` feature grid that no stylesheet has any more. Writing
+tests for them would have flattered the coverage number for screens nobody can
+reach; deleting them is the honest version of the same wave.
+
+Verified before removal: zero references to any of the nine exported symbols
+across `apps/`, `e2e/`, `tests/`, `scripts/` and `docs/` — the only hit was a
+CSS section comment naming them.
+
+**Their CSS did NOT go with them, and should not have.** `ui-row`, `page-head`
+and `ui-chip` are applied directly as class names by four other components, so
+those rules are live. `hero-card`, `week-dots`, `section-title` and
+`bento-cell` now have no producer at all — a smaller, separate cleanup, left
+for whoever next touches `globals.css` rather than folded in here.
+
+**Gates run, all green:** `tsc --noEmit` in each of the four apps, the root test
+typecheck and `tsconfig.portal.json`, the 1,156-test unit suite, and — because
+this touched `apps/web` and `apps/app` — the real web gate, the Docker
+Playwright stack: **71 passed**.
+
+Every file in `apps/*/lib` and `apps/*/components` is now walked. What remains
+is branch-level: error paths in the four `api.ts` clients, `analytics.ts` and
+`outbox.ts`.
+
 ## Done — the landing page's two claims about a product you cannot download yet (2026-08-22)
 
 **1156 tests; overall coverage 95.8% — and 98.8% counting only live code.**
