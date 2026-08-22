@@ -60,6 +60,14 @@ class User(Base):
     apple_original_transaction_id: Mapped[str | None] = mapped_column(
         String(64), unique=True, index=True, nullable=True
     )
+    # The Play purchase this account's entitlement came from. UNIQUE for the
+    # same reason as Apple's: a signed purchase payload is replayable forever
+    # on its own, so the first account to verify one owns it and every later
+    # account is refused. This is the half of Play verification that a
+    # signature check cannot do by itself.
+    play_purchase_token: Mapped[str | None] = mapped_column(
+        String(255), unique=True, index=True, nullable=True
+    )
     # When the current subscription lapses (from the verified transaction).
     subscription_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Stripe's own id for this customer. Persisted because the webhook mapping

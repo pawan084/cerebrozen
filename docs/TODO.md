@@ -4,6 +4,55 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — Play receipt validation, the missing half of WC-15 (2026-08-22)
+
+**755 passed / 2 skipped, coverage 96%; `services/playstore.py` at 99%.**
+
+Apple has been verified server-side since StoreKit 2. Android had **nothing** —
+`/users/me/subscription/verify` understood Apple only, so an Android client's
+entitlement was whatever it claimed. That is a forged-premium hole, not a
+missing feature, and it is why WC-10's absent Billing client was never the only
+thing between here and taking money on Android.
+
+**What landed.** `services/playstore.py` verifies Play's detached RSA signature
+over the purchase JSON against the Play Console key — offline, no service
+account, so it runs in CI and on a laptop with no credentials. Plus
+`POST /users/me/subscription/verify-play`, mirroring the Apple route's three
+checks, and `users.play_purchase_token` UNIQUE (Alembic `a7d3f10c9e64`, head was
+`b2d5e8a1c473`).
+
+**What a signature proves, and what it does not** — written into the module
+docstring rather than left for a later reader to assume:
+- It proves Play issued the purchase, for this app, unedited. That is the
+  forgery closed.
+- It is **not a live state check**: a refund or cancellation after purchase does
+  not change the signed payload. The Play Developer API is authoritative for
+  current state and needs a service account; when one exists that call belongs
+  beside this check, not instead of it.
+- It is **replayable** on its own — the same pair verifies forever, on any
+  account. Closed one level up exactly as Apple's is: the purchase token is
+  UNIQUE, so the first account to verify a purchase owns it.
+
+**Why SHA-1.** Not a choice — `SHA1withRSA` is what Play signs with, and a
+verifier has to match its signer. Only verification happens here, against a
+fixed configured key, so a break would need a second-preimage attack on SHA-1
+rather than a collision. SHA-256 signatures verify too, so the day Google moves
+this needs no edit.
+
+**29 tests, generating a real RSA keypair and making real signatures** — a
+mocked verifier would pass against a version that checked nothing. They cover
+the edited payload (buy cheap, edit the JSON), a signature from another key, a
+valid signature over another app's purchase, malformed input, and the four
+tier-mapping rules including that a PENDING purchase (someone mid-payment at a
+kiosk) is neither premium nor an error. Five drive the real route end to end and
+assert the account is still `free` after a forgery attempt.
+
+**Every signature failure returns the same message** — telling a forger whether
+the key or the payload was wrong tells them which half to keep working on.
+
+Still open on the Android money path: WC-10, the Play Billing client itself.
+Nothing in the app can produce one of these purchases yet.
+
 ## Done — §0 re-verified item by item (2026-08-22)
 
 Three items in a row had turned out narrower than written (WC-17's scope,

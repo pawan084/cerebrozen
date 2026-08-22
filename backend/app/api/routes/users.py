@@ -56,6 +56,7 @@ from app.schemas.user import (
     DeviceTokenOut,
     PushStatusOut,
     PushTokenUpdate,
+    PlaySubscriptionVerify,
     SubscriptionVerify,
     TrustedContactIn,
     TrustedContactOut,
@@ -66,7 +67,7 @@ from app.schemas.user import (
     WebPushSubscriptionOut,
 )
 from app.core.config import settings
-from app.services import appstore, entitlements, metrics, safety
+from app.services import appstore, entitlements, metrics, playstore, safety
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -174,6 +175,66 @@ async def verify_subscription(
         user.apple_original_transaction_id = original_txn
 
     tier, expires = appstore.tier_for(payload_data)
+    user.subscription_tier = tier
+    user.subscription_expires_at = expires
+    await db.commit()
+    await db.refresh(user)
+    return await entitlements.user_out(db, user)
+
+
+@router.post("/me/subscription/verify-play", response_model=UserOut)
+async def verify_play_subscription(
+    payload: PlaySubscriptionVerify,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Verify a Google Play purchase and set the authoritative tier.
+
+    The Android half of what Apple has had since StoreKit 2: the SERVER decides
+    entitlement. Until this existed, an Android client's tier was whatever it
+    claimed, which is a forged-premium hole rather than a missing feature.
+
+    Three checks, mirroring the Apple route above, because the signature alone
+    closes only the first of them:
+
+    1. **Play signed it.** `playstore.verify_purchase` checks the detached RSA
+       signature against the Play Console key, and the package name, so a valid
+       signature over another app's purchase is refused too.
+    2. **It was bought for THIS account.** Play carries the buyer's user id in
+       `obfuscatedAccountId` when the client sets it (the analogue of Apple's
+       `appAccountToken`); a purchase stamped with someone else's id is someone
+       else's purchase, however valid the signature.
+    3. **It has not been used already.** A signed payload is replayable
+       forever, so the purchase token is stored UNIQUE: first verifier owns it.
+    """
+    try:
+        purchase = playstore.verify_purchase(
+            payload.purchase_payload, payload.purchase_signature
+        )
+    except playstore.ReceiptError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid purchase: {exc}"
+        )
+
+    account_id = str(purchase.get("obfuscatedAccountId") or "").strip().lower()
+    if account_id and account_id != str(user.id).lower():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This purchase was made for a different account.",
+        )
+
+    token = str(purchase.get("purchaseToken") or "").strip()
+    owner = await db.scalar(
+        select(User).where(User.play_purchase_token == token, User.id != user.id)
+    )
+    if owner is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This subscription is already linked to another account.",
+        )
+    user.play_purchase_token = token
+
+    tier, expires = playstore.tier_for(purchase)
     user.subscription_tier = tier
     user.subscription_expires_at = expires
     await db.commit()

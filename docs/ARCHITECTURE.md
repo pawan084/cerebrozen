@@ -327,6 +327,7 @@ region and companion style.
 
 | Contract | Backend | iOS |
 | --- | --- | --- |
+| Store product ids | `services/appstore.py` `_PRODUCT_TIERS` ⇄ `services/playstore.py` `_PRODUCT_TIERS` — the SAME four ids on both stores, so a subscriber who switches phones keeps the tier they paid for |
 | Assessment taxonomy | `services/assessment.py` | `Dummy.motivations` / `Dummy.goalCategories` |
 | Activity widget kinds | `services/activities.py` + Oracle tools | `ActivityDestination` in `ChatActivities.swift` ⇄ web `WIDGET_LINKS` (chat page) ⇄ android `widgetRoute` (TalkScreen.kt) |
 | Crisis regions/hotlines | `services/crisis.py` | `Safety/CrisisResources.swift` |

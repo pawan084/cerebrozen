@@ -176,6 +176,17 @@ class SubscriptionVerify(BaseModel):
     signed_transaction: str
 
 
+class PlaySubscriptionVerify(BaseModel):
+    """A Google Play purchase: the JSON payload and Play's signature over it.
+
+    Two fields rather than one because Play signs the payload as a detached
+    signature — the bytes that were signed must reach the server unchanged, so
+    the raw string is sent rather than a re-serialised object.
+    """
+    purchase_payload: str
+    purchase_signature: str
+
+
 _EMAIL = TypeAdapter(EmailStr)
 
 

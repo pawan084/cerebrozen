@@ -150,6 +150,14 @@ class Settings(BaseSettings):
     # Stripe web billing (apps/app). Empty secret = /billing/checkout 503s and
     # the webhook rejects; the App Store flow is unaffected. Price ids map to
     # the same subscription_tier contract as services/appstore.py.
+    # Google Play's developer public key (base64 DER, from Play Console →
+    # Monetisation setup). Without it Play purchases cannot be verified, and
+    # `/subscription/verify` refuses rather than trusting the client.
+    play_license_key: str = ""
+    #: Checked against the purchase's `packageName` — a valid signature over
+    #: another app's purchase is still a valid signature.
+    play_package_name: str = "com.cerebrozen.app"
+
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     stripe_price_premium_monthly: str = ""
