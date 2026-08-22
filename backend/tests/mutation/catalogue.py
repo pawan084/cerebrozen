@@ -1,11 +1,18 @@
-"""Mutants for the two modules where a false-passing test costs the most (WC-277).
+"""Mutants for the code where a false-passing test costs the most (WC-277).
 
 A test suite tells you the code passes. It does not tell you the tests would
-notice if the code were wrong — and on these two modules that difference is
-measured in human harm and in money:
+notice if the code were wrong — and here that difference is measured in human
+harm, in money, and in whose data somebody can read:
 
 * ``services/safety.py`` decides whether an explicit self-harm phrase is seen.
+* ``services/crisis.py`` decides which number a person is given.
 * ``services/entitlements.py`` decides who has paid for what.
+* ``models/consent.py`` and ``services/organizations.py`` decide what an
+  employer may see.
+* The **tenancy** checks (T1–T8) decide whether one account can reach another's
+  rows. Those are the ones this file exists for most: every one of them is
+  currently PRESENT, and a present check is invisible — deleting one changes no
+  test's outcome unless a test calls the route as the wrong account.
 
 **Curated, not generated.** A generic AST mutator flips operators everywhere and
 produces mostly equivalent mutants and hours of runtime. Every entry here is
@@ -55,6 +62,14 @@ CRISIS_TESTS = ("tests/test_crisis.py",)
 ENTITLEMENT_TESTS = ("tests/test_entitlements.py",)
 CONSENT_TESTS = ("tests/test_consent_enforced.py",)
 ORG_TESTS = ("tests/test_org.py", "tests/test_org_roles.py")
+JOURNAL = "app/api/routes/journal.py"
+MOODS = "app/api/routes/moods.py"
+PLANS = "app/api/routes/plans.py"
+USERS = "app/api/routes/users.py"
+INTERVENTIONS = "app/services/interventions.py"
+ORG_ROUTES = "app/api/routes/organizations.py"
+TENANCY_TESTS = ("tests/test_cross_user_access.py",)
+ORG_TENANCY_TESTS = ("tests/test_org_tenant_isolation.py",)
 
 CATALOGUE: list[Mutant] = [
     # ── Safety: the floor ────────────────────────────────────────────────
@@ -364,5 +379,111 @@ CATALOGUE: list[Mutant] = [
         old='        {"name": "Emergency services", "number": "911"},\n        {"name": "988 Suicide & Crisis Lifeline", "number": "988"},',
         new='        {"name": "Emergency services", "number": "999"},\n        {"name": "988 Suicide & Crisis Lifeline", "number": "988"},',
         caught_by=CRISIS_TESTS,
+    ),
+    # ── Tenancy: one account reaching another's rows (WC-74) ─────────────
+    #
+    # Every one of these is a check that is currently PRESENT, which is exactly
+    # why it is here: a present check is invisible, and deleting one changes no
+    # test's outcome unless a test calls the route as the wrong account. All
+    # eight were confirmed killed on 2026-08-22.
+    Mutant(
+        id="T1-journal-entry-ownership-dropped",
+        breaks=(
+            "Anyone can read and overwrite anyone else's journal entry by id. "
+            "The most private prose in the product, addressable by a uuid."
+        ),
+        path=JOURNAL,
+        old="    if entry is None or entry.user_id != user.id:",
+        new="    if entry is None:",
+        caught_by=TENANCY_TESTS,
+    ),
+    Mutant(
+        id="T2-remembered-item-ownership-dropped",
+        breaks=(
+            "One account can rewrite what CereBro remembers about another — "
+            "not read it, but change what the assistant believes about them."
+        ),
+        path=USERS,
+        old="    if row is None or row.user_id != user.id:",
+        new="    if row is None:",
+        caught_by=TENANCY_TESTS,
+    ),
+    Mutant(
+        id="T3-mood-scoping-dropped-from-the-query",
+        breaks=(
+            "Anyone can delete anyone else's mood log. Scoped inside the WHERE "
+            "clause, so no `if` shows the check going missing."
+        ),
+        path=MOODS,
+        old="        select(MoodLog).where(MoodLog.id == mood_id, MoodLog.user_id == user.id)",
+        new="        select(MoodLog).where(MoodLog.id == mood_id)",
+        caught_by=TENANCY_TESTS,
+    ),
+    Mutant(
+        id="T4-plan-step-checks-the-step-not-the-plan",
+        breaks=(
+            "A plan step is owned indirectly: the step names a plan, and the "
+            "plan names a user. Drop the second hop and anyone can tick off "
+            "anyone's plan."
+        ),
+        path=PLANS,
+        old="    if plan is None or plan.user_id != user.id:",
+        new="    if plan is None:",
+        caught_by=TENANCY_TESTS,
+    ),
+    Mutant(
+        id="T5-open-offer-not-scoped-to-its-owner",
+        breaks=(
+            "GET /interventions/active serves another person's open offer — "
+            "its reason prose and the state_snapshot numbers behind it. A read "
+            "of somebody's inferred state, through a route every client polls."
+        ),
+        path=INTERVENTIONS,
+        old=(
+            "            InterventionRecommendation.user_id == user.id,\n"
+            "            InterventionRecommendation.accepted_at.is_(None),"
+        ),
+        new="            InterventionRecommendation.accepted_at.is_(None),",
+        caught_by=TENANCY_TESTS,
+    ),
+    Mutant(
+        id="T6-cooldown-becomes-global",
+        breaks=(
+            "One person's recent offer silences that rule for EVERY user. No "
+            "data leaks, so it never looks like a security bug — it looks like "
+            "the feature quietly not working, with the blast radius growing as "
+            "the user base does."
+        ),
+        path=INTERVENTIONS,
+        old=(
+            "                InterventionRecommendation.user_id == user.id,\n"
+            "                InterventionRecommendation.rule_slug == rule.slug,"
+        ),
+        new="                InterventionRecommendation.rule_slug == rule.slug,",
+        caught_by=TENANCY_TESTS,
+    ),
+    Mutant(
+        id="T7-seat-can-be-ended-across-organisations",
+        breaks=(
+            "An administrator of one customer cancels another customer's "
+            "sponsored seat by naming its id. Broken tenant isolation, and it "
+            "fails silently: the victim gets no signal at all."
+        ),
+        path=ORG_ROUTES,
+        old="    if membership is None or membership.org_id != org.id:",
+        new="    if membership is None:",
+        caught_by=ORG_TENANCY_TESTS,
+    ),
+    Mutant(
+        id="T8-import-writes-into-another-orgs-group",
+        breaks=(
+            "A CSV import names an eligibility group belonging to a different "
+            "organisation, placing strangers inside that customer's cohort — "
+            "and their reported totals then count people who are not theirs."
+        ),
+        path=ORG_ROUTES,
+        old="        if group is None or group.org_id != org.id:",
+        new="        if group is None:",
+        caught_by=ORG_TENANCY_TESTS,
     ),
 ]

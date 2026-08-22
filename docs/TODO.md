@@ -4,6 +4,72 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — tenant isolation, attempted directly (WC-74, 2026-08-22)
+
+**816 passed / 2 skipped, all 9 coverage floors held, 32/32 mutants caught.**
+
+Item 74 asks for cross-org reads attempted directly against the portal.
+ARCHITECTURE claims one cannot be *expressed*, because no `/org` route takes an
+`org_id`. That is true of the organisation itself and it is the right shape —
+but four surfaces do accept an id for something *inside* one:
+
+    DELETE /org/members/{membership_id}
+    POST   /org/members          {group_id}
+    POST   /org/members/import   {group_id}
+    POST   /org/programmes       {group_id}
+
+Each of those is a place where an admin of one customer can name another
+customer's row, and each therefore needs a check somebody *did* have to
+remember. All four checks were present and all four hold.
+
+**Then the same sweep, one tier down, found the bigger surface.** Enumerating
+every route in the API that takes a row id turned up ~18 more — journal entries,
+mood logs, remembered items, plan steps, habits, goals, offers. A tenant there
+is a *person*, and the rows are the most private data the product holds.
+`backend/tests/test_cross_user_access.py` is a table rather than prose: adding a
+route costs one line, so the next id-taking route is cheaper to cover than to
+skip. Two conventions are asserted rather than assumed — **404, never 403**, so
+a refusal is not an existence oracle; and **the victim's row is read back
+afterwards**, because a 404 that performed the write anyway is worse than a 200.
+
+**The mutation sweep is what made it worth doing.** Every one of these checks
+was already present, and a present check is invisible: deleting one changes no
+test's outcome unless a test calls the route as the wrong account. Eleven checks
+were deleted in turn; nine died immediately. Two survived, and both were real
+gaps in `services/interventions.py`, where the scoping lives inside a WHERE
+clause rather than a visible `if`:
+
+* **`open_recommendation`** — unscoped, `GET /interventions/active` serves
+  another person's open offer, including the `reason` prose and the
+  `state_snapshot` numbers behind it. A read of somebody's inferred state,
+  through a route every client polls.
+* **`_in_cooldown`** — unscoped, one person's recent offer silences that rule
+  for *every* user. No data leaks, so it would never look like a security bug;
+  it looks like the feature quietly not working, for everyone, with the blast
+  radius growing as the user base does.
+
+Both now have tests. Eight of the eleven mutants are in
+`backend/tests/mutation/catalogue.py` (T1–T8) so the checks stay pinned rather
+than being re-verified by hand.
+
+**One correction worth recording.** The first sweep reported
+`interventions.resolve` as a surviving hole. It was not: the needle occurs three
+times in that file and the harness mutated the first one. The verdict was a
+targeting error, caught by probing the route directly — the victim's own offer
+returned 200, which proved the path was live and the test non-vacuous, so a
+survivor had to mean the mutation had landed elsewhere. That is the third time
+in this repo a "surviving mutant" turned out to be a badly built mutant. The
+harness now fails loudly on a run that produces no pytest summary, after an
+earlier version reported four mutants SURVIVED when pytest was not installed in
+the container and had never run at all.
+
+Also recorded, deliberately, as a non-finding: `PATCH /users/me/memory/{id}`
+answers **403, not 404**, for a foreign id. That is the caller's *own*
+`ai_memory` consent gate firing before the ownership check, and it answers
+identically for an invented id, so it is not an oracle. The test grants the
+attacker that consent for themselves, or it would pass while `_owned_memory` was
+never reached.
+
 ## Done — the re-identification attack, and why it has no target (WC-73, 2026-08-22)
 
 **787 passed / 2 skipped, all 9 coverage floors held.**
