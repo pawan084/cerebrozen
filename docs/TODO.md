@@ -4,6 +4,115 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the landing page's two claims about a product you cannot download yet (2026-08-22)
+
+**1156 tests; overall coverage 95.8% — and 98.8% counting only live code.**
+`PhoneMock.tsx` 0% → 100%, `AppStoreBadge.tsx` 0% → 100%.
+
+Both components exist because the honest version of a marketing page is harder
+than the dishonest one, and both were completely unwalked.
+
+**`PhoneMock` is a drawn mock precisely because the baked renders lied.** The
+screenshots in `public/screens` still carry the indigo build's tab set
+(Home · Sleep · …) and one shows *"3-day streak · beautifully done"* — a
+milestone affordance the product spec rules out. So the mock's five tabs are
+now compared against `apps/app`'s own `MOBILE` array: **Today · Explore · Talk ·
+Journal · You**, in that order, with Sleep asserted ABSENT (it left the tab bar
+for Explore — REDESIGN_V2 §6, and the single most visible difference from the
+stale screenshots). The same drift can happen to a drawing as to a screenshot;
+now it cannot happen silently.
+
+Every mock is `aria-hidden` — *"a screen reader stepping through fake UI text
+would learn nothing true"* — and the test also asserts nothing INSIDE carries
+its own `aria-label`, because hiding the wrapper is only true while the contents
+stay silent. Streak/milestone/badge vocabulary is banned outright from all three
+mocks, and the Today mock is held to showing its REASON ("Suggested because you
+said today felt wired") and its refusal ("Something else instead") — an offer
+with no way past it is an instruction.
+
+**`AppStoreBadge` deliberately does not imitate Apple's badge**, because the app
+is not on the App Store: a lookalike promises a download that does not exist and
+misuses Apple's marketing mark. Pinned: the unconfigured pill says *Coming soon
+/ iOS app*, points at the waitlist, and **contains the words "download" and
+"App Store" nowhere at all** — including in its accessible name, which is where
+that lie would be invisible. Configured with a real listing it flips to the
+store treatment, the real href, and the matching label. `"#waitlist"` is the
+sentinel: a truthiness check instead of the sentinel comparison would turn the
+placeholder itself into a "live" store link pointing at an anchor on the same
+page — that mutant is caught.
+
+**Mutation sweep: 26 mutants (17 + 9), 26 caught, first pass.**
+
+## Done — the two icon sets, and the outage one of them caused (2026-08-22)
+
+**`admin/components/icons.tsx` 0% → 100%, `app/components/icons.tsx` 58% → 100%.**
+
+The admin file carries a comment about a real outage: the tab bar renders
+`Icon[t.key]` directly, so a key with no entry evaluates to `undefined`, React
+throws #130, and the **whole dashboard dies on first paint**. The "media" tab
+shipped without a glyph and took down every admin screen. A comment was the only
+thing standing between that and a repeat.
+
+Now the tab keys are read out of `apps/admin/app/page.tsx` and every one is
+asserted to resolve to a function that renders real geometry. The mutant that
+matters — **adding a new tab with no glyph** — is caught, which is the actual
+2026 failure reproduced and killed. The app's set gets the same treatment
+against the names its shell and screens actually reach for.
+
+Both sets are also held to being decoration (`aria-hidden`, every glyph, or each
+destination reads twice) and to `currentColor` with no raw hex — the design-token
+rule the iOS app follows, mirrored on web. The two glyphs allowed their own
+colour are pinned as exceptions: the play triangle is FILLED (a stroked triangle
+at 20px reads as a hollow arrow) and the notification dot names `var(--warm)`,
+never a hex. `bell` and `bellDot` are asserted to differ by exactly the thing
+their names promise — a permanent dot claims unread notifications that do not
+exist.
+
+**Mutation sweep: 18 mutants, 18 caught, first pass.**
+
+## Done — the sign-in handshakes nobody was watching (2026-08-22)
+
+**`app/lib/social.ts` 79.4% → 100%.**
+
+The unconfigured half was already tested (no SDK loaded, CSP stays clean). The
+configured half — the part that runs when the owner finally sets the client ids
+— was not.
+
+**Apple:** loads Apple's own SDK URL and only that (an unexpected origin here is
+a script on the sign-in page of a mental-health product), initialises with the
+configured Services ID, the `name email` scope, and **`usePopup: true` — without
+it Apple full-page-redirects away and whatever was typed into the form below is
+gone**. A missing `id_token` rejects rather than signing in with nothing.
+
+**The name Apple sends only once.** Apple returns the user's name on the FIRST
+authorization and never again, so every later sign-in has no user object at all.
+A template with holes in it would put the literal string *"undefined undefined"*
+on the account, visible in the app's own header. Empty is asserted, and so is
+the no-trailing-space case when only a first name comes back.
+
+**Both SDKs are third-party scripts that can fail or change under us:** a script
+that cannot be fetched (offline, an extension, a corporate proxy) rejects
+instead of leaving the button spinning with no way back to the email form; a
+`google.accounts.id.initialize` that throws synchronously becomes a rejection;
+the SDK is not re-appended on a second attempt; and the `isSkippedMoment` branch
+— the browser suppressing One Tap — is now covered alongside `isNotDisplayed`,
+with a test that a prompt still ON SCREEN stays pending rather than being
+rejected as dismissed.
+
+**Mutation sweep: 12 mutants, 12 caught, first pass.**
+
+Running total: **191 mutants, 187 caught, 4 proven equivalent, 5 real weaknesses
+found and fixed.**
+
+### The two dead files are now the ONLY uncovered code
+
+With `apps/app/components/ui.tsx` and `apps/web/components/Glyphs.tsx` excluded,
+the web surface is at **98.8%**. Between them they are the reason the headline
+number is 95.8% instead — 110 uncovered statements, three percentage points, in
+two files with **no importer anywhere in the repo**. `git rm` is refused by the
+sandbox's permission classifier, so this stays an owner decision; nothing else
+in `apps/*/lib` or `apps/*/components` is now unwalked.
+
 ## Done — the portal's two topbar menus (2026-08-22)
 
 **962 tests; overall coverage 90.7%, `Shell.tsx` 78.0% → 94.3%.**
