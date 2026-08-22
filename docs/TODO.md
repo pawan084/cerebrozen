@@ -4,6 +4,46 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — Thought Sort and the offline programmes (2026-08-22)
+
+**742 tests; component coverage 62 → 69%.** Both of these components are mostly
+defined by what they REFUSE to do, so that is what the tests hold.
+
+- **`ThoughtSort`** was ported from a sibling build that scores *"Thought
+  awareness: 87%"* and congratulates *"Perfect cognitive awareness!"*. A
+  ten-item quiz over pre-written sentences measures no such faculty, and
+  unevidenced cognitive-training claims are the exact class the FTC acted on in
+  the 2016 Lumosity settlement. The summary here reports a count and nothing
+  more, so the tests assert the ABSENCES: no percentage, no "awareness", no
+  score, no praise ladder, and never the word "game" in rendered copy. Plus:
+  "Not sure" is answered without being told off and still gets the explanation,
+  and the button is "Start sorting" rather than "Start" — the Toolkit page also
+  carries the box breather's Start, and two identically-named buttons on one
+  page is a real screen-reader ambiguity that broke the e2e locator the same way.
+  **The twelve classifications are duplicated into the test on purpose**: this
+  is a product deciding on screen whether a sentence is helping the person
+  thinking it, and "I'm worthless" praised as helpful would not be a cosmetic
+  bug. Nothing else in the suite could notice, because the component reports
+  only a count.
+- **`OfflineProgram`** — "offline" is literal, so the test asserts NO fetch even
+  while ticking modules. Progress is per-programme (one key for CBT-I and MBCT
+  would have them ticking each other's modules), survives a reload, and says
+  "kept on this device only" — a privacy statement on the kind of reading
+  someone may not want on a server. Blocked or corrupt storage degrades to zero
+  ticks rather than a crash. And the honesty line is pinned: *"This is reading,
+  not treatment, and it does not know anything about you"*, with a working route
+  to a person inside that same sentence — CBT-I and MBCT are the names of real
+  therapies, so a page carrying them has to say which one it is not.
+
+One more infrastructure fix: the test program now contains components from
+SEVERAL apps, each resolving `@types/react` from its own `node_modules`, and TS
+reported two structurally identical `ReactNode` types as incompatible. The root
+`tsconfig` now pins react/react-dom types the same way `vitest.config.ts` pins
+the runtime copies.
+
+**Mutation sweep: 6 more, all 6 caught.** Running total: **47 mutants, 44
+caught, 3 proven equivalent.**
+
 ## Done — the waitlist, the ritual primitives (2026-08-21)
 
 **711 tests; component coverage 0 → 62%.** Two more components, both chosen
