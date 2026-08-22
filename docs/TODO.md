@@ -4,6 +4,54 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — mutation testing on safety and entitlements (WC-277, 2026-08-22)
+
+**781 passed / 2 skipped, coverage 96%; `services/safety.py` at 100%. Twelve
+mutants, all caught — after the first run found three real gaps.**
+
+Coverage says the lines ran. It does not say the tests would NOTICE if the code
+were wrong, and on these two modules that difference is measured in human harm
+and in money. `tests/mutation/` is a committed harness:
+`catalogue.py` names each wrong behaviour in prose, `run.py` applies it, runs the
+tests that ought to catch it, restores, and exits 1 on a survivor. Wired into CI
+after the backend suite (~40s, because one container runs all twelve).
+
+**Curated, not generated**, and deliberately: a generic AST mutator flips
+operators everywhere, produces mostly equivalent mutants and hours of runtime.
+Every entry is a specific thing someone could plausibly break, so the catalogue
+doubles as a statement of what these modules must never do.
+
+**The first run found three gaps, all in safety.**
+
+**S1 — the floor was untestable.** Replacing the merge rule with
+`if llm_risk == "none"` — turning the keyword net from a FLOOR into a mere
+no-LLM fallback — survived the entire suite. The reason is the interesting part:
+**nothing anywhere stubs the classifier to disagree.** Keyless,
+`complete_json` returns None and `llm_risk` is always `"none"`, so both versions
+behave identically. The module's most load-bearing comment — the floor exists
+because the LLM under-flagged *"hopeless … cannot go on"* — was documented,
+believed and unverified. Now stubbed both ways: an under-flagging classifier
+cannot lower a crisis phrase, and an over-flagging one still wins, because the
+rule is `max` and not `keyword always`.
+
+**S3 — failure inside the floor went untested.** Returning `"none"` instead of
+`"elevated"` on an internal error survived. A net that goes silent when it
+breaks is worse than no net, because everything downstream believes it ran.
+
+**S6 — `elevated` left no record.** Narrowing event creation to `crisis` only
+survived. `elevated` is the rung that exists so somebody can look *before* it
+becomes a crisis; returning a level and writing nothing means there is nothing
+to look at.
+
+One test documents today's behaviour rather than asserting a wish: `classify`
+does **not** swallow a provider exception, so the caller sees it. That is
+recorded as a deliberate state, and the test is where the contract gets rewritten
+if it ever changes.
+
+All six entitlement mutants were caught on the first run — sponsorship ignored,
+the sponsored flag lost, a fourth tier invented, anonymous callers made paid, the
+paid check inverted, and `is_paid` always true.
+
 ## Done — cross-stack drift fails CI instead of review (WC-279, 2026-08-22)
 
 `scripts/check-contracts.mjs`, wired into the `web` job beside the price,

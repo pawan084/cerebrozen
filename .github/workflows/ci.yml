@@ -151,6 +151,19 @@ jobs:
         # (prestart/seed + the LangGraph LLM agent are excluded via .coveragerc.)
         run: pytest -q --cov=app --cov-report=term-missing --cov-fail-under=95
 
+      # Coverage says the lines ran; this says the tests would NOTICE if the
+      # code were wrong. Only the two modules where a false pass costs most —
+      # safety (human harm) and entitlements (money). It found three real gaps
+      # on its first run, all in safety: see tests/mutation/catalogue.py.
+      # ~40s, because one container runs all twelve.
+      - name: Mutation check (safety + entitlements)
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://cerebro:cerebro@localhost:5432/cerebro
+          SECRET_KEY: ci-secret
+          TESTING: "1"
+        run: python tests/mutation/run.py
+
   # ── Web + Admin: Playwright e2e (isolated docker stack) ───────────────
   e2e:
     name: Web + Admin (Playwright e2e)
