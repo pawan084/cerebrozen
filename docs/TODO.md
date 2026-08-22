@@ -4,6 +4,38 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the admin dashboard says what the dispatcher now knows (2026-08-22)
+
+Follow-through on two things I added earlier today and left stranded behind the
+API: the nudge dispatcher gained `expired` and `deferred`, and
+`metrics.quiet_users` gained a metric — and nothing rendered either.
+
+**`POST /admin/nudges/dispatch` returned three of five endings.** An operator
+reading the dashboard saw a pass that "did nothing" when it had in fact dropped
+stale nudges or deferred blipped ones. All five now, still never summed: each
+answers a different question, and three of them are not problems with the user.
+
+**Which endings to name is a decision, so it moved out of the button** into
+`apps/admin/lib/dispatchSummary.ts` where a test can reach it — the same split
+as `Billing.kt` vs `BillingBridge.kt`. Nine tests:
+- `0 sent · 4 expired` keeps the zero, because that is the sentence somebody
+  needs the morning after an outage and hiding it makes the pass read as though
+  something went out;
+- endings that did not occur are never printed, because a line that always says
+  "0 expired · 0 deferred" trains an operator to stop reading it;
+- an outage is never described as a failure — `expired` means WE were down,
+  `failed` means a device refused, and those are chased in opposite directions;
+- and a response missing both new fields still renders, because the admin app
+  and the API deploy separately.
+
+**The `quiet` panel ships the caveat with the number.** It renders `means`
+verbatim — *"On a wellness product this is not the same as churn: some of these
+people are better"* — and shows the withheld state as prose rather than a blank
+cell. Building the honesty into the API and dropping it at the last mile would
+have been the same as not having it.
+
+1,192 web tests at 98.7%; 783 backend passed at 96%.
+
 ## Done — the mutation catalogue reaches privacy (WC-277, 2026-08-22)
 
 **24 mutants: 23 caught, 1 proven equivalent. 783 passed / 2 skipped, 96%.**

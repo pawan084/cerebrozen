@@ -749,13 +749,28 @@ async def list_nudges(
 # this automatically every NUDGE_DISPATCH_INTERVAL_MINUTES) ───────────────
 @router.post("/nudges/dispatch")
 async def dispatch_nudges(db: AsyncSession = Depends(get_db)):
-    # Returns all three tallies, not just `sent` (register E58): the Nudges tab
-    # promises "honest sent/skipped/failed outcomes" and could not show two of
-    # them. `skipped` is a reach question (nobody to deliver to), `failed` is a
-    # delivery one (a registered device refused) — an operator chases those
-    # differently, so they are never summed.
+    # All FIVE tallies, not just `sent` (register E58) and no longer just three
+    # (2026-08-22): the retry/lateness work gave the dispatcher two more endings
+    # and this endpoint kept reporting the old set, so an operator reading the
+    # dashboard saw a pass that "did nothing" when it had in fact dropped stale
+    # nudges or deferred blipped ones.
+    #
+    # They are never summed. Each answers a different question:
+    #   sent      — delivered.
+    #   skipped   — nobody was reachable at all. A reach question.
+    #   failed    — a device we hold a token for refused, after every retry.
+    #               The one worth chasing.
+    #   expired   — too late to mean anything, so deliberately not delivered.
+    #               Rising `expired` means WE were down, not that users are gone.
+    #   deferred  — a delivery blipped and will be retried. Not an ending.
     outcome = await nudges.dispatch_due(db)
-    return {"sent": outcome.sent, "skipped": outcome.skipped, "failed": outcome.failed}
+    return {
+        "sent": outcome.sent,
+        "skipped": outcome.skipped,
+        "failed": outcome.failed,
+        "expired": outcome.expired,
+        "deferred": outcome.deferred,
+    }
 
 
 @router.get("/agent-actions")

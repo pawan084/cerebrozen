@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 import { API_URL, ApiError, api, clearToken, hasSession, login, logout, setToken, upload } from "@/lib/api";
+import { dispatchSummary, type DispatchOutcome } from "@/lib/dispatchSummary";
 import { BrandMark, Icon } from "@/components/icons";
 
 type Tab = "overview" | "analytics" | "users" | "content" | "media" | "prompts" | "oracle" | "nudges" | "safety" | "waitlist";
@@ -439,11 +440,19 @@ function RunWeeklyDigest({ onDone }: { onDone: () => void }) {
  * to, so an operator who had just queued an announcement had to leave the page
  * to send it and then come back to see whether it moved.
  *
- * It reports all three tallies because the Nudges tab promises "honest
- * sent/skipped/failed outcomes" and the response used to carry only `sent`.
- * They are never summed: `skipped` means nobody was reachable (no push token,
- * no browser subscription, no email opt-in) — a reach question — while `failed`
- * means a device we hold a token for refused, which is the one worth chasing.
+ * It reports every tally the dispatcher produces, because the Nudges tab
+ * promises "honest sent/skipped/failed outcomes" and the response used to carry
+ * only `sent`. Two more endings arrived with the retry/lateness work
+ * (2026-08-22) and are shown for the same reason:
+ *
+ *   skipped   nobody was reachable at all — a reach question, not a fault.
+ *   failed    a device we hold a token for refused, after every retry.
+ *   expired   too late to mean anything, so deliberately NOT delivered. This
+ *             one is about US: a rising count means the dispatcher was down.
+ *   deferred  blipped, and will be retried. Not an ending at all.
+ *
+ * Never summed, and never collapsed into "failed" — an operator chases each of
+ * these differently, and three of them are not problems with the user.
  */
 function DispatchDue({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
@@ -453,16 +462,10 @@ function DispatchDue({ onDone }: { onDone: () => void }) {
     setBusy(true);
     setMsg("");
     try {
-      const r = await api<{ sent: number; skipped: number; failed: number }>(
-        "/admin/nudges/dispatch",
-        { method: "POST" },
-      );
-      const total = r.sent + r.skipped + r.failed;
-      setMsg(
-        total === 0
-          ? "Nothing was due."
-          : `${r.sent} sent · ${r.skipped} skipped (nobody reachable) · ${r.failed} failed`,
-      );
+      const r = await api<DispatchOutcome>("/admin/nudges/dispatch", { method: "POST" });
+      // Which endings to name is a decision, so it lives in lib/ where a test
+      // can reach it rather than inside a button.
+      setMsg(dispatchSummary(r));
       onDone();
     } catch (e: any) {
       setMsg(actionMessage(e, "Dispatch didn't go through — try again."));
@@ -577,6 +580,38 @@ function Analytics() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* The other side of retention. Deliberately NOT labelled "churn":
+              on a wellness product some of these people got better, and a
+              dashboard that calls recovery a loss will get optimised against.
+              The backend ships that caveat in `means` — it is rendered here
+              rather than dropped, because building the honesty into the API
+              and losing it at the last mile is the same as not having it. */}
+          <div className="panel">
+            <h3 className="serif">Went quiet</h3>
+            {data.quiet?.reason === "not_enough_people" ? (
+              <p className="page-sub flush">
+                Not enough people yet ({data.quiet.cohort} in the window). A rate
+                computed from a handful is noise, so none is shown.
+              </p>
+            ) : (
+              <div className="stats">
+                <div className="stat">
+                  <div className="n">{data.quiet?.quiet ?? "—"}</div>
+                  <div className="l">Stopped</div>
+                </div>
+                <div className="stat">
+                  <div className="n">{data.quiet?.cohort ?? "—"}</div>
+                  <div className="l">Were active</div>
+                </div>
+                <div className="stat">
+                  <div className="n">{pct(data.quiet?.rate)}</div>
+                  <div className="l">Rate</div>
+                </div>
+              </div>
+            )}
+            <p className="page-sub flush">{data.quiet?.means}</p>
           </div>
 
           <div className="panel">
