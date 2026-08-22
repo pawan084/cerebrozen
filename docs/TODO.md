@@ -4,6 +4,41 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the guided tour, and a three-client promise (2026-08-22)
+
+**838 tests; overall coverage 79.9%, `apps/app/components` 78.8%.**
+
+`GuidedTour` shows once per browser and carries the product's central claim
+about itself. The interesting half is the CROSS-CLIENT contract: the four stop
+titles, the sentence *"It's AI — never a therapist, and always honest about
+that."* and the promise *"Nothing is remembered without your say-so."* are now
+asserted against Android's `strings.xml` AND iOS's `GuidedTour.swift`. Three
+clients wording that three ways is three different promises, and that one is
+not ours to soften.
+
+The bodies deliberately DIVERGE where they name each client's own navigation
+(Android sends people to You → Privacy & memory, the web to Account → Privacy),
+and the test asserts that divergence too — so nobody "fixes" it into a sentence
+that points at a screen the reader does not have.
+
+`resetTour` is pinned to touch nothing but its own flag: Account → "Take a
+quick tour" must not be a way to lose a journal draft or a session.
+
+**Two of my own tests needed correcting before this landed**, both the same
+class this campaign keeps finding:
+- One was named *"still shows when storage cannot be read"* while asserting the
+  opposite. The assertion was right about the code — the read sits in a
+  swallowing try/catch, so the overlay simply does not appear — and the NAME was
+  the lie. Renamed, with the reasoning: an unreadable flag means the tour cannot
+  know whether it has been seen, and a full-screen overlay on every visit would
+  be worse than never showing it.
+- One looped over four Android strings asserting only that they were non-empty.
+  The test below it did the real comparison, so the loop was decoration and is
+  gone.
+
+**Mutation sweep: 4 more, all 4 caught.** Running total: **67 mutants, 64
+caught, 3 proven equivalent, 2 real weaknesses found and fixed.**
+
 ## Done — the landing's accessibility pieces (2026-08-22)
 
 **821 tests; overall coverage 77.4%, `apps/web/components` 0 → 66.7%.** Three
