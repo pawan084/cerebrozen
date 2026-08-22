@@ -67,6 +67,7 @@ def main(argv: list[str]) -> int:
 
     survivors: list[Mutant] = []
     missing: list[Mutant] = []
+    broke_equivalence: list[Mutant] = []
 
     print(f"Mutation run — {len(mutants)} mutant(s)\n")
     for mutant in mutants:
@@ -81,7 +82,16 @@ def main(argv: list[str]) -> int:
             survived = run_tests(mutant.caught_by)
         finally:
             restore(mutant, original)
-        if survived:
+        if mutant.equivalent:
+            # Inverted on purpose: a proven-equivalent mutant SHOULD survive.
+            # Catching it means the proof stopped holding, which is a finding
+            # about the system rather than about the tests.
+            if survived:
+                print(f"  ·  {mutant.id}: survived, as proven equivalent")
+            else:
+                broke_equivalence.append(mutant)
+                print(f"  !  {mutant.id}: CAUGHT — it is no longer equivalent")
+        elif survived:
             survivors.append(mutant)
             print(f"  ✗  {mutant.id}: SURVIVED")
         else:
@@ -93,6 +103,19 @@ def main(argv: list[str]) -> int:
         for m in missing:
             print(f"  · {m.id} — {m.path}")
         print("  Update the catalogue in the same commit as the code it describes.\n")
+
+    if broke_equivalence:
+        print("NO LONGER EQUIVALENT — a recorded proof has stopped holding:\n")
+        for m in broke_equivalence:
+            print(f"  {m.id}")
+            print(f"    Would break: {m.breaks}")
+            print(f"    The proof was: {m.equivalent}\n")
+        print(
+            "Something changed underneath the assumption. Re-derive it, then\n"
+            "either update the proof or drop the `equivalent` marker and keep\n"
+            "the mutant as a live one."
+        )
+        return 1
 
     if survivors:
         print("SURVIVORS — the suite would not have noticed:\n")
@@ -108,7 +131,10 @@ def main(argv: list[str]) -> int:
 
     if missing:
         return 1
-    print(f"All {len(mutants)} mutant(s) caught.")
+    equivalents = sum(1 for m in mutants if m.equivalent)
+    caught = len(mutants) - equivalents
+    suffix = f" ({equivalents} proven equivalent, expected to survive)" if equivalents else ""
+    print(f"All {caught} mutant(s) caught{suffix}.")
     return 0
 
 

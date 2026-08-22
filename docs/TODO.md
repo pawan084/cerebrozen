@@ -4,6 +4,38 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — mutation catalogue extended to the crisis directory (WC-277, 2026-08-22)
+
+**19 mutants: 18 caught, 1 proven equivalent.** `services/crisis.py` is the
+highest-harm module in the repo — everything in it ends with somebody dialling
+something — so it gets the same treatment as safety and entitlements.
+
+Seven new mutants, six caught by the existing suite on the first run: an
+unknown region falling back to ONE country instead of the international default
+(the UK-helpline-reaching-Indian-users bug, reproduced), India losing its
+Tele-MANAS-first ordering, a region code that stops being upper-cased, a crisis
+reply that names no number at all, a reply that ignores the region entirely, and
+an emergency number drifting.
+
+**The seventh survived, and the interesting work was proving why.** Removing the
+`[:2]` truncation from `normalize_region` changes nothing — because no locale can
+reach that function: `schemas/user._known_region` REJECTS anything outside
+`KNOWN_REGIONS`, and all four call sites (chat, work, journal ×2, oracle) pass
+`user.region`, which went through that validator. So the truncation is defence in
+depth over an already-constrained value.
+
+**The catalogue now models that**, rather than deleting the entry or leaving a
+false gap. A mutant with an `equivalent` proof INVERTS the runner's verdict:
+surviving is correct, and being **caught** is the failure — because that means
+the proof stopped holding, i.e. somebody loosened the validator and the
+truncation became load-bearing. The entry is a canary for the assumption, and
+deleting it would have thrown the canary away with it.
+
+That distinction earns its keep: three "surviving mutants" earlier in this
+session turned out to be badly built mutants, and one turned out to be a real
+gap. Recording which is which, with the proof, is the difference between a gate
+and a folklore.
+
 ## Done — mutation testing on safety and entitlements (WC-277, 2026-08-22)
 
 **781 passed / 2 skipped, coverage 96%; `services/safety.py` at 100%. Twelve

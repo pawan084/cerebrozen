@@ -35,11 +35,21 @@ class Mutant:
     new: str
     #: Tests expected to fail. Kept narrow so a run is seconds, not minutes.
     caught_by: tuple[str, ...] = field(default=("tests/",))
+    #: Set ONLY with a proof, when the mutant provably cannot change behaviour.
+    #:
+    #: An equivalent mutant is expected to survive, so the runner inverts the
+    #: verdict for it: surviving is correct, and being CAUGHT is the failure —
+    #: because that means the proof below stopped holding. It is a canary for
+    #: the assumption, not an excuse for a gap. Deleting the entry instead
+    #: would throw the canary away with it.
+    equivalent: str = ""
 
 
 SAFETY = "app/services/safety.py"
+CRISIS = "app/services/crisis.py"
 ENTITLEMENTS = "app/services/entitlements.py"
 SAFETY_TESTS = ("tests/test_safety_floor.py", "tests/test_safety_reach.py")
+CRISIS_TESTS = ("tests/test_crisis.py",)
 ENTITLEMENT_TESTS = ("tests/test_entitlements.py",)
 
 CATALOGUE: list[Mutant] = [
@@ -169,5 +179,101 @@ CATALOGUE: list[Mutant] = [
         old="        return self.tier in PAID_TIERS",
         new="        return True",
         caught_by=ENTITLEMENT_TESTS,
+    ),
+    # ── Crisis: the right number, for the right country ──────────────────
+    #
+    # Everything in this module ends in somebody dialling something, which
+    # makes it the highest-harm code in the repo. C1 reproduces a bug that has
+    # actually happened here: a UK helpline reaching Indian users.
+    Mutant(
+        id="C1-unknown-region-gets-a-country",
+        breaks=(
+            "An unrecognised region falls back to ONE country's lines instead "
+            "of the international default, so a user in an unlisted country is "
+            "handed a helpline that does not answer where they are."
+        ),
+        path=CRISIS,
+        old="    return _REGIONS.get(normalize_region(region), _DEFAULT)",
+        new='    return _REGIONS.get(normalize_region(region), _REGIONS["GB"])',
+        caught_by=CRISIS_TESTS,
+    ),
+    Mutant(
+        id="C2-telemanas-loses-its-place",
+        breaks=(
+            "India stops leading with Tele-MANAS. The rule is Tele-MANAS-first "
+            "on every crisis surface (REDESIGN §2.3) and all three clients "
+            "already lead with it, so this is the server disagreeing with every "
+            "screen the user can see."
+        ),
+        path=CRISIS,
+        old='        {"name": "Tele-MANAS mental health support", "number": "14416"},',
+        new='        {"name": "KIRAN mental health helpline", "number": "1800-599-0019"},',
+        caught_by=CRISIS_TESTS,
+    ),
+    Mutant(
+        id="C3-region-case-not-normalised",
+        breaks=(
+            "A lower-case region code from a device locale ('in') matches "
+            "nothing, so Indian users silently get the international default "
+            "instead of Tele-MANAS."
+        ),
+        path=CRISIS,
+        old='    return (region or "").strip().upper()[:2]',
+        new='    return (region or "").strip()[:2]',
+        caught_by=CRISIS_TESTS,
+    ),
+    Mutant(
+        id="C4-region-not-truncated",
+        breaks=(
+            "A full locale ('IN-MH', 'en-IN') would no longer resolve to its "
+            "country — 'en-IN' truncates to 'EN', which is not India, so an "
+            "Indian user would get the international default instead of "
+            "Tele-MANAS."
+        ),
+        path=CRISIS,
+        old='    return (region or "").strip().upper()[:2]',
+        new='    return (region or "").strip().upper()',
+        caught_by=CRISIS_TESTS,
+        equivalent=(
+            "Proven equivalent 2026-08-22, not assumed. No locale can reach "
+            "this function: `schemas/user._known_region` REJECTS anything "
+            "outside KNOWN_REGIONS (a 2-letter set plus ''), and all four "
+            "callers — chat, work, journal (x2) and oracle — pass `user.region`, "
+            "which went through that validator. `[:2]` is therefore defence in "
+            "depth over an already-constrained value. If this mutant is ever "
+            "CAUGHT, the validator has been loosened and the truncation has "
+            "become load-bearing — which is exactly what this entry is here to "
+            "notice."
+        ),
+    ),
+    Mutant(
+        id="C5-crisis-reply-names-no-number",
+        breaks=(
+            "The reply suffix renders no lines at all — the one message sent to "
+            "somebody who has just disclosed danger contains no number to call."
+        ),
+        path=CRISIS,
+        old="for line in lines[:2])",
+        new="for line in lines[:0])",
+        caught_by=CRISIS_TESTS,
+    ),
+    Mutant(
+        id="C6-reply-ignores-the-region",
+        breaks=(
+            "The chat reply always names the international default, however well "
+            "the rest of the app resolved the user's country."
+        ),
+        path=CRISIS,
+        old="    lines = lines_for(region)",
+        new="    lines = _DEFAULT",
+        caught_by=CRISIS_TESTS,
+    ),
+    Mutant(
+        id="C7-an-emergency-number-drifts",
+        breaks="A country's emergency number is wrong — 911 becomes 999 in the US.",
+        path=CRISIS,
+        old='        {"name": "Emergency services", "number": "911"},\n        {"name": "988 Suicide & Crisis Lifeline", "number": "988"},',
+        new='        {"name": "Emergency services", "number": "999"},\n        {"name": "988 Suicide & Crisis Lifeline", "number": "988"},',
+        caught_by=CRISIS_TESTS,
     ),
 ]
