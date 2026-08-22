@@ -15,6 +15,7 @@ from app.models.organization import (
     ROLE_BENEFITS_OWNER,
     STATUS_ACTIVE,
     STATUS_ENDED,
+    STATUS_INVITED,
     EligibilityGroup,
     Organization,
     OrgAdmin,
@@ -192,6 +193,83 @@ async def test_a_group_over_the_threshold_reports_numbers(client):
     row = next(t for t in (await client.get("/org/groups/totals")).json() if t["name"] == "All employees")
     assert row["suppressed"] is False
     assert row["activated"] == MIN_REPORTING_THRESHOLD + 1
+
+
+# ── The boundary, and the population it measures ────────────────────────
+#
+# Both added 2026-08-22 after a mutation run (WC-277). The two tests above use
+# 4 (well under) and threshold+1 (just over), and in both of them every eligible
+# member had also activated — so two mutations of the suppression rule survived
+# the whole suite: moving the boundary by one, and testing the wrong population.
+
+async def test_the_threshold_is_the_boundary_itself(client):
+    """At exactly the threshold a group reports; one below, it does not.
+
+    An off-by-one here is not a rounding error. It publishes a group of 19 to
+    an employer under a rule that promised twenty, which is the difference
+    between an aggregate and a small enough crowd to guess at.
+    """
+    admin_email, _ = await _signup(client, "boundary")
+    async with SessionLocal() as db:
+        org = await _make_org(db, name="Boundary Co", admin_email=admin_email)
+        at = EligibilityGroup(org_id=org.id, name="Exactly at")
+        under = EligibilityGroup(org_id=org.id, name="One under")
+        db.add_all([at, under])
+        await db.flush()
+        for group, size in ((at, MIN_REPORTING_THRESHOLD), (under, MIN_REPORTING_THRESHOLD - 1)):
+            for i in range(size):
+                u = User(email=f"bd{i}-{uuid.uuid4().hex[:8]}@test.app", hashed_password="x")
+                db.add(u)
+                await db.flush()
+                db.add(
+                    OrgMembership(
+                        org_id=org.id, user_id=u.id, group_id=group.id, status=STATUS_ACTIVE
+                    )
+                )
+        await db.commit()
+
+    rows = {t["name"]: t for t in (await client.get("/org/groups/totals")).json()}
+    assert rows["Exactly at"]["suppressed"] is False, "the threshold is inclusive"
+    assert rows["Exactly at"]["activated"] == MIN_REPORTING_THRESHOLD
+    assert rows["One under"]["suppressed"] is True, "one below the threshold is still below it"
+    assert rows["One under"]["activated"] is None
+
+
+async def test_a_big_group_with_few_activations_still_reports(client):
+    """Suppression measures the POPULATION, not the number.
+
+    A large group where almost nobody activated is exactly the report an
+    employer needs to see — "we bought 25 seats and 3 people use it" is the
+    finding. Testing `activated < threshold` instead would hide it behind
+    "too small to report", which is a false no-data rather than a leak: safe,
+    and wrong.
+    """
+    admin_email, _ = await _signup(client, "sparse")
+    async with SessionLocal() as db:
+        org = await _make_org(db, name="Sparse Co", admin_email=admin_email)
+        group = EligibilityGroup(org_id=org.id, name="Barely used")
+        db.add(group)
+        await db.flush()
+        eligible = MIN_REPORTING_THRESHOLD + 5
+        for i in range(eligible):
+            u = User(email=f"sp{i}-{uuid.uuid4().hex[:8]}@test.app", hashed_password="x")
+            db.add(u)
+            await db.flush()
+            db.add(
+                OrgMembership(
+                    org_id=org.id,
+                    user_id=u.id,
+                    group_id=group.id,
+                    # Only three ever activated; the rest were invited and never came.
+                    status=STATUS_ACTIVE if i < 3 else STATUS_INVITED,
+                )
+            )
+        await db.commit()
+
+    row = next(t for t in (await client.get("/org/groups/totals")).json() if t["name"] == "Barely used")
+    assert row["suppressed"] is False, "the group is big enough; the usage is what is low"
+    assert row["eligible"] == MIN_REPORTING_THRESHOLD + 5
+    assert row["activated"] == 3
 
 
 async def test_summary_states_that_individual_reporting_does_not_exist(client):

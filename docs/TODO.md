@@ -4,6 +4,43 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the mutation catalogue reaches privacy (WC-277, 2026-08-22)
+
+**24 mutants: 23 caught, 1 proven equivalent. 783 passed / 2 skipped, 96%.**
+
+Safety, entitlements and crisis were covered. The two remaining places where a
+false pass costs most are the ones where a fail-open produces output that looks
+exactly like correct output — nobody notices, because there is nothing to see:
+
+- **Consent** (`consent_allows`). Both caught first time: failing open when the
+  row is absent (absence of a decision is not a decision), and granting
+  everything unconditionally while the privacy screen keeps showing switches.
+- **Small-cell suppression** — the mechanism behind the portal's central claim,
+  *"minimum cohort thresholds and small-cell suppression. Managers cannot see
+  who used CereBro."*
+
+**Two suppression mutants survived, and they are not the same kind of thing.**
+
+**P3 is a real leak that was untested.** Moving the boundary by one publishes a
+group of **19** under a rule that promised twenty. The two existing tests used 4
+(well under) and threshold+1 (just over), so the boundary itself — the whole
+rule — was never asserted. Now pinned in both directions: at exactly the
+threshold a group reports; one below, it does not.
+
+**P4 was described wrongly by me, and working that out was the useful part.** I
+claimed it would report a group of 4 and identify all four. It cannot: since
+`activated <= eligible` always, testing `activated < threshold` can only ever
+OVER-suppress. The real defect is a false "no data" — an employer with 25 seats
+and 3 users is told there is nothing to report, when low usage *is* the finding.
+Safe, and wrong. The catalogue entry now says so, including the correction,
+because a mutant whose description is wrong teaches the wrong lesson to whoever
+reads it next.
+
+That makes three distinct verdicts this harness has produced, all of which
+needed working out rather than assuming: a real gap, a proven-equivalent mutant
+(kept as a canary), and a badly-described mutant. Recording which is which is
+the difference between a gate and folklore.
+
 ## Done — mutation catalogue extended to the crisis directory (WC-277, 2026-08-22)
 
 **19 mutants: 18 caught, 1 proven equivalent.** `services/crisis.py` is the

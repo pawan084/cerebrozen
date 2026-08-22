@@ -48,9 +48,13 @@ class Mutant:
 SAFETY = "app/services/safety.py"
 CRISIS = "app/services/crisis.py"
 ENTITLEMENTS = "app/services/entitlements.py"
+CONSENT = "app/models/consent.py"
+ORG = "app/services/organizations.py"
 SAFETY_TESTS = ("tests/test_safety_floor.py", "tests/test_safety_reach.py")
 CRISIS_TESTS = ("tests/test_crisis.py",)
 ENTITLEMENT_TESTS = ("tests/test_entitlements.py",)
+CONSENT_TESTS = ("tests/test_consent_enforced.py",)
+ORG_TESTS = ("tests/test_org.py", "tests/test_org_roles.py")
 
 CATALOGUE: list[Mutant] = [
     # ── Safety: the floor ────────────────────────────────────────────────
@@ -267,6 +271,91 @@ CATALOGUE: list[Mutant] = [
         old="    lines = lines_for(region)",
         new="    lines = _DEFAULT",
         caught_by=CRISIS_TESTS,
+    ),
+    # ── Privacy: the two places a fail-open is a breach, not a bug ────────
+    #
+    # Safety and money get caught by somebody noticing. These two do not: a
+    # consent gate that opens, or a suppression threshold that stops
+    # suppressing, produces output that looks exactly like correct output. The
+    # user never sees the difference — which is precisely why they are mutated.
+    Mutant(
+        id="P1-consent-fails-open-when-absent",
+        breaks=(
+            "A user with no consent row reads as having granted everything. "
+            "Absence of a recorded decision is not a decision, and this is the "
+            "one case where we know least about what the person wanted — it "
+            "used to default permissive, which is the bug this guards."
+        ),
+        path=CONSENT,
+        old="    return consent is not None and bool(getattr(consent, flag))",
+        new="    return consent is None or bool(getattr(consent, flag))",
+        caught_by=CONSENT_TESTS,
+    ),
+    Mutant(
+        id="P2-consent-always-granted",
+        breaks=(
+            "Every consent check opens. Chat memory, journal titles, sleep "
+            "history and voice storage are all read regardless of the switches "
+            "the privacy screen shows — while that screen keeps showing them."
+        ),
+        path=CONSENT,
+        old="    return consent is not None and bool(getattr(consent, flag))",
+        new="    return True",
+        caught_by=CONSENT_TESTS,
+    ),
+    Mutant(
+        id="P3-suppression-off-by-one",
+        breaks=(
+            "A group EXACTLY at the threshold stops being suppressed. The "
+            "boundary is the whole rule: at 20 with a threshold of 20, the "
+            "number is reportable; at 19 it is not."
+        ),
+        path=ORG,
+        old="    suppressed = eligible < threshold",
+        new="    suppressed = eligible < threshold - 1",
+        caught_by=ORG_TESTS,
+    ),
+    Mutant(
+        id="P4-suppression-measures-the-wrong-population",
+        breaks=(
+            "Suppression tests the SIZE OF THE NUMBER instead of the size of "
+            "the population it describes, so a large group with few activations "
+            "is hidden behind 'too small to report'. An employer who bought 25 "
+            "seats and has 3 users is told there is no data, when low usage IS "
+            "the finding.\n\n"
+            "            Worth stating precisely, because the first draft of "
+            "this entry claimed the opposite — that it would report a group of "
+            "4 and identify all four. It cannot: `activated <= eligible` "
+            "always, so this mutation can only ever OVER-suppress and never "
+            "leak. A false 'no data' is safe and wrong; the leak lives in P3."
+        ),
+        path=ORG,
+        old="    suppressed = eligible < threshold",
+        new="    suppressed = activated < threshold",
+        caught_by=ORG_TESTS,
+    ),
+    Mutant(
+        id="P5-suppressed-groups-still-report-counts",
+        breaks=(
+            "A group marked suppressed reports its real numbers anyway — the "
+            "flag says 'hidden' while the payload carries the counts."
+        ),
+        path=ORG,
+        old="        activated=None if suppressed else activated,\n        active=None if suppressed else activated,",
+        new="        activated=activated,\n        active=activated,",
+        caught_by=ORG_TESTS,
+    ),
+    Mutant(
+        id="P6-threshold-floor-removed",
+        breaks=(
+            "An administrator can set the reporting threshold to 1, which is "
+            "no suppression at all. The floor exists because the number is not "
+            "the organisation's to choose downward."
+        ),
+        path=ORG,
+        old="    return max(int(value), MIN_REPORTING_THRESHOLD)",
+        new="    return int(value)",
+        caught_by=ORG_TESTS,
     ),
     Mutant(
         id="C7-an-emergency-number-drifts",
