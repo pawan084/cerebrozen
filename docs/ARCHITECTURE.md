@@ -98,7 +98,14 @@ screen says so rather than letting the user assume it follows their account.
   context — a deny-list fails open on the field nobody thought of, and on this product that
   field holds a journal sentence. **No vendor is wired**: where an error sink lands is a DPDP
   transfer/retention question before it is a pricing one, so the adapter seam
-  (`register_sink`, one `send` method) is built and the choice is left to the owner
+  (`register_sink`, one `send` method) is built and the choice is left to the owner.
+  **Ported to both clients (2026-08-22)**: `apps/app/lib/errors.ts` (+ `app/global-error.tsx`
+  and `components/ErrorReporter.tsx` — the web app had no boundary and no `window` handlers
+  at all, so a render crash was recorded nowhere) and
+  `apps/android/.../net/ErrorTracking.kt` (installed from `MainActivity`, chaining to
+  Android's own handler so the process still dies and still files its Play report). All three
+  build the report from the same three fingerprint inputs — type, route, innermost frame —
+  so the counts describe the same shape of thing
 - `services/` — all business logic + provider adapters (22 modules; `prompts.py` is the
   versioned prompt registry every LLM call site reads through).
 - `models/` — SQLAlchemy ORM; `schemas/` — Pydantic I/O.

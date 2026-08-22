@@ -23,6 +23,10 @@ class MainActivity : FragmentActivity() {
         )
         super.onCreate(savedInstanceState)
         restoreAppLanguage(applicationContext)
+        // Before anything else that can throw: the crash handler chains to
+        // Android's own, so the process still dies and still files its Play
+        // report — this only makes the failure countable on our side (WC-17).
+        com.cerebrozen.app.net.ErrorTracking.install()
         Session.init(applicationContext)
         Haptics.init(applicationContext)
         // The nudge's promise: Push.kt attaches the deeplink to this intent;

@@ -567,6 +567,11 @@ fun CereBroApp() {
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val current = backStack?.destination?.route ?: Tab.Talk.route
+    // A crash report says WHICH screen, and nothing from it: the route name is
+    // structure, the entry open on it is content (WC-17).
+    androidx.compose.runtime.LaunchedEffect(current) {
+        com.cerebrozen.app.net.ErrorTracking.currentRoute = current
+    }
     // Honor the notification's promise: navigate to the deeplink the nudge
     // carried. Signed-out sessions never reach this point, so the route waits
     // on the bus until the NavHost exists.

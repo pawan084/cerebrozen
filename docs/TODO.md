@@ -4,6 +4,59 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — error tracking on both clients (WC-17, 2026-08-22)
+
+**Web: 1,183 tests, 98.6% coverage, `lib/errors.ts` at 100%, 71 e2e green.
+Android: `:app:check` exit 0, coverage 96.25%, 15 new tests.**
+
+One policy, ported twice, deliberately not reinvented: a fingerprint computed
+differently per client is three incident counts that cannot be added together.
+All three now build the report from the same three inputs — **type, route,
+innermost frame** — and all three refuse the same field, the exception message,
+which is where the value that broke it lives.
+
+**The web app had nothing at all.** No error boundary, no `window` handlers: a
+render crash showed Next's default screen and was recorded nowhere, so "how
+often does the journal blow up on iOS Safari" had no answer. Added
+`app/global-error.tsx` and `components/ErrorReporter.tsx` (mounted in the ROOT
+layout, so onboarding and sign-in are covered — a first-time user's crash never
+reaches an authed layout). Browser stacks are free text and differ per engine,
+so frames are parsed from both shapes (V8's `at fn (url:line:col)` and
+Firefox/Safari's `fn@url:line:col`) down to `file:line in fn`, with the query
+string dropped off the bundle URL because it can carry a build token.
+
+**The crash screen keeps the support door open.** A crash in a mental-health app
+must not be a dead end — whoever is holding the phone may be having a much worse
+evening than the stack trace is. The crisis link is a plain `<a>`, not a router
+push: the router is part of what may have just failed, and that is the one door
+that has to open.
+
+**Android had no uncaught-exception handler.** A crash was a logcat trace plus
+whatever Play collects — which includes the full message. `ErrorTracking.install()`
+runs from `MainActivity.onCreate` and **chains to the previous handler**, so the
+process still dies and still files its Play report; swallowing a crash would turn
+a visible failure into a frozen screen, which is strictly worse for the user. The
+route is kept in step by a `LaunchedEffect` on the nav host — the route NAME is
+structure, the entry open on it is content.
+
+Deliberately not reused: `Session.SENSITIVE_KEYS`, which masks known keys in
+DEBUG logs. It can only mask the keys it knows, and a crash inside a journal
+parser puts the entry in the message under no key at all. That is the whole
+argument for allow-list over deny-list, and it is why the clients do not extend
+that set.
+
+**Two testing notes worth keeping.** A jsdom `error` event nobody handles is
+escalated into an uncaught exception that fails the RUN rather than the test —
+so teardown is asserted against a fake target, checking that
+`removeEventListener` gets the SAME function references (handing it a fresh
+closure silently removes nothing, and every remount then stacks another
+reporter). And the Android suite pins that `install()` is idempotent, because
+two handlers means every crash reported twice.
+
+Still open for WC-17: the transport. All three write to their local log by
+default; where an error sink LANDS remains a DPDP transfer-and-retention
+decision for the owner, and the seam is one `send` method in each client.
+
 ## Done — error tracking, the half that is not a vendor decision (WC-17, 2026-08-22)
 
 **Backend: 722 passed / 2 skipped, coverage 96%. `services/errors.py` at 100%.**

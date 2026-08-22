@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Newsreader } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
+import ErrorReporter from "@/components/ErrorReporter";
 
 // Self-hosted at build time (no runtime request to Google — CSP-safe). Exposed
 // as --font-serif; globals.css falls back to Georgia if it fails to load.
@@ -60,7 +61,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeBoot }} />
       </head>
-      <body>{children}</body>
+      <body>
+        {/* Covers the signed-out screens too — a first-time user's crash during
+            onboarding never reaches an authed layout. Renders nothing. */}
+        <ErrorReporter />
+        {children}
+      </body>
     </html>
   );
 }
