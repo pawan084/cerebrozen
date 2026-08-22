@@ -327,6 +327,7 @@ region and companion style.
 
 | Contract | Backend | iOS |
 | --- | --- | --- |
+| **Gated by CI** | `scripts/check-contracts.mjs` compares store product ids across `appstore.py` / `playstore.py` / `Billing.kt` / `Products.storekit`, and the crisis numbers across every client directory. Rows below without a gate are still review-only — adding one means writing an extractor per surface |
 | Admin `overview.quiet` | `services/metrics.quiet_users` — people active in the earlier part of the window and not since. Deliberately NOT called churn, ships a `means` caveat with every answer including the withheld one, and returns `null` under 20 people rather than a rate computed from four |
 | Nudge endings | `services/nudges.DispatchOutcome` — `sent` / `skipped` (nobody to deliver to) / `failed` (a device refused, attempts exhausted) / `expired` (too late to mean anything) / `deferred` (blipped, retrying). `POST /admin/nudges/dispatch` returns the first three; the dispatcher logs all five |
 | Store product ids | `services/appstore.py` `_PRODUCT_TIERS` ⇄ `services/playstore.py` `_PRODUCT_TIERS` — the SAME four ids on both stores, so a subscriber who switches phones keeps the tier they paid for |

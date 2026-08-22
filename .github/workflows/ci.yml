@@ -217,6 +217,12 @@ jobs:
       # nothing could notice, because prices are hand-written in four places.
       - name: Price consistency check
         run: node scripts/check-prices.mjs
+      # The same drift, one level up: the product IDS themselves, plus the
+      # crisis numbers. A price mismatch overcharges; an id mismatch means Play
+      # takes the money and the backend maps the product to `free` — paid for,
+      # nothing delivered, every layer believing it did its job (WC-279).
+      - name: Cross-stack contract check
+        run: node scripts/check-contracts.mjs
       # The three middlewares are hand-copied; this pins their security floor
       # (nonce script-src, object-src 'none', …) so one copy can't quietly
       # weaken while the other two look fine.

@@ -4,6 +4,42 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — cross-stack drift fails CI instead of review (WC-279, 2026-08-22)
+
+`scripts/check-contracts.mjs`, wired into the `web` job beside the price,
+claims and contrast gates.
+
+ARCHITECTURE's contract table lists values that exist in three or four places on
+purpose — nothing shares a schema across FastAPI, Kotlin, Swift and a
+`.storekit` file — and CLAUDE.md's rule ("change backend + iOS in the same
+commit") was enforced by review alone. `check-prices.mjs` already proved what
+that is worth: prices are hand-written in four places and the Android paywall
+drifted 25% under every other surface with nothing able to notice.
+
+**Two contracts, chosen because drift costs the most there.**
+
+*Store product ids.* Prices were gated; the IDS were not, and an id mismatch is
+worse than a price one: sell `com.cerebrozen.premium.anual` and Play charges the
+card while `_PRODUCT_TIERS.get(...)` returns `free` — the user has paid, been
+given nothing, and every layer believes it did its job. Four surfaces compared:
+`appstore.py`, `playstore.py`, Android `Billing.PRODUCTS`, iOS
+`Products.storekit`.
+
+*Crisis numbers.* 14416 and 112 must be present in every client directory. A
+helpline that drifts on one client is a person dialling a number that does not
+answer, and this has a history here — a UK helpline once reached Indian users.
+
+**Five mutants, all five caught**, each naming the two surfaces that disagree
+and what differs: a typo'd Android product, a tier dropped from the Play map, an
+iOS-only id, a client losing 112, and Tele-MANAS drifting to 14417.
+
+It refuses to pass vacuously — an empty set agrees with an empty set, so an
+absent `_PRODUCT_TIERS` is a failure rather than a silent success.
+
+Deliberately not a generic parser: each contract names its files and its
+extraction, so a failure says which surfaces disagree rather than that a regex
+stopped matching.
+
 ## Done — churn made observable, without calling it churn (WC-16, 2026-08-22)
 
 **776 passed / 2 skipped, coverage 96%; `services/metrics.py` 99%.**
