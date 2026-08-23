@@ -4,6 +4,56 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## SECURITY — a live OpenAI key is in git history (2026-08-24)
+
+**`ad07123e` (2026-07-15) committed a real `OPENAI_API_KEY` into
+`.env.production.example`** — a template that was meant to hold a placeholder.
+It is not in HEAD, so it was removed later, but **removing a secret from HEAD
+does not remove it from history**, and this repo is pushed to GitHub. Anyone
+with access to the repository, now or in any clone or fork, can read it.
+
+**Rotate that key.** Deleting the commit is not the fix and rewriting published
+history usually is not either — the credential must be assumed compromised from
+July onward. Rotating is the only action that actually closes it.
+
+I also printed the *current* key from `backend/.env` into this session's output
+while diagnosing a flaky test — a `grep` that matched the whole line. That was
+careless; the value is now in a transcript. If it is the same key, rotating
+covers both. If it is a different one, rotate it too.
+
+`backend/.env` itself is correctly git-ignored (`.gitignore:91`) and has never
+been tracked. The exposure is the `.example` file, which is exactly the trap
+that kind of file sets: it looks like it cannot hold anything real.
+
+## Done — the Oracle admin test was passing on a loading state (2026-08-24)
+
+`admin.spec.ts` › "the Oracle tab holds up with the agent switched off" failed in
+roughly half of full-suite runs while passing 45/45 in isolation.
+
+**It was never a timing wobble — the test was wrong, and passing for the wrong
+reason.** The console renders `status?.enabled ? "Live" : "Off"`, so it shows
+"Off" while `status` is still `null`. The test asserted "Off" and won the race
+most of the time. When the fetch resolved first it read "Live" — the honest
+answer, because the e2e stack had the Oracle switched ON.
+
+Why it was on: `docker-compose.e2e.yml` pulls `backend/.env` through `env_file`,
+and on a developer machine that holds real provider keys and `ORACLE_ENABLED=true`.
+So `oracle_available` was True locally and False in CI, which is why this only
+ever misbehaved on a laptop.
+
+**Two things fixed, one of them costing money.** The e2e `api` and `api-gated`
+services now pin `ORACLE_ENABLED=false` and blank the provider keys, so the
+stack is hermetic and matches CI — which is what "stubbed in hermetic tests"
+already promised. It also means **every local e2e run had been spending real
+OpenAI credits**, on a suite that runs several times an hour during a session.
+
+Verified: 45/45 three times over, and the full suite 161 passed / 1 skipped.
+
+The `.state` assertion in that test was also rewritten to report the error TEXT
+rather than a bare count, because when it did fail the count told us nothing
+about which of the four reads broke. That change is what made the real cause
+visible in one run.
+
 ## Done — the admin console no longer scrolls sideways (2026-08-24)
 
 **e2e 160 passed, 2 skipped. `admin-responsive.spec.ts` walks all 10 sections at

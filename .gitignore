@@ -102,3 +102,6 @@ ref/
 # services/engine/.env plus .venv/.next/*.db — none of which may enter history.
 # Ignored rather than deleted: it is not this project's to remove.
 /services/
+
+# Playwright artifacts captured when debugging a flake locally.
+e2e/artifacts/

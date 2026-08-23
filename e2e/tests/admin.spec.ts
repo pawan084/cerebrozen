@@ -260,7 +260,16 @@ test.describe("Admin dashboard", () => {
     // Nothing errored. `Problem` is the shared error state for every failed
     // admin read, so its absence is the assertion that all four calls answered
     // — a per-panel check would miss whichever one regressed.
-    await expect(page.locator(".state")).toHaveCount(0);
+    //
+    // Asserted on the TEXT rather than the count, because this test failed
+    // intermittently in full-suite runs and a bare count told us nothing about
+    // which read broke or why. `Problem` renders one of three sentences —
+    // "Your session ended", "We can't reach the server", "The server had
+    // trouble with that" — so the failure message now names the kind.
+    await expect
+      .poll(async () => (await page.locator(".state").allInnerTexts()).join(" | "),
+            { message: "an Oracle admin read failed and rendered <Problem>" })
+      .toBe("");
 
     // The promise printed on the page itself: arguments are recorded by name
     // only. If a table ever starts rendering values, this sentence becomes a

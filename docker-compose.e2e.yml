@@ -46,6 +46,18 @@ services:
       # partway through a suite and makes it flaky rather than catching abuse.
       # Production refuses to boot with this off (Settings._guard_production).
       RATE_LIMIT_ENABLED: "0"
+      # Hermetic: the suite must behave the same on a laptop as in CI, and CI
+      # runs with blank keys. `env_file` above pulls in backend/.env, which on a
+      # developer machine holds REAL provider keys — so without these overrides
+      # the e2e stack had the Oracle switched ON and every local run spent real
+      # OpenAI credits. It also made `admin.spec` flaky: the test asserts the
+      # agent reads "Off", and it only passed by beating the fetch, because the
+      # console renders "Off" while `status` is still null. It was passing on a
+      # loading state, not on the thing it claims to check.
+      ORACLE_ENABLED: "false"
+      OPENAI_API_KEY: ""
+      ANTHROPIC_API_KEY: ""
+      AI_PROVIDER: "none"
     healthcheck:
       # api-gated waits on this, so the two instances cannot run Alembic against
       # one database at the same moment.
@@ -108,6 +120,11 @@ services:
       RATE_LIMIT_ENABLED: "1"
       TRUSTED_PROXY_HOPS: "1"
       UNVERIFIED_DAILY_MESSAGES: "3"
+      # Hermetic for the same reason as `api` above.
+      ORACLE_ENABLED: "false"
+      OPENAI_API_KEY: ""
+      ANTHROPIC_API_KEY: ""
+      AI_PROVIDER: "none"
     # No host port on purpose: the e2e runner reaches it on the compose network,
     # and publishing one only collides with whatever is already on 8001.
     depends_on:
