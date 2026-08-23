@@ -4,6 +4,66 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — what the playback grant binds, and what it cannot (WC-80, 2026-08-23)
+
+**34/34 mutants caught. `tests/test_content_audio.py`: 30 passed.**
+
+Item 80 asks to verify the media token cannot be replayed across users. **It
+can**, and that is the shape of the mechanism rather than a defect in it: the
+grant rides in the URL precisely BECAUSE the fetcher cannot authenticate —
+AVPlayer, ExoPlayer and `<audio>` do not attach an Authorization header. A
+bearer URL cannot know who is holding it, so whoever holds it is the bearer.
+
+So the deliverable is the opposite of the one the item implies. Five tests now
+pin what the grant really does:
+
+* **It binds one track.** The subject is the content id, compared against the
+  path's stem, so a grant for A cannot fetch B. (Already covered; now also
+  mutant M1.)
+* **It binds a window.** An expired grant is refused. Since possession *is*
+  authorization, the TTL is not a nicety — it is the only thing that ever
+  revokes a leaked URL.
+* **It binds to this server.** A well-formed grant signed with another secret
+  is refused, or "possession is authorization" would degrade into "anyone who
+  can write a JWT is authorized".
+* **It binds no person.** A paid listener's URL plays for a free account that
+  was refused a URL of its own, and for a signed-out stranger. Asserted to
+  *succeed*, so the replay stays a decision somebody made rather than a
+  property nobody checked.
+* **HEAD is guarded too.** A range-seeking player HEADs first; an unguarded
+  HEAD would answer "does this premium track exist" without a grant — the
+  question the guard's 404-instead-of-403 exists to refuse. (Mutant M2.)
+
+**WC-81 says "reduce the TTL or bind it to a user". The second half is not
+implementable at this guard.** The request that spends the token carries no
+session to compare against — that is the entire reason the grant is in the URL.
+Binding would mean one of:
+
+* *Watermarking* — put the account in the token so a leaked URL names whoever
+  leaked it. That is attribution, not enforcement, and it puts a user
+  identifier into a URL whose whole problem is that it gets shared and logged.
+  It would need to be an HMAC, not an id, and it is a privacy decision before
+  it is a security one.
+* *Binding to an IP* — breaks on every mobile network.
+
+So TTL is the only real lever, and it is a straight trade: the window has to
+outlast the gap between loading the catalogue and pressing play, including a
+user who browses now and listens this evening. It sits at 12 hours
+(`MEDIA_TOKEN_TTL_HOURS`). Left as it is, deliberately, and left visible rather
+than quietly narrowed — but `create_media_token` used to claim the window was
+"short-lived so it stops working long before it can be shared around", and at
+12 hours on a shareable URL that was not true. The docstring now states what it
+binds and what it does not.
+
+**The sharper finding is next door.** `media_guard` matches `/media/narration/`
+only. Everything under `/media/assets/` — the admin-uploaded catalogue — is
+public bytes with no token, no entitlement check and no expiry. That is correct
+today: it holds decorative ambience the clients need *before* sign-in. But
+WC-81's premise is that this catalogue will hold licensed content, and licensed
+content there would not have a replay window, it would have no window at all.
+A test now pins the boundary in both directions — mutant M5 (widening the guard
+to cover assets) fails it too, so the line is asserted rather than assumed.
+
 ## Done — tenant isolation, attempted directly (WC-74, 2026-08-22)
 
 **816 passed / 2 skipped, all 9 coverage floors held, 32/32 mutants caught.**

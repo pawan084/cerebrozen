@@ -76,10 +76,19 @@ def create_media_token(item_id: str) -> str:
 
     Audio is fetched by native players (AVPlayer, ExoPlayer, ``<audio>``) that
     cannot reasonably attach an Authorization header, so the grant rides in the
-    URL instead. Scoped to a single content id so a leaked URL unlocks one track
-    and not the catalogue, and short-lived so it stops working long before it
-    can be shared around. The entitlement decision happens when this is minted
-    (see ``services.media.playback_url``) — this token only proves it happened.
+    URL instead. Scoped to a single content id, so a leaked URL unlocks one
+    track and not the catalogue. The entitlement decision happens when this is
+    minted (see ``services.media.playback_url``) — this token only proves it
+    happened.
+
+    **It binds a track and a window, never a person** (WC-80). Possession is
+    authorization: the request that spends this token carries no session for the
+    guard to compare it against, which is the whole reason the grant is in the
+    URL. So the same URL plays for a free account, or for nobody at all, until
+    it expires — and the TTL is therefore not a nicety but the only thing that
+    ever revokes a leaked one. Binding to a user is not implementable at the
+    guard for the same reason; see docs/TODO.md under WC-80 before reaching for
+    it. `test_content_audio.py` pins both the binding and the replay.
     """
     return _create_token(item_id, MEDIA, timedelta(hours=settings.media_token_ttl_hours))
 

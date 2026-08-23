@@ -70,6 +70,9 @@ INTERVENTIONS = "app/services/interventions.py"
 ORG_ROUTES = "app/api/routes/organizations.py"
 TENANCY_TESTS = ("tests/test_cross_user_access.py",)
 ORG_TENANCY_TESTS = ("tests/test_org_tenant_isolation.py",)
+MEDIA_SVC = "app/services/media.py"
+APP_MAIN = "app/main.py"
+MEDIA_TESTS = ("tests/test_content_audio.py",)
 
 CATALOGUE: list[Mutant] = [
     # ── Safety: the floor ────────────────────────────────────────────────
@@ -485,5 +488,31 @@ CATALOGUE: list[Mutant] = [
         old="        if group is None or group.org_id != org.id:",
         new="        if group is None:",
         caught_by=ORG_TENANCY_TESTS,
+    ),
+    Mutant(
+        id="M1-playback-grant-unlocks-any-track",
+        breaks=(
+            "One leaked playback URL unlocks the whole narration catalogue "
+            "instead of the single track it names. The grant binds a track and "
+            "a window and nothing else (WC-80), so this comparison is one half "
+            "of everything it does bind."
+        ),
+        path=MEDIA_SVC,
+        old="    return Path(request_path).stem == subject",
+        new="    return True",
+        caught_by=MEDIA_TESTS,
+    ),
+    Mutant(
+        id="M2-premium-audio-served-on-an-unguarded-HEAD",
+        breaks=(
+            "A range-seeking player HEADs before it GETs. Guard only the GET "
+            "and 'does this premium track exist' becomes answerable without a "
+            "grant — the exact question the guard's 404-instead-of-403 exists "
+            "to refuse."
+        ),
+        path=APP_MAIN,
+        old='request.method in {"GET", "HEAD"}',
+        new='request.method in {"GET"}',
+        caught_by=MEDIA_TESTS,
     ),
 ]

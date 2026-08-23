@@ -5,7 +5,7 @@ ElevenLabs is stubbed per the voice-test pattern — hermetic, no credits.
 """
 import uuid
 from contextlib import asynccontextmanager
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from httpx import ASGITransport, AsyncClient
@@ -458,3 +458,138 @@ async def test_catalogue_ignores_a_deactivated_users_token(admin_client, monkeyp
             await s.commit()
         # Paid tier, but the account is switched off — no grant.
         assert await _audio_url_for(c, title) == ""
+
+
+# ── What the playback grant binds, and what it does not (WC-80) ─────────
+#
+# Item 80 asks to verify the media token cannot be replayed across users. It
+# can. That is not a defect found here, it is the shape of the mechanism: the
+# grant rides in the URL precisely BECAUSE the fetcher cannot authenticate —
+# AVPlayer, ExoPlayer and <audio> do not attach an Authorization header. A
+# bearer URL cannot know who is holding it, so anyone holding it is the bearer.
+#
+# Which makes the honest deliverable the opposite of the one the item implies:
+# pin what the grant really binds (one track, for a bounded window, signed by
+# this server), and pin the replay itself, so that it stays a decision somebody
+# made rather than a property nobody checked.
+
+async def test_a_grant_minted_for_one_listener_plays_for_anyone_holding_it(
+    admin_client, monkeypatch
+):
+    """The cross-user replay, run end to end and asserted to SUCCEED.
+
+    A paid listener's signed URL is handed to a free account and to a signed-out
+    stranger. Both play the file. Nothing in the token names a user, and the
+    guard has no session to compare it against.
+
+    This test passes on the behaviour as shipped. If somebody later binds the
+    grant to an account (WC-81), this is the test that fails — and it should,
+    loudly, because that change breaks every already-issued URL and the failure
+    is the reminder to think about it.
+    """
+    title = f"Bearer story {uuid.uuid4().hex[:6]}"
+    await _narrate(admin_client, monkeypatch, title=title, premium=True)
+
+    async with _separate_client(signed_in=True) as (paid, user_id):
+        async with SessionLocal() as s:
+            await s.execute(
+                update(User)
+                .where(User.id == uuid.UUID(user_id))
+                .values(subscription_tier="premium")
+            )
+            await s.commit()
+        signed = await _audio_url_for(paid, title)
+        assert "?t=" in signed
+
+    # A different account, on the free tier, which was refused a URL of its own.
+    async with _separate_client(signed_in=True) as (free, _):
+        assert await _audio_url_for(free, title) == "", "free tier is not entitled"
+        replayed = await free.get(signed)
+        assert replayed.status_code == 200, "documented: the grant is a bearer URL"
+        assert replayed.content == b"ID3-premium-narration"
+
+    # And nobody at all.
+    async with _separate_client() as (anon, _):
+        assert (await anon.get(signed)).status_code == 200
+
+
+async def test_the_grant_stops_working_when_it_expires():
+    """The one bound the bearer URL really has: time.
+
+    Since possession is authorization, the TTL is not a nicety — it is the only
+    thing that ever revokes a leaked URL. `create_media_token` says the window
+    is why a leak "stops working long before it can be shared around"; this is
+    the mechanism behind that sentence.
+    """
+    from app.core.security import MEDIA, _create_token
+
+    item_id = str(uuid.uuid4())
+    path = f"/media/narration/{item_id}.mp3"
+
+    live = _create_token(item_id, MEDIA, timedelta(hours=1))
+    assert media_service.token_authorizes(live, path) is True
+
+    expired = _create_token(item_id, MEDIA, timedelta(hours=-1))
+    assert media_service.token_authorizes(expired, path) is False
+
+
+async def test_a_grant_signed_by_somebody_else_is_refused():
+    """Possession authorizes, so minting must not be possible off-server.
+
+    Without this, "possession is authorization" degrades into "anyone who can
+    write a JWT is authorized", and the item scope and TTL both stop meaning
+    anything.
+    """
+    from jose import jwt
+
+    from app.core.security import MEDIA
+
+    item_id = str(uuid.uuid4())
+    forged = jwt.encode(
+        {
+            "sub": item_id,
+            "type": MEDIA,
+            "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+        },
+        "not-the-servers-secret",
+        algorithm=settings.algorithm,
+    )
+    assert media_service.token_authorizes(
+        forged, f"/media/narration/{item_id}.mp3"
+    ) is False
+
+
+async def test_catalogue_assets_are_served_with_no_grant_at_all(client):
+    """Recorded because WC-81 turns on it: the guard covers narration ONLY.
+
+    `media_guard` matches `/media/narration/`. Everything under `/media/assets/`
+    — the admin-uploaded catalogue — is public bytes, deliberately, because
+    today it holds decorative ambience the clients need before sign-in.
+
+    WC-81 proposes putting licensed content in that same catalogue. It would be
+    served to anyone who asks, with no token, no entitlement check and no
+    expiry: not a replay window, no window at all. This test states the current
+    boundary so that change cannot be made without meeting it.
+    """
+    key = f"test.replay.{uuid.uuid4().hex[:8]}"
+    media_service.save_asset(key, ".m4a", b"ambience-bytes")
+    try:
+        r = await client.get(f"/media/assets/{key}.m4a")
+        assert r.status_code == 200
+        assert r.content == b"ambience-bytes"
+    finally:
+        media_service.delete_asset(key)
+
+
+async def test_a_grant_is_checked_on_HEAD_as_well_as_GET(admin_client, monkeypatch):
+    """A range-seeking player HEADs first; an unguarded HEAD leaks existence.
+
+    The guard names both methods. Without HEAD, "does this premium track exist"
+    is answerable without a grant — which is the exact question the 404-instead-
+    of-403 choice elsewhere in the guard exists to refuse.
+    """
+    title = f"Head check {uuid.uuid4().hex[:6]}"
+    item = await _narrate(admin_client, monkeypatch, title=title, premium=True)
+
+    async with _separate_client() as (anon, _):
+        assert (await anon.head(f"/media/narration/{item['id']}.mp3")).status_code == 404
