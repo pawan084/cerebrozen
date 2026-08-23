@@ -4,6 +4,47 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Found — the deploy would have overwritten a live product (2026-08-23)
+
+Found by opening the site in a browser, which is the one thing nobody had done.
+
+`cerebrozen.in` and every subdomain serve **"CereBroZen — AI performance
+coaching for every employee"** — a different product — and all five resolve to
+**194.163.182.1**, the VPS `deploy.yml` targets. `deploy/Caddyfile` claims
+`:80`/`:443` for exactly those hostnames. Running the deploy would have replaced
+a running site. The owner has confirmed it is separate and must not be
+overwritten.
+
+**The failure was mine and it was a premise, not a bug.** I inferred "production
+runs this repo, twelve commits behind" from a 200, and built on it repeatedly:
+
+* I asked for `DEPLOY_HOST`/`DEPLOY_USER`/`DEPLOY_SSH_KEY` and told the owner to
+  run the workflow. Had those secrets existed, the deploy would have gone.
+* I "corrected" an earlier finding by claiming the duplicated `X-Frame-Options`
+  was not live because production's Caddy replaces rather than appends. That
+  rested on assuming this repo's FastAPI sat behind `api.cerebrozen.in` setting
+  `DENY`. It does not. The original finding stands; the correction was the error.
+* The deploy's health check greps `/ready` for `"status":"ready"` — a path that
+  404s on the service actually answering that host.
+
+A 200 identifies nothing. The bodies differ: ours carries `ai_enabled`, theirs
+carries `"service":"platform"`. There is a note in this file from earlier the
+same day about a `:8000` "impostor" I misdiagnosed the same way, with the lesson
+recorded as *tell them apart by the health body*. I did not apply it to
+production.
+
+**Guard added.** `deploy.yml` now has a first step, before the SSH step, that
+curls `api/health` and refuses unless the body is ours. Unreachable is fine (a
+fresh host has nothing to overwrite); ours is fine (a redeploy); anything else
+stops the run with an explanation. Verified against all three real payloads. The
+post-deploy health check now also asserts the healthy thing is ours, since
+"healthy" proved nothing here.
+
+**Open, and the owner's call:** which hostnames this product should use.
+CLAUDE.md now marks `cerebrozen.in` as intended rather than held. Until that is
+decided, read "N commits on origin/main" as **the entire product is undeployed**,
+not as a lag.
+
 ## Done — the crisis record now says what actually happened (2026-08-23)
 
 **935 passed / 2 skipped, 14 coverage floors, 51/51 mutants caught.**

@@ -22,6 +22,60 @@ jobs:
     name: Pull, rebuild, health-check
     runs-on: ubuntu-latest
     steps:
+      # ── Refuse to deploy on top of somebody else's product ──────────────
+      #
+      # On 2026-08-23 cerebrozen.in, www, api, app and admin were all found
+      # serving a DIFFERENT product — "CereBroZen — AI performance coaching for
+      # every employee" — and all five resolve to the same VPS this workflow
+      # deploys to. This stack's Caddy claims :80 and :443 for exactly those
+      # hostnames, so running the deploy would have replaced a live site.
+      #
+      # Nothing about that was visible from a status code: cerebrozen.in
+      # answered 200 and api.cerebrozen.in answered 200, which is what made it
+      # look like our own deployment lagging behind. The bodies are what differ,
+      # so the body is what this checks.
+      #
+      # Three outcomes, deliberately:
+      #   unreachable          -> fine. A fresh host has nothing to overwrite.
+      #   ours                 -> fine. This is a redeploy.
+      #   something else       -> STOP. Loudly, and before touching the server.
+      - name: Refuse to deploy over another product
+        run: |
+          api="https://api.cerebrozen.in/health"
+          body=$(curl -fsS --max-time 15 "$api" 2>/dev/null || true)
+
+          if [ -z "$body" ]; then
+            echo "No API answering at $api — treating this as a fresh host."
+            exit 0
+          fi
+
+          echo "Found something already serving $api:"
+          echo "  $body"
+
+          # `ai_enabled` is this repo's health payload (app/main.py). The other
+          # product answers {"status":"ok","service":"platform","env":"production"}
+          # — same "status":"ok", different service, which is why matching on
+          # "ok" alone would have waved this through.
+          case "$body" in
+            *'"ai_enabled"'*)
+              echo "That is this repo's API. Proceeding with a redeploy."
+              ;;
+            *)
+              echo ""
+              echo "REFUSING TO DEPLOY."
+              echo ""
+              echo "The host is serving a product that is not this one. This"
+              echo "stack's Caddy binds :80/:443 for cerebrozen.in, www, api,"
+              echo "app and admin, so deploying would take that site down."
+              echo ""
+              echo "If this repo is meant to have that domain, that is a"
+              echo "decision to make deliberately — move the other product"
+              echo "first, or point deploy/Caddyfile at hostnames this product"
+              echo "actually owns. Do not resolve it by deleting this check."
+              exit 1
+              ;;
+          esac
+
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -83,6 +137,15 @@ jobs:
             echo "waiting for API… ($i/10)"; sleep 6
           done
           [ -n "$ready" ] || { echo "API did not become healthy"; exit 1; }
+
+          # …and that the healthy thing is OURS. A 200 from that host proved
+          # nothing on 2026-08-23: a different product was answering it, with
+          # its own {"status":"ok"}. `ai_enabled` is this repo's payload.
+          health=$(curl -fsS --max-time 15 https://api.cerebrozen.in/health || true)
+          case "$health" in
+            *'"ai_enabled"'*) echo "…and it is this repo's API ✓" ;;
+            *) echo "The host is healthy but it is NOT this API: $health"; exit 1 ;;
+          esac
 
           # Prove the edge is serving the config we just deployed, not the one
           # it had loaded in memory. `X-Frame-Options` is the tell: the API sets

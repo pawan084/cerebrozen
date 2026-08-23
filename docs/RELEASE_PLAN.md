@@ -1,5 +1,30 @@
 # CereBrozen — Release Plan
 
+> ## ⛔ BLOCKED: those hostnames belong to another product (2026-08-23)
+>
+> `cerebrozen.in`, `www`, `api`, `app` and `admin` currently serve **"CereBroZen
+> — AI performance coaching for every employee"**, a different product, and all
+> five resolve to **194.163.182.1** — the same VPS this plan deploys to. The
+> Caddyfile below claims `:80`/`:443` for exactly those hostnames, so following
+> this plan as written would take that live site down. The owner confirmed it is
+> a separate product and must not be overwritten.
+>
+> **This repo has therefore never been deployed.** Anything describing
+> production below is a plan, not a description of something running.
+>
+> A 200 does not tell them apart — both sites answer 200. The bodies do:
+>
+> | | live (other product) | this repo |
+> | --- | --- | --- |
+> | `api/health` | `{"status":"ok","service":"platform","env":"production"}` | `{"status":"ok","version":…,"ai_enabled":…}` |
+> | `api/ready` | 404 | defined |
+> | `/refunds`, `/subprocessors`, `/safety` | 404 | all exist |
+>
+> `deploy.yml` now refuses to run unless the API is ours or absent. **Deciding
+> which hostnames this product should use is the open question**, and it is the
+> owner's — moving the other product, or pointing `deploy/Caddyfile` at
+> different names. Deleting the guard is not the fix.
+
 Production launch of the full stack: FastAPI backend + Postgres, the Next.js
 landing site and admin, and the iOS app — on a Contabo VPS behind `cerebrozen.in`,
 with the iOS app shipped via TestFlight → the App Store.

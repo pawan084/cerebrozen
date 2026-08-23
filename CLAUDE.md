@@ -4,7 +4,7 @@ CereBro is a privacy-first, safety-aware mental-wellness product: a native Swift
 (primary client) + FastAPI/Postgres backend + Next.js landing & admin, in one monorepo.
 Two full native clients (Android currently leads the roadmap; iOS ships first on stores);
 follows Apple App Store guidelines first.
-Domain: **cerebrozen.in** · bundle id **com.cerebrozen.app**.
+Domain: **cerebrozen.in** (INTENDED, not held — see the gotcha below) · bundle id **com.cerebrozen.app**.
 
 ## Read these first
 
@@ -63,6 +63,16 @@ Dev logins (dev only; prod boot guard rejects them): `admin@cerebro.app/admin123
 - **Schema changes = Alembic revision** (applied by `prestart.py` at boot).
 
 ## Gotchas
+
+- **`cerebrozen.in` currently serves a DIFFERENT product** (confirmed 2026-08-23).
+  The domain and every subdomain — www, api, app, admin — answer "CereBroZen — AI
+  performance coaching for every employee", and all resolve to 194.163.182.1,
+  the VPS `deploy.yml` targets. `deploy/Caddyfile` claims those exact hostnames,
+  so **deploying this stack would overwrite a live site**. This repo has never
+  been deployed. Both sites answer 200, so tell them apart by the health BODY:
+  ours carries `ai_enabled`, theirs carries `"service":"platform"`. `deploy.yml`
+  refuses to run unless the API is ours or absent — do not "fix" a red deploy by
+  removing that check.
 
 - Backend tests need a live Postgres (fixtures call `init_db()`); in the api container use
   `python -m pytest` (the `pytest` console script isn't on PATH in the prod image).
