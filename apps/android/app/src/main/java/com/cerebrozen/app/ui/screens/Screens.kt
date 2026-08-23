@@ -67,6 +67,8 @@ import com.cerebrozen.app.ui.theme.TextMuted
 import com.cerebrozen.app.ui.theme.TextMuted2
 import com.cerebrozen.app.ui.theme.TextSoft
 import com.cerebrozen.app.ui.theme.Warm
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 /** You: the iOS ProfileView hub — a profile header + nav-row settings list
  * routing to sub-screens, then legal/account actions and sign out.
@@ -91,6 +93,14 @@ fun YouScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
     // that opens it does not promise an upsell the screen will not deliver.
     var tier by remember { mutableStateOf(Session.cachedTier()) }
     var sponsored by remember { mutableStateOf(Session.cachedSponsored()) }
+    // The server gates the features that cost money to run on a confirmed
+    // address. This is its answer to "will the gate refuse this caller", NOT
+    // whether the address is confirmed: an account older than the rule, a
+    // subscriber, or a build with no mail configured are all exempt, and
+    // reading the raw flag would nag exactly those people to fix something
+    // that is not stopping them.
+    var verifyEmail by remember { mutableStateOf(false) }
+    var accountEmail by remember { mutableStateOf("") }
 
     LaunchedEffect(Session.signedIn) {
         if (!Session.signedIn) return@LaunchedEffect
@@ -102,6 +112,8 @@ fun YouScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
             region = me.optString("region")
             tier = me.optString("subscription_tier").ifBlank { "free" }
             sponsored = me.optBoolean("sponsored")
+            verifyEmail = me.optBoolean("email_verification_required")
+            accountEmail = me.optString("email")
             Session.rememberEntitlement(tier, sponsored)
         }
         runCatching {
@@ -117,6 +129,9 @@ fun YouScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
     }
 
     PremiumSubPage(stringResource(R.string.you_eyebrow), stringResource(R.string.you_title), onBack = onBack) {
+        // Before the wall rather than as it: meeting the gate as a 403 partway
+        // through using voice or the Oracle is a bad way to learn it exists.
+        if (verifyEmail) VerifyEmailCard(accountEmail)
         // The profile row was the page's one dead card — it now opens the
         // companion/language settings (the closest thing to a profile editor)
         // and wears the same initial-letter avatar Home's header uses.
@@ -421,5 +436,60 @@ fun YouScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
             style = MaterialTheme.typography.labelSmall, color = TextMuted2,
             textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
         )
+    }
+}
+/**
+ * "Confirm your email", shown while the server's verification gate applies.
+ *
+ * Deliberately a calm card rather than a blocking dialog: nothing is broken,
+ * chat and journalling work exactly as before, and the one thing this product
+ * must never do is put a wall between somebody and the reason they opened it.
+ * The features it unlocks are the ones that cost money to run.
+ *
+ * The resend endpoint is rate limited (5/minute, per account as well as per
+ * address), so a second rapid press is refused server-side — which is why the
+ * failure state says "Try again" instead of spinning forever.
+ */
+@Composable
+private fun VerifyEmailCard(email: String) {
+    val scope = rememberCoroutineScope()
+    var state by remember { mutableStateOf("idle") }
+    SectionCard {
+        Text(
+            stringResource(R.string.verify_email_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = TextSoft,
+        )
+        Text(
+            stringResource(R.string.verify_email_body, email),
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextMuted,
+        )
+        if (state == "sent") {
+            Text(
+                stringResource(R.string.verify_email_sent),
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSoft,
+            )
+        } else {
+            TextButton(
+                enabled = state != "sending",
+                onClick = {
+                    state = "sending"
+                    scope.launch {
+                        state = runCatching { Api.resendVerification() }
+                            .fold({ "sent" }, { "failed" })
+                    }
+                },
+            ) {
+                Text(
+                    when (state) {
+                        "sending" -> stringResource(R.string.verify_email_sending)
+                        "failed" -> stringResource(R.string.verify_email_retry)
+                        else -> stringResource(R.string.verify_email_resend)
+                    },
+                )
+            }
+        }
     }
 }

@@ -131,6 +131,13 @@ object Outbox {
             } else {
                 throw e
             }
+        } catch (e: Session.RefusalException) {
+            // The server decided, and will decide the same way again. Without
+            // this branch it fell through to the catch-all below — the one
+            // meaning "no connectivity at all" — and the write was queued, so
+            // a refusal was retried on every drain forever while the person was
+            // told it was saved and would sync.
+            throw e
         } catch (e: kotlin.coroutines.cancellation.CancellationException) {
             // Not a network verdict — the coroutine was cancelled (navigation,
             // scope teardown). Swallowing it would break structured concurrency
@@ -183,6 +190,12 @@ object Outbox {
                     else -> dropped++                 // refused; it will be refused again
                 }
                 if (retryable(e.code)) break
+            } catch (e: Session.RefusalException) {
+                // Refused, and it will be refused again — the same verdict the
+                // non-retryable ApiException branch above reaches. Counted as
+                // dropped and stepped over, NOT a reason to stop draining: the
+                // items behind it may be perfectly sendable.
+                dropped++
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {
                 throw e                               // cancellation is not "offline"
             } catch (e: Exception) {

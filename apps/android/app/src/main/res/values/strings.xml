@@ -2270,4 +2270,14 @@ not perfection.</string>
     <string name="si_shown">%1$d nights from your diary. Missing nights stay blank — a record, not a diagnosis.</string>
     <string name="si_reminders_link">Review wind-down reminders →</string>
     <string name="si_load_failed">Couldn\'t load sleep insights.</string>
+
+    <!-- "Confirm your email" notice (Settings). The gate is server-side; this
+         prompt exists so somebody meets it here rather than as a 403 partway
+         through using voice or the Oracle. -->
+    <string name="verify_email_title">Confirm your email</string>
+    <string name="verify_email_body">We sent a link to %1$s. Confirming it unlocks voice, plans and the Oracle — everything else works as normal meanwhile.</string>
+    <string name="verify_email_resend">Resend link</string>
+    <string name="verify_email_sending">Sending…</string>
+    <string name="verify_email_sent">Link sent — check your inbox.</string>
+    <string name="verify_email_retry">Try again</string>
 </resources>

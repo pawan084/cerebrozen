@@ -140,6 +140,22 @@ object Session {
     class ApiException(val code: Int, message: String) : Exception(message)
 
     /**
+     * The server has DECIDED to refuse this call, and will decide the same way
+     * again until something changes on the account.
+     *
+     * The base class exists because of what happens without it. These are not
+     * [ApiException]s, so [Outbox] fell through to its catch-all — the branch
+     * meaning "no connectivity at all" — and queued the write. A refusal would
+     * then be retried on every drain, forever, while the person was told it was
+     * saved and would sync. `daily_ceiling` is the sharpest case: it IS a 429,
+     * which `Outbox.retryable` treats as temporary, and it does not clear until
+     * tomorrow.
+     *
+     * Anything extending this must be a refusal a retry cannot fix.
+     */
+    open class RefusalException(message: String) : Exception(message)
+
+    /**
      * The free-tier daily cap, specifically.
      *
      * A subclass rather than a flag because the IP rate limiter ALSO returns
@@ -155,7 +171,35 @@ object Session {
         val limit: Int,
         val used: Int,
         val resetsAtUtc: String,
-    ) : Exception(message)
+    ) : RefusalException(message)
+
+    /**
+     * A daily abuse ceiling on a feature that costs money to run.
+     *
+     * NOT the free-tier cap above, and the difference decides what a screen may
+     * say: that one means "upgrade and this goes away", this one means "come
+     * back tomorrow". The ceilings are identical on every tier, so offering an
+     * upgrade here would be selling a fix that is not for sale.
+     */
+    class DailyCeilingException(
+        message: String,
+        val feature: String,
+        val limit: Int,
+        val resetsAtUtc: String,
+    ) : RefusalException(message)
+
+    /**
+     * The account has not confirmed its email and this feature needs it.
+     *
+     * Carries [feature] so a screen can name which thing is waiting instead of
+     * showing a generic wall. Recoverable without leaving the app — the remedy
+     * is `POST /auth/verify/request` — which is why it is its own type rather
+     * than a message.
+     */
+    class VerificationRequiredException(
+        message: String,
+        val feature: String,
+    ) : RefusalException(message)
 
     private fun enc(value: String): String = URLEncoder.encode(value, "UTF-8")
 
@@ -183,6 +227,23 @@ object Session {
                     obj.optInt("limit"),
                     obj.optInt("used"),
                     obj.optString("resets_at"),
+                )
+            }
+            // Same status as the cap above, opposite meaning. Only the code
+            // separates them, which is why neither branch reads the status
+            // alone.
+            if (code == 429 && obj?.optString("code") == "daily_ceiling") {
+                throw DailyCeilingException(
+                    obj.optString("message"),
+                    obj.optString("feature"),
+                    obj.optInt("limit"),
+                    obj.optString("resets_at"),
+                )
+            }
+            if (code == 403 && obj?.optString("code") == "email_unverified") {
+                throw VerificationRequiredException(
+                    obj.optString("message"),
+                    obj.optString("feature"),
                 )
             }
             // Pydantic validation errors (422) put `detail` in a THIRD shape —
@@ -692,6 +753,15 @@ object Session {
 /** Typed-ish endpoint helpers over the raw session. */
 object Api {
     suspend fun me(): JSONObject = JSONObject(Session.api("/auth/me"))
+
+    /** Ask the server to send the confirmation link again.
+     *
+     *  Rate limited server-side at 5/minute, per account as well as per
+     *  address, so a rapid second press is refused rather than amplified
+     *  into mail somebody did not ask for. */
+    suspend fun resendVerification() {
+        Session.api("/auth/verify/request", "POST", JSONObject())
+    }
     suspend fun streak(): JSONObject = JSONObject(Session.api("/users/me/streak"))
     suspend fun moods(): JSONArray = JSONArray(Session.api("/moods"))
 

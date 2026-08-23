@@ -4,6 +4,45 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the Android client understands the refusals too (2026-08-23)
+
+**`:app:check` green: unit tests, lint, jacoco 96.13% ≥ 96%.**
+
+`Session.DailyCeilingException` and `Session.VerificationRequiredException`,
+parsed from `detail.code` exactly as `FreeLimitException` already was, plus a
+`VerifyEmailCard` on the You screen driven by
+`/auth/me.email_verification_required` — the gate's own answer, so an account it
+exempts is never nagged. Strings in `values` and `values-hi` both.
+
+**The find is in the queue, and it predates today's work.** `Outbox` branches on
+`Session.ApiException.code`, and none of these refusals is an `ApiException` —
+so `send()` fell through to its catch-all, the branch meaning *no connectivity
+at all*, and enqueued the write. A refusal was then retried on every drain,
+forever, while the person was told it was saved and would sync. **That was
+already true of `FreeLimitException` before this change**; the two new types
+would have joined it.
+
+The fix is a shared `Session.RefusalException` base: `send()` rethrows it so the
+caller sees the verdict, and `drain()` counts it dropped and steps over it
+rather than stopping — the items behind it may be perfectly sendable. A test
+asserts all three extend the base and that an `ApiException(503)` does not,
+because the base is only load-bearing if a future refusal type is forced to
+join it.
+
+`daily_ceiling` is the sharpest case of the same bug: it IS a 429, which
+`Outbox.retryable` treats as temporary, and it does not clear until tomorrow.
+
+*Recorded because it cost two attempts:* the Hindi strings went in
+double-encoded. A heredoc ate one backslash, Python parsed `अ` at compile
+time into real Devanagari, and the `encode("utf-8").decode("unicode_escape")`
+round-trip then stored its UTF-8 bytes one per character. The English em dash
+and ellipsis were mangled the same way. Both recovered exactly
+(`latin-1` → `utf-8`) and verified to sit in the Devanagari block, with the
+pre-existing translations confirmed untouched.
+
+**Still not wired: iOS.** It falls through to the server's prose — readable, but
+no resend button and no reset time. It needs a Mac.
+
 ## Done — the web client understands the new refusals (2026-08-23)
 
 **914 backend / 1202 web tests passing.**

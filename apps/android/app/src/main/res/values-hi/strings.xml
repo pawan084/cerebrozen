@@ -1460,4 +1460,12 @@
     <string name="today_journal_sub">जो आपने लिखा है, और लिखने की जगह</string>
     <string name="trends_moods_title">कौन-सी भावनाएँ आईं</string>
     <string name="trends_moods_total">पिछले %2$d दिनों में %1$d चेक-इन — गिने गए, आँके नहीं गए।</string>
+
+    <!-- "Confirm your email" notice (Settings). -->
+    <string name="verify_email_title">अपना ईमेल पक्का करें</string>
+    <string name="verify_email_body">हमने %1$s पर एक लिंक भेजा है। इसे पक्का करने पर आव़ाज़, योजनाएँ और ओरेकल खुल जाएँगे — तब तक बाकी सब सामान्य रूप से चलता रहेगा।</string>
+    <string name="verify_email_resend">लिंक दोबारा भेजें</string>
+    <string name="verify_email_sending">भेजा जा रहा है…</string>
+    <string name="verify_email_sent">लिंक भेज दिया — अपना इनबॉक्स देखें।</string>
+    <string name="verify_email_retry">फिर कोशिश करें</string>
 </resources>
