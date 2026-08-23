@@ -84,6 +84,11 @@ FLOORS: dict[str, tuple[float, str]] = {
         "Delivery, retry and lateness — the difference between a nudge sent "
         "twice, sent late, or lost.",
     ),
+    "app/core/ratelimit.py": (
+        100.0,
+        "Decides who may spend money per call, and both of its key functions "
+        "fail the same silent way: a wall of 200s that looks like health.",
+    ),
     "app/services/errors.py": (
         100.0,
         "Decides what may leave the process about a failure. A gap here is a "

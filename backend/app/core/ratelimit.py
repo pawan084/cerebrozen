@@ -61,3 +61,50 @@ def client_ip(request) -> str:
 _enabled = os.getenv("TESTING") != "1" and os.getenv("RATE_LIMIT_ENABLED", "1") not in ("0", "false", "False")
 
 limiter = Limiter(key_func=client_ip, enabled=_enabled)
+
+def account_key(request) -> str:
+    """Key by the signed-in ACCOUNT when there is one, else fall back to the IP.
+
+    `client_ip` above bounds how fast one *address* may call. That is the wrong
+    unit for an authenticated caller: addresses are cheap. A mobile connection
+    hands out a new one on request, a VPN sells a list of them, and a residential
+    proxy pool rents thousands by the hour — so a single account can hold every
+    per-minute cap in this file at arm's length by rotating where it calls from,
+    and no counter anywhere would move (WC-89). The endpoints that matters most
+    on are the ones that spend money per call: LLM plan generation, STT, TTS.
+
+    Stacked *beneath* the IP limit rather than replacing it, because the two
+    catch different abusers — one account from many addresses, and many accounts
+    from one address (a signup farm behind a single host). Neither bound implies
+    the other, so both are applied and a caller must satisfy both.
+
+    **The subject is read from a signature-verified token, never from the wire.**
+    An unverified `sub` would be a caller-chosen bucket, which is precisely the
+    bug `client_ip` documents above: the old X-Forwarded-For read let anyone mint
+    a fresh bucket per request with one header. Trusting an unsigned JWT claim
+    here would reintroduce it with a different header, and it would look just as
+    healthy — a wall of 200s. An expired or malformed token falls back to the IP
+    key; the request is about to 401 anyway, and until it does it should still
+    count against *something*.
+    """
+    header = request.headers.get("authorization", "") or ""
+    scheme, _, token = header.partition(" ")
+    if scheme.lower() == "bearer" and token:
+        from app.core.security import ACCESS, decode_token  # local: import cycle
+
+        payload = decode_token(token, expected_type=ACCESS)
+        subject = (payload or {}).get("sub")
+        if subject:
+            return f"account:{subject}"
+    return client_ip(request)
+
+
+def account_limit(limit_value: str):
+    """A second limit on an endpoint, counted per account instead of per address.
+
+    Written as a helper so the call site reads as what it is — two bounds, not
+    one confusing decorator — and so the key function cannot be passed wrongly
+    at any of the places that use it.
+    """
+    return limiter.limit(limit_value, key_func=account_key)
+

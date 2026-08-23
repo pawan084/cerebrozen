@@ -88,7 +88,7 @@ screen says so rather than letting the user assume it follows their account.
 - `core/` — `config.py` (pydantic-settings, `_guard_production` boot guard), `database.py`
   (async engine/session), `security.py` (JWT HS256 + bcrypt; token types access/refresh/verify/reset),
   `deps.py` (`get_current_user` checks `token_version` for revocation; `get_current_admin`),
-  `ratelimit.py`.
+  `ratelimit.py` — **two keys, both applied (WC-89).** `client_ip` counts the hop our proxy appended (never the one the caller typed); `account_key` counts the subject of a signature-verified access token, falling back to the address when there is no usable session. Stacked rather than swapped, because they catch different abusers — one account from many addresses (addresses are cheap: a VPN sells a list, a residential pool rents thousands by the hour) and many accounts from one address. Applied together on every endpoint whose call spends money: LLM generation, STT, TTS, outbound email. Note the bound is per MINUTE, so it bounds burst and not daily spend; `services/usage.py` is the only daily account cap and it covers chat alone.
 - `api/routes/` — thin endpoint modules; `api/router.py` aggregates.
 - `services/errors.py` — **structured error tracking (WC-17, 2026-08-22).** An unhandled
   request failure and every background-loop failure are fingerprinted and dispatched to a

@@ -14,7 +14,7 @@ from app.core.database import get_db, utcnow
 from app.core.deps import get_current_admin
 from app.models.organization import ROLE_BENEFITS_OWNER, Organization, OrgAdmin
 from app.schemas.organization import OrgOut, OrgProvision
-from app.core.ratelimit import limiter
+from app.core.ratelimit import account_limit, limiter
 from app.services import admin_audit
 from app.models.admin_audit import AdminAuditLog
 from app.models.chat import ChatMessage
@@ -326,6 +326,7 @@ _MAX_NARRATION_CHARS = 39_000
 
 @router.post("/content/{item_id}/narrate", response_model=AdminContentOut)
 @limiter.limit("3/minute")   # provider-cost guard — narration burns real TTS credits
+@account_limit("3/minute")   # …and the same ceiling per account (narration burns real TTS credits)
 async def narrate_content(
     request: Request,
     item_id: uuid.UUID,

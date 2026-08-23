@@ -30,7 +30,7 @@ from app.agent.graph import get_graph
 from app.core.config import settings
 from app.core.database import SessionLocal, get_db, utcnow
 from app.core.deps import get_current_user
-from app.core.ratelimit import limiter
+from app.core.ratelimit import account_limit, limiter
 from app.models.chat import ChatMessage
 from app.models.user import User
 from app.models.agent_action import AgentAction
@@ -171,6 +171,7 @@ def scoped_thread_id(user_id, requested: str | None) -> str:
 
 @router.post("/messages")
 @limiter.limit("30/minute")
+@account_limit("30/minute")   # …and the same ceiling per account (LLM agent turn)
 async def messages(
     request: Request,
     payload: OracleSend,
@@ -232,6 +233,7 @@ async def _record_decision(db: AsyncSession, user: User, thread_id: str, approve
 
 @router.post("/confirm")
 @limiter.limit("30/minute")
+@account_limit("30/minute")   # …and the same ceiling per account (LLM agent turn)
 async def confirm(request: Request, payload: OracleConfirm, user: User = Depends(get_current_user),
                   db: AsyncSession = Depends(get_db)):
     if not settings.oracle_available or await get_graph() is None:

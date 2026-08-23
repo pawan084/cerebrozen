@@ -73,6 +73,8 @@ ORG_TENANCY_TESTS = ("tests/test_org_tenant_isolation.py",)
 MEDIA_SVC = "app/services/media.py"
 APP_MAIN = "app/main.py"
 MEDIA_TESTS = ("tests/test_content_audio.py",)
+RATELIMIT = "app/core/ratelimit.py"
+RATELIMIT_TESTS = ("tests/test_ratelimit_account.py", "tests/test_ratelimit_key.py")
 
 CATALOGUE: list[Mutant] = [
     # ── Safety: the floor ────────────────────────────────────────────────
@@ -514,5 +516,44 @@ CATALOGUE: list[Mutant] = [
         old='request.method in {"GET", "HEAD"}',
         new='request.method in {"GET"}',
         caught_by=MEDIA_TESTS,
+    ),
+    Mutant(
+        id="R1-account-limit-quietly-keys-on-the-address",
+        breaks=(
+            "The second bound becomes a duplicate of the first, so one account "
+            "spends without limit again by rotating addresses — and every "
+            "endpoint still shows two limits registered, which is what makes "
+            "this worth a mutant rather than a code comment."
+        ),
+        path=RATELIMIT,
+        old="    return limiter.limit(limit_value, key_func=account_key)",
+        new="    return limiter.limit(limit_value, key_func=client_ip)",
+        caught_by=RATELIMIT_TESTS,
+    ),
+    Mutant(
+        id="R2-any-token-type-opens-a-second-bucket",
+        breaks=(
+            "A refresh token is accepted as an identity here, so one account "
+            "holds two buckets — one per credential — and every per-minute "
+            "ceiling in the product doubles."
+        ),
+        path=RATELIMIT,
+        old="        payload = decode_token(token, expected_type=ACCESS)",
+        new="        payload = decode_token(token)",
+        caught_by=RATELIMIT_TESTS,
+    ),
+    Mutant(
+        id="R3-forwarded-header-read-from-the-front",
+        breaks=(
+            "The address key reads the hop the CALLER typed instead of the one "
+            "our proxy appended, so a header rotated per request mints a fresh "
+            "bucket every time. This is not hypothetical: it was the shipped "
+            "behaviour until 2026-08-13, measured at 30 logins with a rotating "
+            "spoofed value never tripping a limit that fires at 20."
+        ),
+        path=RATELIMIT,
+        old="            return parts[-hops]",
+        new="            return parts[hops - 1]",
+        caught_by=RATELIMIT_TESTS,
     ),
 ]

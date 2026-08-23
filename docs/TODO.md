@@ -4,6 +4,62 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — rate limiting keyed on the account, not just the address (WC-89, 2026-08-23)
+
+**835 passed / 2 skipped, 10 coverage floors held, 37/37 mutants caught.**
+
+Every per-minute cap in this product counted addresses only, and addresses are
+cheap: a mobile connection hands out a new one on request, a VPN sells a list, a
+residential proxy pool rents thousands by the hour. So one signed-in account
+could hold every cap at arm's length — including the guards on endpoints that
+spend real money per call — and no counter anywhere would move. The traffic
+looks like a thousand ordinary users having one conversation each.
+
+`core/ratelimit.account_key` counts the subject of a **signature-verified**
+access token, falling back to the address key when there is no usable session.
+The verification is the whole thing: an unverified `sub` would be a
+caller-chosen bucket, which is exactly the bug `client_ip` already documents —
+the old X-Forwarded-For read let anyone mint a fresh bucket per request with one
+header, and it looked like health, a wall of 200s. Trusting an unsigned JWT
+claim would reintroduce it through a different header.
+
+**Stacked beneath the address key, not swapping it.** The two catch different
+abusers: one account from many addresses, and many accounts from one address (a
+signup farm behind a single host). Neither bound implies the other, so a caller
+must satisfy both. Rates match the IP limit deliberately — the point is not a
+tighter number, it is that rotating addresses buys nothing.
+
+Applied where a call costs money rather than where it sounds sensitive: chat,
+plan regeneration, goal decomposition, assessment topics, STT, TTS, oracle
+(both turns), admin narration, and the authenticated verification-email resend.
+Pre-auth endpoints are untouched — there is no account to key on before sign-in,
+and `account_key` would only fall back to the address it already has.
+
+Pinned by fourteen tests and three catalogue mutants (R1–R3). `ratelimit.py`
+also gains a 100% coverage floor: it now decides who may spend money, and both
+of its key functions fail the same silent way.
+
+**Two things found while doing it.**
+
+*The tests caught a bug in the tests.* The first behaviour run read
+`[200, 429, 429, 429]` where `[200, 200, 200, 429]` was expected — which reads
+as "the limit is far too tight", not as a test defect. slowapi keys its registry
+on the endpoint's qualified name, and building the probe app per test stacked
+another identical pair of limits onto the same name; since every registration
+decrements the *same* bucket, one request counted three times. Built once now,
+with the reason written down.
+
+*Per-minute caps bound burst, not spend.* This is the real remaining exposure
+and the item does not cover it. At 10/minute, plan regeneration allows 14,400
+calls a day from one account — roughly 13 million tokens of LLM generation. TTS
+at 60/minute allows 86,400 calls. `services/usage.py` is the only DAILY account
+cap in the product, it covers chat alone, and it exempts paid tiers entirely, so
+a single paid account has no daily ceiling on any provider-backed endpoint.
+Fixing that means choosing daily allowances per feature — a product decision
+about what a subscription includes, not a security fix — so it is recorded here
+with the arithmetic rather than guessed at. **Open: daily per-account caps on
+the provider-backed endpoints (see WC-89 follow-on).**
+
 ## Done — security headers, in the two places they actually live (WC-87, 2026-08-23)
 
 **e2e: 18 new tests, all passing. `scripts/check-edge-headers.mjs`: 6/6 breakages caught.**

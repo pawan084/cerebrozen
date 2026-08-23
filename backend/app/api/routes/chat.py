@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.core.ratelimit import limiter
+from app.core.ratelimit import account_limit, limiter
 from app.models.chat import ChatMessage
 from app.models.consent import consent_allows
 from app.models.user import User
@@ -72,6 +72,7 @@ async def history(
 
 @router.post("/messages", response_model=ChatReply, status_code=201)
 @limiter.limit("30/minute")   # IP-level cap on top of the per-account daily quota
+@account_limit("30/minute")   # …and the same ceiling per account (LLM completion)
 async def send_message(
     request: Request,
     payload: ChatSend,

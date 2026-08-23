@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db, utcnow
-from app.core.ratelimit import limiter
+from app.core.ratelimit import account_limit, limiter
 from app.core.deps import get_current_user
 from app.core.security import (
     REFRESH,
@@ -413,6 +413,7 @@ async def logout(request: Request, user: User = Depends(get_current_user), db: A
 
 @router.post("/verify/request")
 @limiter.limit("5/minute")   # authenticated, but still an email-send amplifier
+@account_limit("5/minute")   # …and the same ceiling per account (email-send amplifier)
 async def request_verification(request: Request, user: User = Depends(get_current_user)):
     """Email the signed-in user a verification link."""
     token = create_verify_token(str(user.id))
