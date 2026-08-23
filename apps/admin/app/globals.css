@@ -175,7 +175,16 @@ h1, h2, h3, .serif { font-family: var(--font-serif), Georgia, serif; font-weight
 .navitem.active { color: var(--text); background: rgba(138, 123, 240,0.16); }
 .sidebar .logout { margin-top: 8px; color: var(--muted); }
 
-.main { flex: 1; padding: 28px 32px; max-width: 1200px; }
+/* `min-width: 0` is load-bearing, not tidiness.
+   A flex item defaults to `min-width: auto`, which means "never shrink below
+   your own content". `.main` is the flex child of `.shell`, so a wide table
+   inside it did not overflow — it PUSHED, making main 1197px next to a 150px
+   sidebar and dragging a 1280px viewport 67px sideways on the content library.
+   Nothing looked broken; the page just slid. Found 2026-08-24 by
+   admin-responsive.spec.ts, root-caused by walking the ancestor chain rather
+   than guessing (an earlier attempt put min-width on the card, which is not the
+   flex item and changed nothing). */
+.main { flex: 1; min-width: 0; padding: 28px 32px; max-width: 1200px; }
 .page-title { font-size: 26px; margin-bottom: 4px; }
 .page-sub { color: var(--muted); margin-bottom: 24px; }
 
@@ -371,7 +380,24 @@ td .btn + .btn { margin-left: 8px; }
   .cform { grid-template-columns: 1fr; }
   .cform .check { padding-top: 0; }
   /* Wide tables scroll inside their card instead of the page */
-  .card { overflow-x: auto; }
+  .card { overflow-x: auto; contain: paint; }
+
+/* `contain: paint` is doing something the overflow rule above should already
+   have done, and I could not pin why it does not.
+   ROOT-CAUSED (fixed): `.main` was a flex item at `min-width: auto`, so a wide
+   table PUSHED the layout instead of overflowing it — that was the 67px drag on
+   a 1280px desktop, and `min-width: 0` above is the real fix for it.
+   NOT root-caused (this line): below the mobile breakpoint the same table, now
+   correctly inside a card whose computed `overflow-x` is `auto` and which DOES
+   clip and scroll internally (card 358 wide, content 825), still inflated
+   `documentElement.scrollWidth` to 734 on a 390px screen — a real 344px drag
+   onto empty space, not a measurement artifact. Nothing overflows outside a
+   scroller; hiding the table removes it. `overflow-x: clip`, `min-width: 0` on
+   the table, and clipping `.shell`/`.main` all changed nothing; only paint
+   containment did.
+   It is a truthful declaration either way — a scrolling box does not paint
+   outside itself — but it is a symptom-level fix, so it is labelled as one
+   rather than left looking understood. */
   .card table { min-width: 620px; }
   .row-actions { flex-wrap: wrap; }
 }
@@ -380,3 +406,12 @@ td .btn + .btn { margin-left: 8px; }
   .sidebar { transition: none; }
   .btn:hover { transform: none; }
 }
+
+/* With `.main` free to shrink, a table wider than it needs somewhere to go, so
+   the card scrolls at EVERY width — the rule used to sit inside the mobile
+   media query, which is why desktop had no scroller and the table pushed
+   instead. Safe here: the admin stylesheet has no menus, dropdowns or
+   tooltips, and its only `position: absolute` is the 1px sr-only utility, so
+   there is nothing for `overflow: auto` to clip. Check that again before
+   adding a popover inside a card. */
+.card { overflow-x: auto; }

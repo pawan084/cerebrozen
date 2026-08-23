@@ -15,13 +15,19 @@ import { test, expect, Page } from "@playwright/test";
  * its mobile breakpoint, with `.card table { min-width: 620px }` — so this
  * checks the rule holds rather than introducing one.
  *
- * A browser pass on 2026-08-24 found four sections (Users, Content, Oracle,
- * Safety) dragging the whole page ~210px sideways at a 485px viewport, onto
- * empty space. Hiding the table removed it; `min-width: 0` and `max-width: 100%`
- * on the card did not. Those four are the sections whose tables exceed the
- * 620px floor — Users measured 771, Content 842 — while the sections that stay
- * exactly at 620 behave. This spec exists to say whether that reproduces at
- * widths people really use, and to keep it from spreading.
+ * A browser pass on 2026-08-24 found this genuinely broken and it is now fixed,
+ * in two different ways that are worth telling apart:
+ *
+ *   - Desktop (Content, 67px on a 1280 viewport) was `.main` being a flex item
+ *     at `min-width: auto`, so a wide table PUSHED the layout instead of
+ *     overflowing it. `min-width: 0` is the real fix and the root cause is
+ *     understood.
+ *   - Phone (four sections, 208-344px) survived that fix and needed
+ *     `contain: paint` on the card. That one is a symptom-level fix — see the
+ *     comment in the admin stylesheet, which says so plainly.
+ *
+ * These assertions are strict at every width with no exclusions, so either
+ * regressing fails the build.
  */
 
 const ADMIN = process.env.ADMIN_URL || "http://admin:3001";
@@ -99,7 +105,6 @@ for (const vp of WIDTHS) {
       // The sections that stay clean are exactly the ones whose tables sit at
       // the 620px floor; the four that fail all exceed it. That is the thread
       // to pull.
-      test.fixme(vp.width < 400, "admin scrolls sideways at phone widths — see comment");
 
       const offenders: string[] = [];
       for (const s of SECTIONS) {
@@ -108,11 +113,7 @@ for (const vp of WIDTHS) {
           scrollW: document.documentElement.scrollWidth,
           clientW: document.documentElement.clientWidth,
         }));
-        // Content is known broken at desktop and excluded BY NAME, so every
-        // other section stays strict: a new one regressing still fails the
-        // build. Remove the name when the cause is found, do not widen this.
-        const knownBroken = s === "Content" && vp.width >= 900;
-        if (m.scrollW > m.clientW + 1 && !knownBroken) {
+        if (m.scrollW > m.clientW + 1) {
           offenders.push(`${s} (${m.scrollW} > ${m.clientW}, ${m.scrollW - m.clientW}px of it)`);
         }
       }

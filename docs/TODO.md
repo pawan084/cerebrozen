@@ -4,7 +4,7 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
-## Found — the admin console scrolls sideways (2026-08-24)
+## Done — the admin console no longer scrolls sideways (2026-08-24)
 
 **e2e 160 passed, 2 skipped. `admin-responsive.spec.ts` walks all 10 sections at
 3 widths.**
@@ -19,39 +19,46 @@ no error states. The waitlist entry submitted from the marketing site appeared
 here, so website → API → database → console is proven end to end. Nothing leaks
 before sign-in: it is one gated SPA, 69 characters of body.
 
-**Open defect: the page drags sideways.**
+**It was two different bugs wearing the same symptom.**
 
-| width | sections | by |
-| --- | --- | --- |
-| 390px | Users, Content, Oracle, Safety | 208–344px |
-| 768px | none | — |
-| 1280px | **Content** | **67px** |
+| width | sections | by | cause |
+| --- | --- | --- | --- |
+| 1280px | Content | 67px | `.main` flex item at `min-width: auto` |
+| 390px | Users, Content, Oracle, Safety | 208–344px | unpinned; needed paint containment |
 
-The desktop one matters most — that is the console's actual viewport, and it is
-the section an operator uses to edit content.
+**The desktop one is root-caused and properly fixed.** `.shell` is a flex row and
+`.main` is a flex item, which defaults to `min-width: auto` — "never shrink below
+your own content". So a wide table did not overflow `.main`, it **pushed** it:
+main became 1197px next to a 150px sidebar, totalling 1347 on a 1280 viewport.
+`min-width: 0` on the flex item is the fix. An earlier blind attempt put
+`min-width: 0` on the *card*, which is not the flex item and changed nothing —
+the ancestor chain is what identified the right element, and walking it took
+minutes where guessing had taken an hour.
 
-**What was ruled out, by measurement rather than guess.** Every table IS inside
-a `.card` whose computed `overflow-x` is `auto` and which does clip internally
-(card clientWidth 451, scrollWidth 771). It is not a pseudo-element — disabling
-all of them changes nothing. It is not the off-canvas sidebar, which sits at
-`left: -250`. `min-width: 0` and `max-width: 100%` on the card change nothing.
-Hiding the table removes it entirely, so it is the table's doing, through a path
-I have not pinned. The clean sections are exactly those whose tables sit at the
-620px floor; all four failures exceed it (Users 771, Content 842). **That is the
-thread to pull.**
+**The phone one is fixed but NOT root-caused, and is labelled as such in the
+stylesheet.** After the flex fix, four sections still dragged 208–344px at 390px.
+Confirmed real rather than a measurement artifact: `documentElement.scrollLeft`
+reaches 344, onto empty space. Every table is inside a card whose computed
+`overflow-x` is `auto` and which *does* clip and scroll internally (card 358
+wide, content 825); nothing overflows outside a scroller; hiding the table
+removes it. `overflow-x: clip`, `min-width: 0` on the table, and clipping
+`.shell`/`.main` all changed nothing. Only `contain: paint` on the card did.
 
-**A speculative fix was tried and reverted.** Moving `.card { overflow-x: auto }`
-out of the mobile media query so it applies at every width satisfies the
-"table is inside a scroller" check at desktop — but does NOT stop the page
-scrolling, and `overflow: auto` clips absolutely-positioned children, which is a
-real regression risk for row menus in the crisis-triage console. Taken for no
-demonstrated gain, so reverted. **I briefly reported it as fixed; that was wrong
-— I read a truncated `head -10` and did not see the desktop failure still in the
-output.** A clean `--no-cache` rebuild confirmed it never worked.
+That is a truthful declaration — a scrolling box does not paint outside itself —
+but it treats the symptom, so the CSS comment says so rather than leaving it
+looking understood. Anyone who finds the real cause should replace it.
 
-The spec parks the phone case with `test.fixme` and excludes Content-at-desktop
-**by name**, so every other section stays strict and a new regression still
-fails the build. Remove the name when the cause is found; do not widen it.
+The spec now asserts strictly at all three widths with **no exclusions**: the
+`test.fixme` and the by-name exemption are both gone, so either bug regressing
+fails the build.
+
+**Full suite: 161 passed, 1 skipped.**
+
+**Unrelated, and pre-existing:** `admin.spec.ts` › "the Oracle tab holds up with
+the agent switched off" failed in 2 of 4 full runs (both attempts, so not rescued
+by the retry) while passing in isolation 15/15 and passing in the other 2. Not
+caused by this change — it reproduces without it — but this repo treats a flake
+as a defect rather than weather, so it is recorded here rather than shrugged at.
 
 *Test-harness notes, since two of these cost real time:* driving the nav is a
 trap below the breakpoint — the sidebar sits at `left: -250`, so items are
