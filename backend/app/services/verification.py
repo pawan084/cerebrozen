@@ -8,8 +8,15 @@ protection `services/botcheck.py` cannot do: a challenge proves a human was
 present for thirty seconds, while a delivered email proves somebody controls a
 mailbox — which is the thing that actually costs a farm money per account.
 
-Three rules decide who this applies to, and each exists because the obvious
+Four rules decide who this applies to, and each exists because the obvious
 version of the gate breaks something real.
+
+**Accounts that predate it are exempt.** `email_verified` defaulted to false
+and signup sent nothing to confirm until this release, so every existing
+account carries false — not because anyone failed a check but because there
+was no check to fail. Migration b2e9f47c1a08 marks them, and it marks them in
+their own column rather than backfilling `email_verified`, which would have
+made that flag assert something untrue for every reader after it.
 
 **It is inert unless we can send email at all.** With no SMTP configured
 `services.email.send_email` logs and returns, so a user genuinely cannot verify
@@ -52,6 +59,11 @@ def gate_active() -> bool:
 async def is_exempt(db: AsyncSession, user: User) -> bool:
     """Whether this user is past the gate, for any of the three reasons."""
     if user.email_verified:
+        return True
+    # Signed up before the gate existed, when nothing was ever sent to confirm.
+    # Charging somebody for a requirement that did not exist when they joined is
+    # not enforcement, it is a regression with a policy attached.
+    if user.verification_grandfathered:
         return True
     if not gate_active():
         return True

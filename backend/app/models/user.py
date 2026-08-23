@@ -45,6 +45,14 @@ class User(Base):
 
     # Auth hardening.
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    #: This account predates the email-verification gate (migration
+    #: b2e9f47c1a08). Kept separate from `email_verified` on purpose: that
+    #: flag means "this address was confirmed", and backfilling it would
+    #: have been a lie any later reader inherits. This one says the true
+    #: thing — the requirement did not exist when they signed up.
+    verification_grandfathered: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
     failed_login_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Bumped on logout / password reset to revoke all outstanding tokens.

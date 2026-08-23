@@ -686,4 +686,21 @@ CATALOGUE: list[Mutant] = [
         new='    return False',
         caught_by=VERIFICATION_TESTS,
     ),
+    Mutant(
+        id="V6-grandfathering-ignored",
+        breaks=(
+            "Every account that predates the gate is refused by it. In "
+            "production that is the ENTIRE existing user base: email_verified "
+            "defaulted to false and signup sent nothing to confirm until this "
+            "release, so nobody could have set it. Each of them drops to the "
+            "unverified chat allowance and 403s out of voice, plans, goals, "
+            "assessment and the Oracle, with no client rendering a code that "
+            "explains why. A feature aimed at new bot signups, landing on "
+            "everyone who was already here."
+        ),
+        path=VERIFICATION,
+        old="    if user.verification_grandfathered:",
+        new="    if False:",
+        caught_by=VERIFICATION_TESTS,
+    ),
 ]

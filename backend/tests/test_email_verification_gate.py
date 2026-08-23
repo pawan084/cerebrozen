@@ -127,6 +127,50 @@ class TestWhoIsExempt:
             assert await verification.is_exempt(db, user) is True
 
     @pytest.mark.asyncio
+    async def test_an_account_that_predates_the_gate_is_past_it(self, client, gate_on):
+        """The deploy-safety property, and the reason migration b2e9f47c1a08 exists.
+
+        `email_verified` defaulted to false and signup sent nothing to confirm
+        until this release, so EVERY account in production carries false — not
+        because anyone failed a check but because there was no check to fail.
+        Shipping the gate without this would have dropped every existing free
+        user to the unverified allowance and 403'd them out of five features, on
+        contact, with no client rendering the code that explains why.
+        """
+        address, _ = await _signup(client)
+        await _set(address, verification_grandfathered=True)
+        async with SessionLocal() as db:
+            user = await db.scalar(select(User).where(User.email == address))
+            assert user.email_verified is False
+            assert await verification.is_exempt(db, user) is True
+
+    @pytest.mark.asyncio
+    async def test_a_new_account_is_not_grandfathered(self, client, gate_on):
+        """Otherwise the migration would exempt everybody forever and the gate
+        would be decoration. The column defaults false; only the migration's
+        one-off UPDATE sets it."""
+        address, _ = await _signup(client)
+        async with SessionLocal() as db:
+            user = await db.scalar(select(User).where(User.email == address))
+            assert user.verification_grandfathered is False
+
+    @pytest.mark.asyncio
+    async def test_the_flag_does_not_claim_the_address_was_confirmed(self, client, gate_on):
+        """Grandfathering is not verification, and the data must not say it is.
+
+        Backfilling `email_verified = true` would have been the one-line version
+        and a lie every later reader inherits — a password-reset path or a
+        compliance answer about which addresses are reachable would trust it.
+        """
+        address, _ = await _signup(client)
+        await _set(address, verification_grandfathered=True)
+        async with SessionLocal() as db:
+            user = await db.scalar(select(User).where(User.email == address))
+            assert user.email_verified is False, (
+                "grandfathering must not be recorded as a confirmed address"
+            )
+
+    @pytest.mark.asyncio
     async def test_an_unconfirmed_free_account_is_not(self, client, gate_on):
         address, _ = await _signup(client)
         async with SessionLocal() as db:

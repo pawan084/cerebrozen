@@ -4,6 +4,42 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — grandfather existing accounts before the gate ships (2026-08-23)
+
+**896 passed / 2 skipped, 47/47 mutants caught, e2e 109 passed.**
+
+Found while preparing the first deploy of the verification gate, and it would
+have been a bad day. `email_verified` has carried `server_default="false"` since
+the auth-hardening revision, and signup sent nothing to confirm until this
+release — the only way to set it was an endpoint a signed-in user had to know
+existed and ask for. So in production **every password-signup account has
+false**, not because anyone failed a check but because there was no check to
+fail.
+
+Deploying the gate as it stood would, on contact, have dropped every existing
+free user from 50 chat messages a day to 5 and 403'd them out of voice, plan
+generation, goal decomposition, assessment and the Oracle. No client renders
+`email_unverified` yet either, so they would have met generic failures with no
+route to fix them. A feature built to bound what a bot farm can spend, landing
+on everyone who was already here.
+
+Migration `b2e9f47c1a08` adds `users.verification_grandfathered`, defaulting to
+false, and sets it true for every row that exists at upgrade time. Rows created
+afterwards get false, so the gate applies in full from this release onward —
+which is the entire point of shipping it.
+
+**A separate column rather than backfilling `email_verified = true`**, which was
+the one-line version and would have been a lie. That flag means "this address
+was confirmed", and confirming these is exactly what never happened; anything
+later trusting it — a password-reset path, a compliance answer about which
+addresses are reachable — would inherit the lie. The new column says the true
+thing instead: this account predates the requirement.
+
+Verified against a real database rather than by reading the SQL: the revision is
+walked down, a row inserted while the column does not exist, then walked back up.
+The pre-existing row comes out `grandfathered=t, email_verified=f`; a row created
+after comes out `f`. Mutant V6 pins it.
+
 ## Done — Caddy in the e2e stack, and two header bugs it immediately found (WC-87 follow-on, 2026-08-23)
 
 **e2e: 109 passed (was 100). Three Caddyfile mutations caught, including the one that shipped.**
