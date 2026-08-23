@@ -35,6 +35,8 @@ what happened to each. Statuses: **done** (shipped in this repo), **owner**
 | 90 | Data-retention table in the privacy policy | /privacy |
 | 91 | 18+ attest on direct signup; fresh accounts route through consent | AuthPanel + signin |
 | 93 → gate | CSP floor tripwire across the three middlewares | scripts/check-csp-sync.mjs (CI) |
+| 93 → gate | Edge headers the e2e stack cannot reach (no Caddy in it) | scripts/check-edge-headers.mjs (CI) |
+| 93 → e2e | CSP actually emitted; nonce per request, not per build | e2e/tests/security-headers.spec.ts |
 | 94 | Admin access token memory-only | apps/admin/lib/api.ts |
 | 95 | Waitlist created_at + CSV export | backend waitlist.py + admin |
 | 101 | ESLint (next/core-web-vitals) in all three apps, CI-gated | .eslintrc.json ×3, ci.yml |

@@ -250,6 +250,13 @@ jobs:
       # weaken while the other two look fine.
       - name: CSP floor check
         run: node scripts/check-csp-sync.mjs
+      # The Caddyfile is the one security surface NOTHING else can reach: the
+      # e2e stack runs the apps directly with no Caddy in front, so a dropped
+      # `import security_headers` passes CI, passes review (one deleted line in
+      # a file nobody reads on a feature branch) and ships. The only evidence
+      # would be HSTS quietly missing in production (WC-87).
+      - name: Edge security headers
+        run: node scripts/check-edge-headers.mjs
       # The crisis directory is hand-duplicated across backend, iOS and Android
       # like the contracts above — but it is the one where drift is measured in
       # human harm. A member in crisis is shown these numbers by the client and

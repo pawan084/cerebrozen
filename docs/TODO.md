@@ -4,6 +4,59 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — security headers, in the two places they actually live (WC-87, 2026-08-23)
+
+**e2e: 18 new tests, all passing. `scripts/check-edge-headers.mjs`: 6/6 breakages caught.**
+
+Item 87 asks for security-header testing in the e2e suite so a regression fails
+the build. Doing it exposed that the suite can only reach half of them.
+
+**The e2e stack has no Caddy in it.** It runs the four Next apps and the API
+directly, so everything in `deploy/Caddyfile` — HSTS, Referrer-Policy,
+Permissions-Policy, and the `import security_headers` line each site block
+depends on — is invisible to every test in this repo. A dropped import would
+pass CI, pass review (one deleted line in a file nobody opens on a feature
+branch) and ship, with the only evidence being HSTS quietly missing in
+production. So the work splits in two, and the split is the finding:
+
+* **`e2e/tests/security-headers.spec.ts`** covers what the stack really serves.
+  Per app: every non-negotiable CSP directive; `script-src` carrying a nonce and
+  *not* `'unsafe-inline'` or `'unsafe-eval'`; the nonce differing between two
+  requests; and the header's nonce matching the one stamped on the markup. Plus
+  the API's baseline set, asserted on a 404 as well as a 200 — middleware that
+  only runs on the happy path is a common shape, and a 404 body is as sniffable
+  as a 200 one.
+* **`scripts/check-edge-headers.mjs`** (CI, next to `check-csp-sync`) parses the
+  Caddyfile: the snippet still defines all five headers with values that mean
+  something (HSTS below a year is decorative — preload lists reject it), every
+  content-serving site block imports it, and the API keeps its locked-down CSP.
+  Redirect-only blocks are exempt, named in the code rather than skipped
+  silently, so if one ever grows a body it stops being exempt.
+
+Three tiers now, each covering what the others cannot: `check-csp-sync` pins the
+CSP *source* across four hand-copied middlewares, the e2e spec proves the header
+is *actually emitted* and the nonce is genuinely per-request, and
+`check-edge-headers` covers the tier nothing else can reach.
+
+**Both halves were verified by breaking them.** The Caddyfile check was run
+against six mutations — import dropped, HSTS cut to a day, nosniff removed,
+Referrer-Policy loosened to `unsafe-url`, Permissions-Policy no longer denying
+the mic, API CSP deleted — and caught all six. The e2e spec was verified against
+a rebuilt `web` image carrying two real regressions at once: a nonce hoisted to
+module scope (one nonce per *build*, which is exactly as good as
+`'unsafe-inline'`) and `'unsafe-inline'` re-admitted beside the nonce (browsers
+then ignore the nonce, so the policy silently degrades to the one it was written
+to replace). Each failed precisely the test aimed at it, and the two tests the
+mutation did not touch stayed green.
+
+The nonce-per-request test is the one worth keeping honest about: hoisting that
+line is a change no reviewer would flag and no page would visibly break.
+
+*Unrelated one-byte fix while here:* `docs/TODO.md` contained a literal NUL byte
+— in, of all places, the entry describing how a `Buffer.from` written through a
+script puts real control bytes into files. It made git and grep treat the whole
+debt log as binary. Replaced with the four characters the sentence meant.
+
 ## Done — what the playback grant binds, and what it cannot (WC-80, 2026-08-23)
 
 **34/34 mutants caught. `tests/test_content_audio.py`: 30 passed.**
@@ -2424,7 +2477,7 @@ given".
 
 Three method notes, all mistakes worth not repeating: `docker compose run` without
 `--build` runs the image's BAKED copy of the tests, so edits appear to have no effect (two
-runs were spent on that); a `Buffer.from("... ...")` written through a script put real
+runs were spent on that); a `Buffer.from("...\x00...")` written through a script put real
 control bytes into a source file, and the upload endpoint validates only the EXTENSION and
 non-emptiness anyway; and the media `<input type=file>` is hidden inside a
 `<label class="btn">`, so it can be filled but never asserted visible.
