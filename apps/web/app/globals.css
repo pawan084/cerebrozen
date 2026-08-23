@@ -238,13 +238,22 @@ a { color: inherit; text-decoration: none; }
   background: color-mix(in srgb, var(--surface) 88%, transparent);
   border-bottom: 1px solid var(--line);
 }
-.nav-inner { display: flex; align-items: center; justify-content: space-between; min-height: 76px; gap: 24px; }
+.nav-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  min-height: 76px; gap: 24px;
+  /* Wrap rather than overflow. The trust pages carry a plain three-link
+     nav with no mobile disclosure (that belongs to the landing), and at
+     360px the third link sat 58px past the right edge — clipped, not
+     scrollable, so "Support" was simply unreachable on eight pages and
+     nothing looked broken. Found 2026-08-23 by responsive.spec.ts. */
+  flex-wrap: wrap;
+}
 .brand {
   display: flex; align-items: center; gap: 11px; min-height: 48px;
   font-family: var(--font-serif), Georgia, serif; font-size: 23px;
   font-weight: 600; letter-spacing: -0.03em; white-space: nowrap;
 }
-.nav-links { display: flex; gap: 6px; align-items: center; }
+.nav-links { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 .nav-links a:not(.btn) {
   min-height: 48px; display: flex; align-items: center; padding: 0 13px;
   border-radius: var(--r-pill); color: var(--text-secondary);

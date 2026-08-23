@@ -4,6 +4,46 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the nav was unreachable on a phone, on eight pages (2026-08-24)
+
+**e2e 153 passed (was 109): 44 new responsive checks across 4 widths x 11 pages.**
+
+Nothing in the suite had ever checked a narrow viewport. `e2e/tests/responsive.spec.ts`
+does, and found a real one on the first run.
+
+**The bug.** The trust pages carry a plain three-link `.nav-links` — the mobile
+`<details>` disclosure belongs to the landing only. `display: flex` with no
+wrap, so at 360px the third link sat at `right: 418px` on a 360px screen: 58px
+past the edge. And the page does **not** scroll sideways, so it was clipped
+rather than reachable — **"Support" was simply gone on eight pages**, with
+nothing looking broken. `/privacy` and `/terms` were fine, which is why it had
+survived: they carry two links, and two fit.
+
+Exactly the shape this project keeps meeting — truncation and overflow, invisible
+in a green build, arriving later as "it looks wrong". `flex-wrap: wrap` on
+`.nav-inner` and `.nav-links` is the whole fix.
+
+**The check is deliberately narrow so it stays trustworthy.** Three mechanical
+assertions — no sideways scroll, nothing readable or clickable past the right
+edge, no text cut off by its own box — and nothing about taste. Two exclusions,
+both because the first run produced false positives worth understanding rather
+than suppressing:
+
+* anything inside an `overflow-x: auto` ancestor, since the house rule is that
+  wide content scrolls in its own container;
+* elements that declare themselves decorative — `aria-hidden`, or
+  `pointer-events: none`, with no text and nothing to click. The landing's
+  `.orb-art` blobs sit at `right: -48px` by design. An element with text or an
+  href gets no such exemption, which is what caught the nav link.
+
+Verified by reverting the CSS: 16 failures come back.
+
+*Also from the browser pass:* the waitlist works end to end (form → API → row in
+the database → first entry in `/admin/waitlist`), the FAQ accordion has correct
+`aria-expanded`/`aria-controls`, `company` on the waitlist form is a real
+honeypot, and all 11 pages serve real content. The admin console leaks nothing
+before sign-in — it is one gated SPA, 69 characters of body.
+
 ## Found — the deploy would have overwritten a live product (2026-08-23)
 
 Found by opening the site in a browser, which is the one thing nobody had done.

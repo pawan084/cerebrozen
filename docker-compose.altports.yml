@@ -1,0 +1,25 @@
+# Spare host ports for a manual walkthrough.
+#
+# 3000/3001/3002 are already taken on this machine by another product's dev
+# servers ("HeyCere — Deterministic AI Coaching"), so the usual mappings fail to
+# bind. This overlay moves ONLY the host side; nothing about the images or the
+# container ports changes, and the other product is left alone.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.altports.yml up -d web admin
+#
+# CORS is widened to match, because the browser will now be loading these pages
+# from :3100/:3101 and the API refuses origins it was not told about.
+services:
+  api:
+    environment:
+      CORS_ORIGINS: >-
+        http://localhost:3000,http://localhost:3001,http://localhost:3002,
+        http://localhost:3100,http://localhost:3101
+
+  web:
+    ports: !override
+      - "3100:3000"
+
+  admin:
+    ports: !override
+      - "3101:3001"
