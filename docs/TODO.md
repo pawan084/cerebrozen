@@ -4,6 +4,74 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the gates, tested with the gates ON (2026-08-23)
+
+**e2e: 100 passed (was 89). Two wiring mutations caught, exactly the two tests aimed at them.**
+
+Three features had shipped with only half of each one covered end to end. The
+bot challenge is inert without a vendor secret, the verification gate is inert
+without SMTP, and the rate limiter is switched off in the e2e stack on purpose
+(every browser test shares one address, so real limits make the suite flaky).
+Every one of those defaults is correct — and together they meant the *enabled*
+half of all three existed only in unit tests.
+
+That was written down as a known gap rather than fixed, which was the wrong
+call. "It's only reachable in production" is precisely the argument for testing
+it, not against.
+
+`docker-compose.e2e.yml` now runs a second **`api-gated`** service: the same
+image, the same database, every switch thrown — `SMTP_HOST` set (non-empty is
+the whole switch; `send_email` swallows the failure to reach a host that does
+not resolve), `BOT_CHALLENGE_SECRET` set, `RATE_LIMIT_ENABLED=1`,
+`TRUSTED_PROXY_HOPS=1`, `UNVERIFIED_DAILY_MESSAGES=3`. Alongside it,
+**`challenge-stub`**, ten lines of `http.server` standing in for Cloudflare,
+answering success only for one magic token — so a single instance exercises both
+the accept and the refuse path, and accounts can still be created to test
+everything downstream.
+
+`e2e/tests/gated-api.spec.ts` drives eleven cases over real HTTP, and the point
+of every one is *wiring* rather than logic. A unit test proves the service
+refuses. It cannot prove the decorator is on the route, that the guard runs
+before the 409, that the middleware forwards the header the key function reads,
+or that an env var reaches the object that consults it.
+
+The two that were previously unreachable at this level are the ones worth
+naming:
+
+* **A failed challenge does not reveal whether an address exists.** The
+  409-vs-400 oracle is only expressible with a live challenge, so this could
+  not have been an e2e test before `api-gated` existed.
+* **The daily cap does not stand in front of a crisis.** An account is driven
+  past its allowance with ordinary messages until the 429 lands, then sends one
+  the keyword floor flags and must not be refused. That is the single most
+  important assertion in this repo, and until today it lived only in a unit
+  test.
+
+**Three infrastructure bugs surfaced doing it**, all of which would have made
+the suite lie:
+
+* `api-gated` builds to its **own image name**, so the first mutation harness
+  rebuilt `api`, left the gated instance on the old code, and reported the wrong
+  test failing while the mutations had no effect at all. Caught because the
+  failure was in a test the mutation could not possibly touch.
+* `wait.js` waited for `api`, `web` and `admin` only. `api-gated` boots last —
+  it waits on `api`'s healthcheck, so the two cannot run Alembic against one
+  database at the same moment — which makes it the easiest service in the stack
+  to race, and `gated-api.spec.ts` hits it on its first request. It is now in
+  the wait list.
+* The spec exhausted its own signup budget: every test runs from one container
+  and signup is address-limited at 10/minute. Each test now presents a distinct
+  `X-Forwarded-For`, which is also the honest model — these are different
+  callers.
+
+`api` gained a healthcheck as part of this, so the gated instance can wait for
+migrations rather than race them.
+
+**Still only static, and genuinely unreachable here:** `deploy/Caddyfile`. There
+is no Caddy in the e2e stack, so the edge headers cannot be exercised;
+`scripts/check-edge-headers.mjs` covers that tier instead, and a test that
+pretended to reach it would be worse than none.
+
 ## Done — email verification gating, and the safety bug it uncovered (WC-90 follow-on, 2026-08-23)
 
 **893 passed / 2 skipped, 13 coverage floors held, 46/46 mutants caught.**
@@ -61,11 +129,11 @@ Refusals are a **403 with a structured `detail`** carrying `code` and the
 `feature` name, so a client can say which thing is waiting rather than showing a
 generic wall.
 
-**Note on where this is exercised.** Being inert without SMTP means CI and the
-e2e stack never run with the gate on; the tests turn it on explicitly with a
-fixture. That is the right production behaviour but it does mean the *enabled*
-path has no end-to-end coverage — worth remembering the day `SMTP_HOST` is set
-in production for the first time.
+**Note on where this is exercised.** Being inert without SMTP means the *main*
+e2e stack never runs with the gate on. That was left as a known gap for about an
+hour and then closed properly: `docker-compose.e2e.yml` now carries a second
+`api-gated` instance with every switch thrown, and `e2e/tests/gated-api.spec.ts`
+drives the enabled path over real HTTP. See the entry above.
 
 *Two badly built mutants again.* One changed the verification email's SUBJECT
 and was reported as a gap, when the test asserts the link is in the BODY and was

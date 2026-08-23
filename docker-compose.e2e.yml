@@ -46,9 +46,77 @@ services:
       # partway through a suite and makes it flaky rather than catching abuse.
       # Production refuses to boot with this off (Settings._guard_production).
       RATE_LIMIT_ENABLED: "0"
+    healthcheck:
+      # api-gated waits on this, so the two instances cannot run Alembic against
+      # one database at the same moment.
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 3s
+      timeout: 5s
+      retries: 20
     depends_on:
       db:
         condition: service_healthy
+
+  # ── The same API with every gate switched ON ───────────────────────────
+  #
+  # The main `api` above deliberately runs with the gates off: every browser
+  # test shares one IP, so real rate limits make the suite flaky, and the
+  # verification gate is inert without SMTP. That is the right default and it
+  # left the *enabled* half of three features — bot challenge, email
+  # verification, account rate limiting — exercised only by unit tests.
+  #
+  # This second instance closes that. Same image, same database, gates on, and
+  # `gated-api.spec.ts` drives it over real HTTP.
+  challenge-stub:
+    image: python:3.12-alpine
+    # Stands in for Cloudflare/hCaptcha. Answers success ONLY for the magic
+    # token, so one instance can exercise both the accept and the refuse path —
+    # and so accounts can still be created here to test everything downstream.
+    command:
+      - python
+      - -c
+      - |
+        from http.server import BaseHTTPRequestHandler, HTTPServer
+        from urllib.parse import parse_qs
+        class H(BaseHTTPRequestHandler):
+            def do_POST(self):
+                n = int(self.headers.get("content-length", 0))
+                body = parse_qs(self.rfile.read(n).decode())
+                ok = body.get("response", [""])[0] == "e2e-good"
+                payload = b'{"success": true}' if ok else b'{"success": false, "error-codes": ["invalid-input-response"]}'
+                self.send_response(200)
+                self.send_header("content-type", "application/json")
+                self.send_header("content-length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+            def log_message(self, *a): pass
+        HTTPServer(("0.0.0.0", 9000), H).serve_forever()
+
+  api-gated:
+    build: ./backend
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://cerebro:cerebro@db:5432/cerebro
+      # Non-empty is the whole switch: verification.gate_active() reads it, and
+      # send_email swallows the failure to reach a host that does not exist.
+      SMTP_HOST: smtp.invalid
+      BOT_CHALLENGE_SECRET: e2e-secret
+      BOT_CHALLENGE_VERIFY_URL: http://challenge-stub:9000/siteverify
+      # On, unlike the main instance — this is where the account-keyed limit is
+      # actually proven to bite.
+      RATE_LIMIT_ENABLED: "1"
+      TRUSTED_PROXY_HOPS: "1"
+      UNVERIFIED_DAILY_MESSAGES: "3"
+    # No host port on purpose: the e2e runner reaches it on the compose network,
+    # and publishing one only collides with whatever is already on 8001.
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+      challenge-stub:
+        condition: service_started
 
   web:
     build:
@@ -107,7 +175,11 @@ services:
       ADMIN_URL: http://admin.cerebro.test:3001
       APP_URL: http://app:3002
       PORTAL_URL: http://portal:3003
+      # The second API, with the bot challenge, verification gate and rate
+      # limits all switched on (see the api-gated service).
+      GATED_API_URL: http://api-gated:8000
     depends_on:
+      - api-gated
       - web
       - admin
       - app

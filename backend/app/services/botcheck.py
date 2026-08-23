@@ -128,8 +128,10 @@ async def verify_challenge(token: str | None, remote_ip: str | None = None) -> b
         logger.info("bot_challenge_missing_token")
         return False
 
-    url = VERIFY_URLS.get(settings.bot_challenge_provider)
-    if url is None:
+    url = settings.bot_challenge_verify_url or VERIFY_URLS.get(
+        settings.bot_challenge_provider
+    )
+    if not url:
         logger.warning(
             "bot_challenge_unknown_provider provider=%s", settings.bot_challenge_provider
         )

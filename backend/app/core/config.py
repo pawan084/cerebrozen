@@ -95,6 +95,11 @@ class Settings(BaseSettings):
     # runs. Provider is "turnstile" or "hcaptcha" — they share a verify shape.
     bot_challenge_provider: str = "turnstile"
     bot_challenge_secret: str = ""
+    # Overrides the provider's verify endpoint. Exists so the CONFIGURED path
+    # can be driven end to end against a stub — without it the only thing any
+    # suite could exercise is the unconfigured no-op, which is the half that
+    # cannot refuse anybody.
+    bot_challenge_verify_url: str = ""
 
     # Generated media (narration MP3s) live here, served read-only at /media.
     # Relative to the working dir (/app in-container); prod mounts a named volume.
