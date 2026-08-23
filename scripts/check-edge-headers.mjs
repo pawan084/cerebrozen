@@ -68,14 +68,49 @@ if (snippetStart === -1) {
       break;
     }
   }
-  const body = lines.slice(snippetStart, end + 1).join("\n");
+  const body = lines.slice(snippetStart, end + 1);
+
+  // Two structural properties are checked as well as the values, because both
+  // are load-bearing and both fail silently. Learned the hard way on
+  // 2026-08-23, when e2e/tests/edge-headers.spec.ts became the first test to
+  // reach this file and found api.cerebrozen.in serving no HSTS at all:
+  //
+  //   `?field`  — set only if the upstream did not. Without it Caddy APPENDS to
+  //               a header the app already sent, and the API answered
+  //               `X-Frame-Options: SAMEORIGIN, DENY`. Two disagreeing values
+  //               is the same as none: browsers treat it as invalid.
+  //
+  //   one `header` directive per field — NOT one block listing all five. Caddy
+  //               compiles a block of `?` fields into a single handler with a
+  //               single require-matcher covering every one, so the ops apply
+  //               only when ALL are absent. FastAPI sets three of them, so the
+  //               matcher never fired and the API received none of the five.
   for (const [header, valid, why] of REQUIRED_IN_SNIPPET) {
-    const line = body.split("\n").find((l) => l.trim().startsWith(header));
+    const line = body.find((l) => l.trim().replace(/^header\s+/, "").replace(/^[?>+-]/, "").startsWith(header));
     if (!line) {
       problems.push(`(${SNIPPET}) no longer sets ${header}.`);
-    } else if (!valid(line)) {
-      problems.push(`(${SNIPPET}) ${header}: ${why} — got: ${line.trim()}`);
+      continue;
     }
+    const trimmed = line.trim();
+    if (!/^header\s+\?/.test(trimmed)) {
+      problems.push(
+        `(${SNIPPET}) ${header} must be its own \`header ?Field "value"\` line. ` +
+          'Inside a shared `header { … }` block the "?" matcher covers every ' +
+          "field at once and applies only when ALL of them are absent — which " +
+          "is how api.cerebrozen.in ended up with no HSTS. Got: " +
+          trimmed,
+      );
+    } else if (!valid(line)) {
+      problems.push(`(${SNIPPET}) ${header}: ${why} — got: ${trimmed}`);
+    }
+  }
+
+  // A block form would also silently reintroduce the bug, so name it directly.
+  if (body.some((l) => /^\s*header\s*{/.test(l))) {
+    problems.push(
+      `(${SNIPPET}) contains a \`header { … }\` block. Use one directive per ` +
+        "field; see the comment in deploy/Caddyfile for what the block form does.",
+    );
   }
 }
 
@@ -135,9 +170,10 @@ if (problems.length > 0) {
   console.error("Edge security headers are wrong in deploy/Caddyfile:\n");
   for (const problem of problems) console.error(`  · ${problem}`);
   console.error(
-    "\n  Nothing else in this repo can catch this. The e2e stack runs the apps\n" +
-      "  directly with no Caddy in front, so these headers exist in production\n" +
-      "  and nowhere a test can see them.",
+    "\n  This gate READS the file; e2e/tests/edge-headers.spec.ts RUNS it, against\n" +
+      "  a Caddy serving this exact config. Keep both: one catches a header\n" +
+      "  deleted from the source, the other catches a header the source claims\n" +
+      "  to set that never reaches a response.",
   );
   process.exit(1);
 }

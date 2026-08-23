@@ -10,14 +10,52 @@
 # comes from each app's own middleware.ts (per-request script NONCE — no
 # 'unsafe-inline' scripts; Caddy passes the upstream header through). Only the
 # API block sets a CSP here, since FastAPI serves no HTML of its own.
+# The `?` prefix means "set this only if the upstream did not". It is load
+# bearing, not tidiness: without it Caddy APPENDS to a header the app already
+# sent, and the API sets its own X-Frame-Options and Referrer-Policy. Responses
+# from api.cerebrozen.in carried `X-Frame-Options: SAMEORIGIN, DENY` and
+# `Referrer-Policy: strict-origin-when-cross-origin, no-referrer` — and a browser
+# that sees two disagreeing XFO values treats the header as invalid and ignores
+# it, so the strictest site in the estate was the one left without it. Found on
+# 2026-08-23 by e2e/tests/edge-headers.spec.ts, the first test that ever reached
+# this file; neither the static check nor a direct-to-app request can see it.
+#
+# So the edge sets a FLOOR and a site may be stricter — which is the arrangement
+# the API was already written for (DENY and no-referrer, deliberately, because it
+# renders no documents). The floor is only a floor if nothing weakens it, so the
+# e2e spec asserts each site's final value is at least as strict as this.
 (security_headers) {
-	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains"
-		X-Content-Type-Options "nosniff"
-		X-Frame-Options "SAMEORIGIN"
-		Referrer-Policy "strict-origin-when-cross-origin"
-		Permissions-Policy "camera=(), microphone=(), geolocation=()"
-	}
+	# One `header` directive per field, deliberately — NOT one block with five
+	# fields in it, which is what this was until 2026-08-23 and why the API was
+	# shipping without HSTS.
+	#
+	# `?` means "set only if the upstream did not". Caddy compiles a block of
+	# `?` fields into a SINGLE handler with a SINGLE require-matcher covering all
+	# of them, so the ops apply only when EVERY one is absent. FastAPI sets its
+	# own X-Content-Type-Options, X-Frame-Options and Referrer-Policy — so the
+	# matcher never fired for api.cerebrozen.in and it received none of the five,
+	# HSTS and Permissions-Policy included. Split like this, each field gets its
+	# own matcher and is decided on its own.
+	#
+	# Before `?` was there at all, the same block APPENDED instead, and the API
+	# answered `X-Frame-Options: SAMEORIGIN, DENY` — two disagreeing values,
+	# which a browser treats as invalid and ignores. So the strictest site in the
+	# estate has been the one without framing protection, in one form or another,
+	# for as long as this file has existed.
+	#
+	# Both were found by e2e/tests/edge-headers.spec.ts, the first test that ever
+	# reached this file. Neither the static gate nor a direct-to-app request can
+	# see either one: the header is present in the source, and present on the
+	# app's own response — it is the composition that was wrong.
+	#
+	# The arrangement is now: the edge sets a FLOOR, a site may be stricter. The
+	# spec asserts each site's final value is at least as strict as the floor,
+	# because a floor nothing enforces is not one.
+	header ?Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	header ?X-Content-Type-Options "nosniff"
+	header ?X-Frame-Options "SAMEORIGIN"
+	header ?Referrer-Policy "strict-origin-when-cross-origin"
+	header ?Permissions-Policy "camera=(), microphone=(), geolocation=()"
 }
 
 # www → apex: one canonical host, so search engines never split the site's

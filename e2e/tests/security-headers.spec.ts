@@ -11,11 +11,14 @@ import { test, expect, request as pwRequest } from "@playwright/test";
  * **What this file can and cannot reach.** The e2e stack runs the four Next.js
  * apps and the API directly; there is no Caddy in front of them. So the CSP
  * (set per-request by each app's `middleware.ts`) and the API's baseline
- * headers are testable here, and the edge headers in `deploy/Caddyfile` —
- * HSTS, Referrer-Policy, Permissions-Policy — are not, because nothing in CI
- * ever runs Caddy. Those are covered statically by `scripts/check-headers.mjs`
- * instead. Splitting it that way is deliberate: a test that pretended to cover
- * the edge would be worse than no test, because it would look like cover.
+ * headers are what this file covers.
+ *
+ * The edge headers in `deploy/Caddyfile` used to be out of reach here and are
+ * not any more: the stack runs a `caddy` service on the production config, and
+ * `edge-headers.spec.ts` drives it. Keep the two files separate — this one
+ * asserts what an app emits, that one asserts what a client finally receives,
+ * and the difference between those is where the duplicated
+ * `X-Frame-Options: SAMEORIGIN, DENY` was hiding.
  */
 
 const WEB = process.env.WEB_URL || "http://web:3000";

@@ -118,6 +118,44 @@ services:
       challenge-stub:
         condition: service_started
 
+  # ── The real edge, in front of the real apps ───────────────────────────
+  #
+  # deploy/Caddyfile carries HSTS, nosniff, framing, referrer and permissions
+  # policy for every site, and until now nothing in this repo could reach it:
+  # the stack talked to the apps directly, so a dropped `import
+  # security_headers` would pass CI and ship. `scripts/check-edge-headers.mjs`
+  # reads the file statically; this serves it.
+  #
+  # The config is the production file itself, mounted read-only, with exactly
+  # one line added at boot (see e2e/caddy-testable.sh, which verifies that claim
+  # and refuses to start if the derived config differs by anything more).
+  caddy:
+    image: caddy:2-alpine
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile.prod:ro
+      - ./e2e/caddy-testable.sh:/usr/local/bin/caddy-testable.sh:ro
+    entrypoint: ["sh", "/usr/local/bin/caddy-testable.sh"]
+    networks:
+      default:
+        aliases:
+          # So the suite can reach https://cerebrozen.in/ with the SNI Caddy
+          # matches its site blocks on. Faking a Host header would not work:
+          # TLS is negotiated before the request line is read.
+          - cerebrozen.in
+          - www.cerebrozen.in
+          - admin.cerebrozen.in
+          - app.cerebrozen.in
+          - api.cerebrozen.in
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_started
+      admin:
+        condition: service_started
+      app:
+        condition: service_started
+
   web:
     build:
       context: ./apps/web
@@ -178,8 +216,11 @@ services:
       # The second API, with the bot challenge, verification gate and rate
       # limits all switched on (see the api-gated service).
       GATED_API_URL: http://api-gated:8000
+      # The production Caddyfile, actually serving (see the caddy service).
+      EDGE_URL: http://caddy
     depends_on:
       - api-gated
+      - caddy
       - web
       - admin
       - app

@@ -4,6 +4,72 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — Caddy in the e2e stack, and two header bugs it immediately found (WC-87 follow-on, 2026-08-23)
+
+**e2e: 109 passed (was 100). Three Caddyfile mutations caught, including the one that shipped.**
+
+`deploy/Caddyfile` was the last tier nothing could reach. `scripts/check-edge-headers.mjs`
+read it; nothing ran it. The stack now includes a **caddy** service serving the
+production file itself — mounted read-only, with exactly one line added at boot
+(`local_certs`, so Caddy uses its own CA instead of Let's Encrypt).
+`e2e/caddy-testable.sh` strips that line back out and diffs against the
+original, refusing to start if anything else differs, so the tests cannot pass
+against a config we do not ship. Compose gives the container network aliases for
+each hostname, so the suite connects to `https://cerebrozen.in/` with the SNI
+Caddy matches its site blocks on — a faked `Host` header would not work, since
+TLS is negotiated before the request line is read.
+
+**It found two real bugs in the first run.** Both had been shipping. Neither the
+static gate nor a direct-to-app request could see either, because the header was
+present in the source *and* present on the app's own response — it was the
+composition that was wrong.
+
+**1. Duplicated, contradicting headers on the API.** Caddy's `header` directive
+appends to a header the upstream already sent. FastAPI sets its own
+`X-Frame-Options: DENY` and `Referrer-Policy: no-referrer`, so through the edge
+the API answered:
+
+    X-Frame-Options: SAMEORIGIN, DENY
+    Referrer-Policy: strict-origin-when-cross-origin, no-referrer
+
+A browser that sees two disagreeing XFO values treats the header as invalid and
+ignores it — so the strictest site in the estate was the one with no framing
+protection at the edge. (Its CSP `frame-ancestors 'none'` still covered it in
+practice, which is exactly why nobody would have noticed.)
+
+**2. Then the fix for (1) exposed a worse one.** Adding `?` to each field — "set
+only if the upstream did not" — made the API lose the headers *entirely*: no
+HSTS, no Permissions-Policy. `caddy adapt` showed why. A `header { … }` block of
+`?` fields compiles to a **single handler with a single require-matcher covering
+every field**, so the ops apply only when ALL of them are absent. FastAPI sets
+three, so the matcher never fired and the API received none of the five.
+
+The snippet is now one `header ?Field "value"` directive per field, each with its
+own matcher, decided on its own. The arrangement it produces is the right one and
+was what the API had always been written for: **the edge sets a floor, a site may
+be stricter.** The API keeps DENY and no-referrer; HSTS and Permissions-Policy
+are filled in from the floor.
+
+Both structural properties — the `?` prefix, and one directive per field — are
+now checked by `check-edge-headers.mjs` as well, with the reason written next to
+each. It only knows the rules because the runtime test found them.
+
+**Nine cases**, covering each site's shared headers (asserted single-valued, which
+is what caught the duplication), the API's locked-down CSP, admin's `X-Robots-Tag`,
+the www→apex 301, the per-request nonce CSP surviving the proxy unchanged, and
+`/brand/*` keeping its security headers alongside its cache policy.
+
+Verified by breaking the Caddyfile three ways: dropping an `import
+security_headers` fails the app test, cutting HSTS to a day fails the landing
+test, and reverting the snippet to the pre-today block form fails the **api**
+test — the exact regression that had shipped.
+
+*Harness note, for the fourth time in this session:* the mutation script reported
+all three as MISSED while printing the failing test names right beneath. It took
+the last line matching `\\d+ (passed|failed)`, which with retries is "8 passed",
+not the "1 failed" line above it. Read the evidence, not the summariser —
+including when the summariser is mine.
+
 ## Done — the gates, tested with the gates ON (2026-08-23)
 
 **e2e: 100 passed (was 89). Two wiring mutations caught, exactly the two tests aimed at them.**
@@ -67,10 +133,11 @@ the suite lie:
 `api` gained a healthcheck as part of this, so the gated instance can wait for
 migrations rather than race them.
 
-**Still only static, and genuinely unreachable here:** `deploy/Caddyfile`. There
-is no Caddy in the e2e stack, so the edge headers cannot be exercised;
-`scripts/check-edge-headers.mjs` covers that tier instead, and a test that
-pretended to reach it would be worse than none.
+**One tier was still static when this was written:** `deploy/Caddyfile`, because
+there was no Caddy in the e2e stack. That is closed too — see the entry above,
+which also records the two header bugs the first run of it found. The lesson
+generalises: "genuinely unreachable" was, both times, "I have not built the
+thing that would reach it."
 
 ## Done — email verification gating, and the safety bug it uncovered (WC-90 follow-on, 2026-08-23)
 
