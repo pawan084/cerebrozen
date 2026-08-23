@@ -271,6 +271,43 @@ struct FreeLimitInfo: Equatable, Identifiable {
     }
 }
 
+/// A daily abuse ceiling on a feature that costs money to run.
+///
+/// NOT the free-tier cap above, and the difference decides what a screen may
+/// say: that one means "upgrade and this goes away", this one means "come back
+/// tomorrow". The ceilings are identical on every tier, so offering an upgrade
+/// here would be selling a fix that is not for sale.
+struct DailyCeilingInfo: Equatable, Identifiable {
+    var id: String { "\(feature)-\(limit)-\(resetsAt?.timeIntervalSince1970 ?? 0)" }
+    let message: String
+    /// Which metered feature — so a screen can name the thing that is waiting.
+    let feature: String
+    let limit: Int
+    let resetsAt: Date?
+
+    /// "resets at 5:30 am" in the user's own timezone. Same reasoning as
+    /// `FreeLimitInfo`: the window is UTC and copy saying "midnight" is wrong
+    /// for most of the world.
+    var resetText: String {
+        guard let resetsAt else { return "resets at midnight UTC" }
+        let f = DateFormatter()
+        f.timeStyle = .short
+        f.dateStyle = .none
+        return "resets at \(f.string(from: resetsAt))"
+    }
+}
+
+/// The account has not confirmed its email and this feature needs it.
+///
+/// Its own case because the alternative is worse than unhelpful: a 403 used to
+/// become `.unauthorized`, which tells somebody their session expired and
+/// invites them to sign out of an account that is working perfectly well.
+struct VerificationRequiredInfo: Equatable, Identifiable {
+    var id: String { feature }
+    let message: String
+    let feature: String
+}
+
 enum APIError: LocalizedError {
     case unauthorized
     /// The free-tier daily cap, specifically. Distinct from `.server(429, …)`
@@ -278,6 +315,11 @@ enum APIError: LocalizedError {
     /// entirely — showing an upgrade prompt to someone who typed too fast
     /// would be both wrong and manipulative.
     case freeLimit(FreeLimitInfo)
+    /// A daily abuse ceiling. Same status as `.freeLimit`, opposite remedy.
+    case dailyCeiling(DailyCeilingInfo)
+    /// A confirmable email address is missing. Distinct from `.unauthorized`,
+    /// which this used to be mistaken for — see `VerificationRequiredInfo`.
+    case verificationRequired(VerificationRequiredInfo)
     case server(Int, String)
     case invalidResponse
     case transport(String)
@@ -286,6 +328,8 @@ enum APIError: LocalizedError {
         switch self {
         case .unauthorized: return "Your session expired. Please sign in again."
         case let .freeLimit(info): return info.message
+        case let .dailyCeiling(info): return info.message
+        case let .verificationRequired(info): return info.message
         case let .server(code, msg): return msg.isEmpty ? "Server error (\(code))." : msg
         case .invalidResponse: return "Unexpected response from server."
         case let .transport(m): return m
@@ -739,12 +783,28 @@ actor APIClient {
         switch http.statusCode {
         case 200...299:
             do { return try decode(data) } catch { throw APIError.invalidResponse }
-        case 401, 403:
+        case 401:
+            throw APIError.unauthorized
+        case 403:
+            // A 403 is not always a dead session. The verification gate answers
+            // 403 with a code, and collapsing it into `.unauthorized` told
+            // somebody their session had expired and invited them to sign out
+            // of an account that was working perfectly well. Checked BEFORE the
+            // fallback, because the fallback is what caused that.
+            let forbidden = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            if let info = Self.verificationRequired(from: forbidden) {
+                throw APIError.verificationRequired(info)
+            }
             throw APIError.unauthorized
         default:
             let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
             if http.statusCode == 429, let info = Self.freeLimit(from: body) {
                 throw APIError.freeLimit(info)
+            }
+            // Same status as the cap above, opposite meaning — only the code
+            // separates them.
+            if http.statusCode == 429, let info = Self.dailyCeiling(from: body) {
+                throw APIError.dailyCeiling(info)
             }
             // `error` is slowapi's key for the IP rate limiter; without it a
             // throttled user sees only "Server error (429)".
@@ -784,6 +844,38 @@ actor APIClient {
             limit: detail["limit"] as? Int ?? 0,
             used: detail["used"] as? Int ?? 0,
             resetsAt: resets)
+    }
+
+    /// Shared by the two quota parsers so their date handling cannot drift.
+    static func resetInstant(from detail: [String: Any]) -> Date? {
+        guard let iso = detail["resets_at"] as? String else { return nil }
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f.date(from: iso) ?? ISO8601DateFormatter().date(from: iso)
+    }
+
+    /// Recognise the daily ceiling by its `code`, never by the status alone.
+    static func dailyCeiling(from body: [String: Any]?) -> DailyCeilingInfo? {
+        guard let detail = body?["detail"] as? [String: Any],
+              detail["code"] as? String == "daily_ceiling"
+        else { return nil }
+        return DailyCeilingInfo(
+            message: detail["message"] as? String ?? "You've hit today's limit for this.",
+            feature: detail["feature"] as? String ?? "",
+            limit: detail["limit"] as? Int ?? 0,
+            resetsAt: resetInstant(from: detail))
+    }
+
+    /// Recognise the verification gate by its `code`. Without this a 403 falls
+    /// through to `.unauthorized` and the person is told to sign in again.
+    static func verificationRequired(from body: [String: Any]?) -> VerificationRequiredInfo? {
+        guard let detail = body?["detail"] as? [String: Any],
+              detail["code"] as? String == "email_unverified"
+        else { return nil }
+        return VerificationRequiredInfo(
+            message: detail["message"] as? String
+                ?? "Confirm your email address to use this.",
+            feature: detail["feature"] as? String ?? "")
     }
 
     // MARK: Oracle (streaming agent)
@@ -843,7 +935,18 @@ actor APIClient {
             if T.self == EmptyResponse.self { return EmptyResponse() as! T }
             do { return try JSONDecoder().decode(T.self, from: data) }
             catch { throw APIError.invalidResponse }
-        case 401, 403:
+        case 401:
+            throw APIError.unauthorized
+        case 403:
+            // A 403 is not always a dead session. The verification gate answers
+            // 403 with a code, and collapsing it into `.unauthorized` told
+            // somebody their session had expired and invited them to sign out
+            // of an account that was working perfectly well. Checked BEFORE the
+            // fallback, because the fallback is what caused that.
+            let forbidden = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            if let info = Self.verificationRequired(from: forbidden) {
+                throw APIError.verificationRequired(info)
+            }
             throw APIError.unauthorized
         default:
             // Same fallback chain as `rawRequest`: string `detail`, then the
@@ -853,6 +956,11 @@ actor APIClient {
             let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
             if http.statusCode == 429, let info = Self.freeLimit(from: body) {
                 throw APIError.freeLimit(info)
+            }
+            // Same status as the cap above, opposite meaning — only the code
+            // separates them.
+            if http.statusCode == 429, let info = Self.dailyCeiling(from: body) {
+                throw APIError.dailyCeiling(info)
             }
             let detail = (body?["detail"] as? String)
                 ?? Self.validationMessage(from: body)

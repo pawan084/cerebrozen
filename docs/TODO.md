@@ -4,6 +4,34 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — iOS reads the refusal codes, and stops calling a 403 a dead session (2026-08-23)
+
+**Not verified locally — no Mac here. CI builds and tests iOS on `macos-15`
+whenever `apps/ios/**` changes, so that run is the verification.**
+
+`APIError.dailyCeiling` and `APIError.verificationRequired`, parsed from
+`detail.code` exactly as `.freeLimit` already was, with `DailyCeilingInfo`
+mirroring `FreeLimitInfo` down to the local-time `resetText` (the window is UTC,
+so copy saying "midnight" is wrong for most of the world).
+
+**The bug this uncovered is the reason it was worth doing.** iOS mapped
+`case 401, 403: throw APIError.unauthorized` — so EVERY 403 became "Your session
+expired. Please sign in again." The verification gate answers 403, which means
+an unverified user tapping voice or plans would have been told their session had
+died and invited to sign out of an account that was working perfectly well. 403
+is now its own branch that checks the code first and falls back to
+`.unauthorized` only when there is no code to read.
+
+Eight tests in `CereBroTests/RefusalCodesTest.swift`, including the one that
+pins the point: `.verificationRequired`'s description must not equal
+`.unauthorized`'s.
+
+**Deliberately not done: any iOS screen.** The message a user sees is now
+correct and specific, but there is no resend button and no reset-time card — the
+affordances web and Android got. That is UI I cannot run, and shipping SwiftUI I
+have never seen render is a different risk from shipping a parser with tests
+around it.
+
 ## Done — you can now tell whether the ceilings have ever refused anybody (2026-08-23)
 
 `models/daily_usage.py` said an account reaching a ceiling "is worth knowing
