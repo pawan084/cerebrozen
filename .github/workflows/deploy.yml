@@ -44,12 +44,65 @@ jobs:
               --profile tools run --rm migrate
             docker compose -f docker-compose.prod.yml --env-file backend/.env.production up -d --no-build
 
+            # Reload the edge, because `up -d` above will NOT have touched it.
+            # Nothing about the caddy service changes from compose's point of
+            # view — same image tag, same volumes — so the container is left
+            # running, and the Caddyfile is bind-mounted rather than baked in.
+            # Caddy reads its config at start or on reload and at no other time,
+            # so without this a Caddyfile change deploys onto disk and never
+            # takes effect: a green build that shipped nothing.
+            #
+            # Validate before reloading. `caddy reload` does validate internally
+            # and keeps the running config if the new one is bad — the edge
+            # cannot be taken down by a broken Caddyfile — but a separate
+            # validate turns "still serving yesterday's headers" into a red
+            # build rather than a quiet one.
+            #
+            # The retry is for the start race: `up -d` returns when containers
+            # are started, not when they are ready to exec into. Three attempts
+            # and then a real failure, because a caddy that is genuinely down
+            # means the whole estate is down and the deploy SHOULD go red.
+            for i in 1 2 3; do
+              if docker compose -f docker-compose.prod.yml --env-file backend/.env.production \
+                   exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile; then
+                break
+              fi
+              [ "$i" = 3 ] && { echo "caddy is not reachable, or the Caddyfile is invalid"; exit 1; }
+              sleep 5
+            done
+            docker compose -f docker-compose.prod.yml --env-file backend/.env.production \
+              exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+
       - name: Health check
         run: |
+          ready=""
           for i in $(seq 1 10); do
             if curl -fsS https://api.cerebrozen.in/ready | grep -q '"status":"ready"'; then
-              echo "API healthy ✓"; exit 0
+              echo "API healthy ✓"; ready=1; break
             fi
             echo "waiting for API… ($i/10)"; sleep 6
           done
-          echo "API did not become healthy"; exit 1
+          [ -n "$ready" ] || { echo "API did not become healthy"; exit 1; }
+
+          # Prove the edge is serving the config we just deployed, not the one
+          # it had loaded in memory. `X-Frame-Options` is the tell: the API sets
+          # DENY for itself (it renders no documents), and the Caddyfile's
+          # shared snippet offers SAMEORIGIN as a FLOOR that a site may beat.
+          # Under the previous config the edge overwrote the app and answered
+          # SAMEORIGIN — so seeing DENY here means the reload took, and seeing
+          # two values would mean it is appending again.
+          # A GET with the body discarded, not a HEAD: /health answers 405 to
+          # HEAD, and `curl -f` turns that into exit 22 — which under the
+          # runner's `bash -e` would fail this step before the check below ever
+          # ran, reporting a header problem that was really a method problem.
+          xfo=$(curl -sS -o /dev/null -D- --max-time 15 https://api.cerebrozen.in/health \
+                | tr -d '\r' | awk -F': ' 'tolower($1)=="x-frame-options"{print $2}')
+          echo "api X-Frame-Options: ${xfo:-<absent>}"
+          case "$xfo" in
+            DENY) echo "edge reloaded, floor semantics holding ✓" ;;
+            *,*)  echo "the edge is APPENDING to the app's header ($xfo) — two"
+                  echo "disagreeing values is the same as none to a browser."; exit 1 ;;
+            "")   echo "no X-Frame-Options at the edge at all"; exit 1 ;;
+            *)    echo "the edge overwrote the app's DENY with '$xfo' — the"
+                  echo "reload did not take, or the snippet lost its ? prefixes."; exit 1 ;;
+          esac

@@ -4,6 +4,47 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the deploy reloads the edge, and proves it did (2026-08-23)
+
+Found while preparing the first automated deploy. The workflow ended with
+`up -d --no-build`, and nothing about the `caddy` service changes from
+compose's point of view — same image tag, same volumes — so the container is
+never recreated. The Caddyfile is bind-mounted rather than baked in, and Caddy
+reads its config at start or on reload and at no other time. **A Caddyfile
+change would have deployed onto disk and never taken effect**: a green build
+that shipped nothing, and the two header bugs fixed earlier today would still
+have been live.
+
+The workflow now validates and reloads the edge after `up -d`, and the health
+check afterwards asserts the reload actually took. `X-Frame-Options` on the API
+is the tell: the app sets `DENY` for itself, the Caddyfile offers `SAMEORIGIN`
+as a floor a site may beat. `DENY` means the new config is live; `SAMEORIGIN`
+means the reload did not take or the `?` prefixes were lost; two values mean it
+is appending again. Each gets its own message rather than a bare non-zero exit.
+
+**Proved against a container mounted the way production mounts it**, because
+the e2e caddy could not stand in: it mounts `deploy/Caddyfile` at
+`Caddyfile.prod` and derives `/etc/caddy/Caddyfile` at boot, so an edit to the
+source never reaches the path a reload would read — the first version of this
+probe "passed" for that reason and had to be thrown away. With production's
+direct mount: editing the file changes nothing served, `caddy reload` swaps it
+in the same container, and `caddy validate` refuses a broken Caddyfile with exit
+1 while accepting the real one. Also confirmed the config parses on Caddy 2.6,
+2.7, 2.8 and current, so the reload is safe against whatever build the server
+holds.
+
+*One bug in my own step, caught by running it against live production rather
+than reasoning about it:* the check used `curl -fsSI`, and `/health` answers 405
+to HEAD. Under the runner's `bash -e` that exits 22 during the assignment, so
+the step would have failed before the header check ran — reporting a header
+problem that was really a method problem. It is a GET with the body discarded
+now.
+
+**Still blocked on you:** `DEPLOY_HOST`, `DEPLOY_USER` and `DEPLOY_SSH_KEY` are
+not set on the repo (`gh secret list` returns empty), so the deploy cannot
+reach the server at all. The run on 2026-08-23 failed with "missing server
+host" before connecting — nothing was pulled, backed up or migrated.
+
 ## Done — grandfather existing accounts before the gate ships (2026-08-23)
 
 **896 passed / 2 skipped, 47/47 mutants caught, e2e 109 passed.**
