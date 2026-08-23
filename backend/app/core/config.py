@@ -86,6 +86,13 @@ class Settings(BaseSettings):
     elevenlabs_voice_id: str = "EXAVITQu4vr4xnSDxMaL"  # "Sarah" — calm, warm
     elevenlabs_model: str = "eleven_turbo_v2_5"
 
+    # Bot protection on the two public write endpoints (WC-90). Blank secret =
+    # the challenge is inert, per "everything degrades without keys"; the
+    # throwaway-address check in services/botcheck.py needs no key and always
+    # runs. Provider is "turnstile" or "hcaptcha" — they share a verify shape.
+    bot_challenge_provider: str = "turnstile"
+    bot_challenge_secret: str = ""
+
     # Generated media (narration MP3s) live here, served read-only at /media.
     # Relative to the working dir (/app in-container); prod mounts a named volume.
     media_root: str = "media"
@@ -244,6 +251,13 @@ class Settings(BaseSettings):
     @property
     def stt_enabled(self) -> bool:
         return bool(self.deepgram_api_key)
+
+    @property
+    def bot_challenge_enabled(self) -> bool:
+        """A configured secret is the only switch. There is deliberately no
+        BOT_CHALLENGE_ENABLED flag: two ways to turn a defence on is two ways to
+        believe it is on while it is off."""
+        return bool(self.bot_challenge_secret)
 
     @property
     def tts_enabled(self) -> bool:

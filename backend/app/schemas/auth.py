@@ -14,6 +14,11 @@ class SignupRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     name: str = Field(default="", max_length=120)
+    #: Bot-challenge token (WC-90). Optional in the schema and required only
+    #: when a secret is configured, so an older client keeps working right up
+    #: until the day the challenge is switched on — and so the field can ship
+    #: ahead of the vendor account rather than in the same rushed change.
+    challenge_token: str | None = Field(default=None, max_length=4096)
 
     @field_validator("password")
     @classmethod

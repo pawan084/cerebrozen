@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db, utcnow
-from app.core.ratelimit import account_limit, limiter
+from app.core.ratelimit import account_limit, client_ip, limiter
 from app.core.deps import get_current_user
 from app.core.security import (
     REFRESH,
@@ -42,7 +42,7 @@ from app.schemas.auth import (
     TokenPair,
 )
 from app.schemas.user import UserOut
-from app.services import apple, email, entitlements, google, nudges
+from app.services import apple, botcheck, email, entitlements, google, nudges
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -122,6 +122,10 @@ def _clear_refresh_cookie(response: Response) -> None:
 @router.post("/signup", response_model=TokenPair, status_code=status.HTTP_201_CREATED)
 @limiter.limit("10/minute")
 async def signup(request: Request, payload: SignupRequest, db: AsyncSession = Depends(get_db)):
+    # Before the existence check, so a bot cannot use signup as an email oracle
+    # by reading 409-vs-400 — and so a refused address costs no database round
+    # trip either.
+    await botcheck.guard(payload.email, payload.challenge_token, client_ip(request))
     existing = await db.scalar(select(User).where(User.email == payload.email.lower()))
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")

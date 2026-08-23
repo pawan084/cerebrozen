@@ -4,6 +4,82 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — bot protection on the public write endpoints (WC-90, 2026-08-23)
+
+**872 passed / 2 skipped, 11 coverage floors held, 41/41 mutants caught.**
+
+Written for the moment paid acquisition starts, because that is when the
+economics change. Today a bot signup is a wasted row. The moment ads point at
+the funnel it is a bot *farm*, and here a farmed account is not free: each draws
+`free_daily_messages` (50) of real LLM completion a day, and each verification
+email spends sender reputation shared with every genuine user's password reset.
+
+`services/botcheck.py`, guarding `/auth/signup` and `/waitlist` — two layers,
+chosen because they fail in opposite directions.
+
+**A challenge (Turnstile or hCaptcha).** The real defence, and the one needing a
+vendor account that does not exist yet, so it ships as a seam: inert until
+`BOT_CHALLENGE_SECRET` is set, per the project rule that everything degrades
+without keys. `challenge_token` is optional on both request bodies, so every
+already-installed client keeps working right up to the day the key lands —
+the field ships ahead of the account rather than in the same rushed change.
+
+**A throwaway-address check.** No vendor, works today, works on the native
+clients too. It catches only the laziest bulk signup and does not claim more:
+the list is fourteen domains that exist *only* to be disposable, not an arms
+race against thousands, because the false positive here is telling a real person
+they may not have an account.
+
+**The trap that check had to avoid is the whole reason it is written the way it
+is.** `privaterelay.appleid.com` is what Sign in with Apple hands us when
+somebody picks "Hide My Email" — a sign-in path this product supports. A
+blocklist built from "looks like a burner" would refuse exactly the users who
+care most about privacy, which is who this product is for, and the complaint
+would arrive as "the app won't let me register", naming nothing that leads
+anyone to the cause. Relays are consulted *before* the blocklist, so adding a
+relay domain to both sets can never lock those users out — asserted, not
+assumed.
+
+**Down is not the same as no.** A provider that answers "invalid" has decided
+something and the signup is refused. A provider that times out has decided
+nothing, and the signup is allowed with a distinct log line. Fail-closed there
+would turn somebody else's outage into every new account in a mental-health
+product being blocked, including for a person signing up at a bad moment; the IP
+and account rate limits are still standing meanwhile. Six tests pin that
+distinction and mutant B2 pins the direction.
+
+Refusals return a **400 with a structured `detail`**, following the `usage.py`
+precedent: a refused challenge should re-render the widget, a refused address
+should focus the email field, and a client cannot pick between those from a
+status code.
+
+**A test of mine was vacuous and the mutation sweep found it.** The check runs
+before the existence lookup so signup cannot become a membership oracle — but
+the test proving that used a throwaway address, and a throwaway address can
+never *be* registered, so both orderings answered 400 identically. The leak
+needs a real address and a live challenge: with a challenge configured, a bot
+sending a deliberately bad token reads 409-vs-400 and learns whether an address
+is taken. Rewritten that way, it kills the mutation.
+
+**Then the mutant itself was wrong, twice over.** The first version swapped the
+guard with the existence *query*, which leaves it running before the 409 raise —
+it changed nothing and was reported as a surviving gap in a test that was by then
+correct. The mutation that matters moves the guard past the *raise*. And as first
+written into the catalogue, B4's id and prose described the real oracle while its
+payload was the harmless swap — an entry whose description and mutation disagree
+is precisely what that file's own docstring warns about, and it would have sat
+there reading as cover. Fourth time in this repo a "surviving mutant" has turned
+out to be a badly built one; the pattern is now reliable enough to check first.
+
+**Open, and the thing that actually makes bot signups costly:** `email_verified`
+exists on `User`, is set by the OAuth and verify flows, and **nothing gates on
+it**. A brand-new unverified account draws its 50 free LLM messages immediately.
+Gating the provider-backed endpoints on a verified address would mean a bot must
+control a real mailbox per account before it can cost anything — but it also
+puts friction in front of every genuine first run, on three clients, so it is a
+product decision rather than a security fix. Recorded here rather than guessed
+at. Pairs with the daily-spend gap under WC-89.
+
 ## Done — rate limiting keyed on the account, not just the address (WC-89, 2026-08-23)
 
 **835 passed / 2 skipped, 10 coverage floors held, 37/37 mutants caught.**

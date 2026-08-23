@@ -51,6 +51,12 @@ FLOORS: dict[str, tuple[float, str]] = {
         100.0,
         "Decides whether an explicit self-harm phrase is seen at all.",
     ),
+    "app/services/botcheck.py": (
+        100.0,
+        "Decides who may create an account. Its two failure modes are opposite "
+        "and both silent: refusing real people (a privacy relay read as a "
+        "burner) or refusing nobody at all (a seam that never fires).",
+    ),
     "app/services/crisis.py": (
         100.0,
         "Every line here ends with somebody dialling something.",

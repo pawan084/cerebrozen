@@ -75,6 +75,8 @@ APP_MAIN = "app/main.py"
 MEDIA_TESTS = ("tests/test_content_audio.py",)
 RATELIMIT = "app/core/ratelimit.py"
 RATELIMIT_TESTS = ("tests/test_ratelimit_account.py", "tests/test_ratelimit_key.py")
+BOTCHECK = "app/services/botcheck.py"
+BOTCHECK_TESTS = ("tests/test_botcheck.py",)
 
 CATALOGUE: list[Mutant] = [
     # ── Safety: the floor ────────────────────────────────────────────────
@@ -555,5 +557,62 @@ CATALOGUE: list[Mutant] = [
         old="            return parts[-hops]",
         new="            return parts[hops - 1]",
         caught_by=RATELIMIT_TESTS,
+    ),
+    Mutant(
+        id="B1-a-privacy-relay-is-read-as-a-burner",
+        breaks=(
+            "Sign in with Apple's Hide My Email addresses are refused at "
+            "signup. The blocklist would turn away exactly the users who care "
+            "most about privacy, which is who this product is for — and the "
+            "complaint arrives as 'the app won't let me register', naming "
+            "nothing that would lead anyone here."
+        ),
+        path=BOTCHECK,
+        old="    if not domain or domain in _RELAYS:",
+        new="    if not domain:",
+        caught_by=BOTCHECK_TESTS,
+    ),
+    Mutant(
+        id="B2-an-outage-becomes-a-refusal",
+        breaks=(
+            "A challenge provider that cannot be REACHED is treated as one that "
+            "said no, so somebody else's outage closes registration entirely — "
+            "in a mental-health product, for somebody signing up at a bad "
+            "moment. The opposite failure to B3, and the reason the two cases "
+            "are distinguished rather than collapsed into one boolean."
+        ),
+        path=BOTCHECK,
+        old='        logger.warning("bot_challenge_unreachable error=%s", type(exc).__name__)\n        return True',
+        new='        logger.warning("bot_challenge_unreachable error=%s", type(exc).__name__)\n        return False',
+        caught_by=BOTCHECK_TESTS,
+    ),
+    Mutant(
+        id="B3-a-rejected-challenge-is-accepted-anyway",
+        breaks=(
+            "The provider's verdict is ignored, so the challenge is theatre: "
+            "configured, billed for, reporting traffic, and refusing nobody."
+        ),
+        path=BOTCHECK,
+        old='    if not body.get("success"):',
+        new="    if False:",
+        caught_by=BOTCHECK_TESTS,
+    ),
+    Mutant(
+        id="B4-signup-answers-409-before-the-guard",
+        breaks=(
+            "With a challenge configured, a bot sending a deliberately bad "
+            "token reads 409-vs-400 and learns whether an address is "
+            "registered — the membership oracle /auth/otp/request and "
+            "/auth/password/forgot go out of their way to avoid, on the "
+            "endpoint that is easiest to script. The mutation moves the guard "
+            "past the RAISE, not past the query: swapping it with the query "
+            "leaves it running before the raise and changes nothing, which is "
+            "how the first version of this entry survived and was briefly "
+            "reported as a gap in a test that was correct."
+        ),
+        path="app/api/routes/auth.py",
+        old='    await botcheck.guard(payload.email, payload.challenge_token, client_ip(request))\n    existing = await db.scalar(select(User).where(User.email == payload.email.lower()))\n    if existing:\n        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")',
+        new='    existing = await db.scalar(select(User).where(User.email == payload.email.lower()))\n    if existing:\n        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")\n    await botcheck.guard(payload.email, payload.challenge_token, client_ip(request))',
+        caught_by=BOTCHECK_TESTS,
     ),
 ]
