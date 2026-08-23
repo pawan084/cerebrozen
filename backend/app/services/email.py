@@ -34,16 +34,27 @@ def _smtp_send(to: str, subject: str, body: str) -> None:
         server.send_message(msg)
 
 
-async def send_email(to: str, subject: str, body: str) -> None:
+async def send_email(to: str, subject: str, body: str) -> bool:
     """Best-effort send. Never raises to the caller (a failed email must not
-    500 the auth flow)."""
+    500 the auth flow).
+
+    Returns whether the message actually went out. Most callers should keep
+    ignoring that — a welcome email is never worth an account — but the crisis
+    path is not one of them: `escalation.on_crisis` records whether a trusted
+    contact was reached, and it cannot record the truth if the sender only ever
+    says nothing. An unconfigured SMTP host returns False for the same reason:
+    nobody was reached, and that the deployment cannot send is the explanation
+    rather than an exemption.
+    """
     if os.getenv("TESTING") == "1":
         sent_outbox.append({"to": to, "subject": subject, "body": body})
-        return
+        return True
     if not settings.smtp_host:
         logger.info("EMAIL (no SMTP configured) → %s | %s\n%s", to, subject, body)
-        return
+        return False
     try:
         await asyncio.to_thread(_smtp_send, to, subject, body)
+        return True
     except Exception as exc:  # pragma: no cover - network path
         logger.warning("Email send failed (%s → %s): %s", subject, to, exc)
+        return False

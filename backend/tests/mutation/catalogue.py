@@ -82,6 +82,9 @@ CHAT_ROUTE = "app/api/routes/chat.py"
 USAGE = "app/services/usage.py"
 VERIFICATION_TESTS = ("tests/test_email_verification_gate.py",)
 CEILING_TESTS = ("tests/test_daily_ceilings.py",)
+ESCALATION = "app/services/escalation.py"
+SMS = "app/services/sms.py"
+ESCALATION_TESTS = ("tests/test_escalation_truth.py",)
 
 CATALOGUE: list[Mutant] = [
     # ── Safety: the floor ────────────────────────────────────────────────
@@ -728,5 +731,33 @@ CATALOGUE: list[Mutant] = [
         old='        raise ValueError(f"unknown metered feature {feature!r}")',
         new="        return 0",
         caught_by=CEILING_TESTS,
+    ),
+    Mutant(
+        id="X1-a-contact-nobody-reached-is-recorded-as-reached",
+        breaks=(
+            "`escalated` is set whether or not the notification landed. Both "
+            "senders swallow their own failures by design, so a trusted contact "
+            "who was never told about somebody's crisis is recorded exactly "
+            "like one who was — and the flag reads the same either way. This "
+            "was the shipped behaviour until 2026-08-23."
+        ),
+        path=ESCALATION,
+        old="        if reached:",
+        new="        if True:",
+        caught_by=ESCALATION_TESTS,
+    ),
+    Mutant(
+        id="X2-a-provider-rejection-reports-success",
+        breaks=(
+            "Twilio accepts the request and refuses the message (a 400), and "
+            "the sender says it went. Everything downstream then records a "
+            "reach that did not happen. The exact case the escalation "
+            "docstrings cite, and the one no test covered until a mutation "
+            "sweep asked."
+        ),
+        path=SMS,
+        old='                logger.warning("Twilio rejected SMS to %s: %s", to, resp.text[:200])',
+        new='                return True  # noqa',
+        caught_by=ESCALATION_TESTS,
     ),
 ]

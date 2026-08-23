@@ -68,6 +68,12 @@ FLOORS: dict[str, tuple[float, str]] = {
         "Carries the safety waiver: the daily cap must never be the thing "
         "standing in front of a message the keyword floor has flagged.",
     ),
+    "app/services/escalation.py": (
+        100.0,
+        "Decides whether a real person is told that somebody is in crisis — and "
+        "now decides what the record SAYS happened. Both failure modes are "
+        "silent: nobody is reached, or the row claims somebody was.",
+    ),
     "app/services/crisis.py": (
         100.0,
         "Every line here ends with somebody dialling something.",

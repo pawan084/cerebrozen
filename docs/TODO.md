@@ -4,6 +4,44 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the crisis record now says what actually happened (2026-08-23)
+
+**935 passed / 2 skipped, 14 coverage floors, 51/51 mutants caught.**
+
+`escalation.on_crisis` alerts ops and, with consent, notifies a trusted contact.
+Both senders swallow their own failures by design — a Twilio rejection must not
+500 the message that triggered the scan, and that part was right. What came next
+was not: `event.escalated = True` ran unconditionally afterwards. **So a trusted
+contact who was never told about somebody's crisis was recorded exactly like one
+who was**, and the flag reads the same either way.
+
+Nothing surfaced it, so nobody has been misled. That is luck, not design — the
+first person to build on that field would have been building on a guess.
+
+`send_email` and `send_sms` now return whether the message actually went, still
+without raising. `on_crisis` sets `escalated` only on a real send and records
+`escalation_note`: short tokens saying what happened and, when nobody was
+reached, why. That distinction is the point — **withheld consent is the product
+working, a failed send is an incident**, and a reviewer looking at a crisis event
+must be able to tell them apart. `GET /admin/safety` carries all three fields
+now; INCIDENT_RUNBOOK has the token table and says `contact_notify_failed` is
+the one to act on.
+
+An unconfigured sender returns False too. Nobody was reached; that the
+deployment cannot send is the explanation, not an exemption — and recording it
+as success would make every dev and staging environment look like it escalated.
+
+**The mutation sweep found the hole in my own tests.** Deleting the `return
+False` on the Twilio-rejection branch broke nothing: I had covered the exception
+path and the outbox path, and missed the one failure mode every docstring in
+this change cites — the provider accepting the request and refusing the message.
+Three sender tests now cover rejection, SMTP failure and unconfigured, and
+mutants X1–X2 pin the two that matter.
+
+*Also recorded:* my first attempt at the "never raises" test monkeypatched httpx
+and proved nothing, because under TESTING the sender returns at its outbox
+branch long before any HTTP client is touched. It tests the sender directly now.
+
 ## Done — iOS reads the refusal codes, and stops calling a 403 a dead session (2026-08-23)
 
 **Not verified locally — no Mac here. CI builds and tests iOS on `macos-15`

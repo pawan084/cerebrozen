@@ -310,6 +310,14 @@ class SafetyEventOut(BaseModel):
     resolved_by_email: str | None = None
     resolved_at: datetime | None = None
     resolution_note: str = ""
+    #: Whether a trusted contact was actually REACHED — not whether one was
+    #: attempted. Both senders swallow their own failures by design, so this
+    #: used to be true for a contact nobody ever reached.
+    escalated: bool = False
+    escalated_at: datetime | None = None
+    #: The outcome in short tokens ("ops_alerted,contact_notify_failed"), so a
+    #: reviewer sees that nobody was reached rather than assuming somebody was.
+    escalation_note: str = ""
     created_at: datetime
 
 

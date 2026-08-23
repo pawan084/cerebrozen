@@ -243,3 +243,27 @@ Reading it: an account at a ceiling is worth a look, since every ceiling is five
 to twenty times a heavy day of genuine use. A *crowd* approaching one is the
 opposite finding — the ceiling is too low, and the fix is the number in
 `services/usage.CEILINGS`, not the accounts.
+
+## A crisis escalation that did not land (added 2026-08-23)
+
+`GET /admin/safety` now carries `escalated` and `escalation_note` per row.
+`escalation_note` is short tokens describing what actually happened:
+
+| token | meaning |
+| --- | --- |
+| `ops_alerted` / `ops_alert_failed` | the ops email went, or did not |
+| `ops_alert_unconfigured` | `OPS_ALERT_EMAIL` is unset — nobody was told, and the reason is configuration |
+| `contact_notified` | a trusted contact was actually reached |
+| `contact_notify_failed` | consent was given, the attempt was made, and it did not land |
+| `contact_not_consented` | the user did not switch it on. **Not a failure** — the choice is the feature |
+| `no_contact` | none configured |
+
+**`contact_notify_failed` is the one to act on.** It means a real person was
+meant to hear about somebody's crisis and did not. Check the provider first
+(Twilio credentials, sender number, whether the number is reachable), then
+reach the user through the admin queue if the event is still open.
+
+Until 2026-08-23 `escalated` was set whether or not the notification landed, so
+this distinction did not exist and every row looked successful. Nothing rendered
+the flag then, so nobody was misled — but the queue shows it now, and the first
+person to trust it would have been trusting a guess.

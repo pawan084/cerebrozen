@@ -23,15 +23,20 @@ def _configured() -> bool:
     return bool(settings.twilio_account_sid and settings.twilio_auth_token and settings.twilio_from)
 
 
-async def send_sms(to: str, body: str) -> None:
+async def send_sms(to: str, body: str) -> bool:
     """Best-effort SMS send. Never raises (a failed SMS must not break the crisis
-    escalation path)."""
+    escalation path).
+
+    Returns whether it actually went. The escalation path records whether a
+    trusted contact was reached, and a sender that swallows its own failures
+    without saying so makes that record a guess — see `escalation.on_crisis`.
+    """
     if os.getenv("TESTING") == "1":
         sent_outbox.append({"to": to, "body": body})
-        return
+        return True
     if not _configured():
         logger.info("SMS (no Twilio configured) → %s: %s", to, body)
-        return
+        return False
     url = f"https://api.twilio.com/2010-04-01/Accounts/{settings.twilio_account_sid}/Messages.json"
     try:
         async with httpx.AsyncClient(timeout=15) as client:
@@ -42,5 +47,8 @@ async def send_sms(to: str, body: str) -> None:
             )
             if resp.status_code >= 400:
                 logger.warning("Twilio rejected SMS to %s: %s", to, resp.text[:200])
+                return False
+        return True
     except Exception as exc:  # pragma: no cover - network path
         logger.warning("SMS send failed (%s): %s", to, exc)
+        return False

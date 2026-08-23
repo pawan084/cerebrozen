@@ -34,6 +34,11 @@ class SafetyEvent(Base):
     # Set when a crisis event triggered a trusted-contact notification.
     escalated: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     escalated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    #: What actually happened when this was escalated, as short tokens
+    #: ("ops_alerted,contact_notify_failed"). `escalated` alone cannot say
+    #: it: the senders swallow their own failures by design, so a contact
+    #: who was never reached used to be recorded exactly like one who was.
+    escalation_note: Mapped[str] = mapped_column(String(120), default="", server_default="")
 
     @property
     def excerpt_chars(self) -> int:
