@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime, timedelta
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -88,3 +88,88 @@ async def enforce_quota(db: AsyncSession, user: User, *, exempt: bool = False) -
                 "resets_at": next_reset().isoformat(),
             },
         )
+
+
+# ── Daily ceilings on the calls that cost money (WC-89 follow-on) ────────
+#
+# The chat quota above is a PRODUCT limit: it is what the free tier means, it is
+# advertised, and paid accounts are exempt from it. Everything below is the
+# opposite kind of thing — an abuse ceiling, identical for every tier, set far
+# above any real day. See app/models/daily_usage.py for why the two must not be
+# confused, and why making these differ by tier would be a pricing decision
+# rather than an engineering one.
+
+#: Feature key → calls per account per UTC day.
+#:
+#: Sized against a heavy day of genuine use, then multiplied. TTS is called
+#: sentence by sentence, so one spoken reply is several calls and a heavy voice
+#: day is a few hundred; plan regeneration is a deliberate act and a heavy day is
+#: ten. Compare with what the per-minute limits allow today and the gap is the
+#: point: TTS at 60/minute permits 86,400 calls a day, planning at 10/minute
+#: permits 14,400.
+CEILINGS: dict[str, int] = {
+    "voice_tts": 2000,
+    "voice_stt": 500,
+    "plan_generate": 100,
+    "goal_decompose": 100,
+    "assessment_topics": 200,
+    "oracle_turn": 500,
+}
+
+#: Distinguishable from FREE_LIMIT_CODE on purpose. That one means "upgrade and
+#: this goes away"; this one means "come back tomorrow", and showing an upgrade
+#: prompt for it would be selling a fix that is not for sale.
+DAILY_CEILING_CODE = "daily_ceiling"
+
+
+async def consume(db: AsyncSession, user: User, feature: str) -> int:
+    """Count one call and raise 429 if it takes the account past the ceiling.
+
+    Increments with a single `INSERT … ON CONFLICT DO UPDATE … RETURNING`. A
+    read-then-write would let two concurrent requests both see a count below the
+    ceiling and both proceed — and concurrent requests are precisely the traffic
+    an abuser generates, so a check that only holds under sequential load is not
+    a ceiling at all.
+
+    The increment happens before the verdict, so a refused call still counts.
+    That is deliberate: an attempt is an attempt, and it means hammering a
+    refused endpoint cannot be used to keep the counter artificially low.
+    """
+    ceiling = CEILINGS.get(feature)
+    if ceiling is None:
+        raise ValueError(f"unknown metered feature {feature!r}")
+
+    today = utcnow().date()
+    # The id is supplied rather than left to a default, because the two ways
+    # this schema gets built do not agree: the Alembic revision gives the column
+    # a `gen_random_uuid()` server default, while `Base.metadata.create_all` —
+    # which is how the test database is made — carries only the Python-side
+    # default that an ORM insert would apply and a raw statement never sees.
+    # Passing it explicitly means this works the same on both, instead of
+    # passing in production and failing in CI.
+    used = await db.scalar(
+        text(
+            "INSERT INTO daily_usage (id, user_id, feature, day, count) "
+            "VALUES (:id, :uid, :feature, :day, 1) "
+            "ON CONFLICT (user_id, feature, day) "
+            "DO UPDATE SET count = daily_usage.count + 1 "
+            "RETURNING count"
+        ),
+        {"id": uuid.uuid4(), "uid": user.id, "feature": feature, "day": today},
+    )
+    await db.commit()
+
+    if used > ceiling:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "code": DAILY_CEILING_CODE,
+                "feature": feature,
+                "message": (
+                    "You've hit the daily limit for this. It resets at midnight UTC."
+                ),
+                "limit": ceiling,
+                "resets_at": next_reset().isoformat(),
+            },
+        )
+    return used

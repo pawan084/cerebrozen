@@ -4,6 +4,62 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — daily ceilings on the calls that cost money (WC-89 follow-on, 2026-08-23)
+
+**911 passed / 2 skipped, 49/49 mutants caught.**
+
+The per-minute limits bound a burst, not a day, and the gap was not close: plan
+generation at 10/minute allows 14,400 calls per account per day — roughly
+thirteen million tokens — and TTS at 60/minute allows 86,400. An account can sit
+at a per-minute limit indefinitely without ever tripping it, because it refills
+every minute forever. `services/usage.py` was the only daily cap in the product
+and it covers chat alone, so everything else had no ceiling at all.
+
+`daily_usage` (migration `d3f81b57c920`) counts calls per account, per feature,
+per UTC day, and `usage.consume` refuses the call that crosses the ceiling.
+Metered: TTS, STT, plan generation, goal decomposition, assessment topics and
+both Oracle turns.
+
+**These are abuse ceilings, not plan features, and that distinction shaped the
+design.** The numbers are identical for free and paid. Making them differ would
+make Premium materially better at voice and planning — a pricing decision, not
+an engineering one — and CLAIMS_MAP bans "Pricing 'Premium' beside anything the
+backend does not gate on tier" precisely because an implied gate is the most
+expensive kind of false claim. The backend still gates exactly two things on
+tier, so that row stays true. A test asserts a paid account meets the same
+ceiling, and another asserts every number is at least 5× a heavy day's genuine
+use — so an edit that quietly turns a ceiling into a product limit has to argue
+with a test.
+
+**Chat is deliberately untouched.** It has its own quota, and paid chat is
+advertised as unlimited. Capping it would break a promise made to paying
+customers to bound a hypothetical abuser who is already paying us monthly — the
+economics there are self-limiting in a way they are not for free endpoints.
+
+**The increment is a single `INSERT … ON CONFLICT DO UPDATE … RETURNING`.** A
+read-then-write holds under any sequential test and fails under exactly the
+traffic a ceiling exists to stop, so the tests fire twenty concurrent calls at
+one account and assert all twenty land, then ten at once against three remaining
+and assert exactly three get through. Swapping the upsert for a read-then-write
+kills both.
+
+**Two things the mutation sweep found.**
+
+*Nothing asserted the meter was wired to the routes.* Deleting
+`usage.consume` from a route broke no test — everything exercised the service
+directly, and the service being right and the service being wired are separate
+claims. Now checked against the LIVE route table (`route.endpoint`, not a source
+grep, so a handler that is no longer routed cannot pass), plus a spy proving it
+fires through the real request path.
+
+*The test schema and the migrated schema disagreed.* `Base.id` carries a
+Python-side default only, so `create_all` — which builds the test database —
+produces a column with no server default, while the Alembic revision gives it
+`gen_random_uuid()`. A raw INSERT omitting the id therefore worked in production
+and failed in CI. `consume` now supplies the id explicitly rather than depending
+on which way the schema was built. Worth remembering: that divergence is latent
+for any raw statement anywhere in this codebase.
+
 ## Done — the deploy reloads the edge, and proves it did (2026-08-23)
 
 Found while preparing the first automated deploy. The workflow ended with

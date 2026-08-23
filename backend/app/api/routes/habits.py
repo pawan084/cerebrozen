@@ -37,7 +37,7 @@ from app.schemas.content_data import (
     HabitUpdate,
 )
 from app.schemas.plan import PlanOut
-from app.services import agentic, safety, verification
+from app.services import agentic, safety, usage, verification
 
 router = APIRouter(tags=["goals"])
 
@@ -142,6 +142,7 @@ async def decompose_goal(
     calm app becomes a task manager.
     """
     await verification.require_verified_email(db, user, feature='goals')
+    await usage.consume(db, user, "goal_decompose")
     goal = await _owned_goal(db, user, goal_id)
     plan = await agentic.generate_plan(db, user, focus_goal=goal.title)
     await db.commit()

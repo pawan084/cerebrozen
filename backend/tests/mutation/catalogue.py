@@ -81,6 +81,7 @@ VERIFICATION = "app/services/verification.py"
 CHAT_ROUTE = "app/api/routes/chat.py"
 USAGE = "app/services/usage.py"
 VERIFICATION_TESTS = ("tests/test_email_verification_gate.py",)
+CEILING_TESTS = ("tests/test_daily_ceilings.py",)
 
 CATALOGUE: list[Mutant] = [
     # ── Safety: the floor ────────────────────────────────────────────────
@@ -702,5 +703,30 @@ CATALOGUE: list[Mutant] = [
         old="    if user.verification_grandfathered:",
         new="    if False:",
         caught_by=VERIFICATION_TESTS,
+    ),
+    Mutant(
+        id="U1-the-daily-counter-never-advances",
+        breaks=(
+            "Every call rewrites the count to 1 instead of adding to it, so "
+            "the ceiling is never reached however many times an account "
+            "calls. The table fills with rows that all read 1, which looks "
+            "exactly like a product nobody is abusing."
+        ),
+        path=USAGE,
+        old="DO UPDATE SET count = daily_usage.count + 1 ",
+        new="DO UPDATE SET count = 1 ",
+        caught_by=CEILING_TESTS,
+    ),
+    Mutant(
+        id="U2-an-unknown-feature-is-silently-unmetered",
+        breaks=(
+            "A typo in a feature key means that endpoint has no daily bound at "
+            "all, and nothing says so — the call sails through on the very "
+            "endpoint somebody was in the middle of protecting."
+        ),
+        path=USAGE,
+        old='        raise ValueError(f"unknown metered feature {feature!r}")',
+        new="        return 0",
+        caught_by=CEILING_TESTS,
     ),
 ]

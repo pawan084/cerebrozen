@@ -8,7 +8,7 @@ from app.core.database import get_db
 from app.core.ratelimit import account_limit, limiter
 from app.models.user import User
 from app.schemas.assessment import AssessmentStructureOut, TopicsOut, TopicsRequest
-from app.services import assessment, verification
+from app.services import assessment, usage, verification
 
 router = APIRouter(prefix="/assessment", tags=["assessment"])
 
@@ -34,6 +34,7 @@ async def topics(
     one; always returns a non-empty list (deterministic when no LLM is set).
     """
     await verification.require_verified_email(db, user, feature='assessment')
+    await usage.consume(db, user, "assessment_topics")
     motivations = payload.motivations if payload.motivations is not None else (user.motivations or [])
     goals = payload.goals if payload.goals is not None else (user.goals or [])
     language = payload.language or (user.language or "English")

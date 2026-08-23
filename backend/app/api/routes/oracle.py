@@ -179,6 +179,7 @@ async def messages(
     db: AsyncSession = Depends(get_db),
 ):
     await verification.require_verified_email(db, user, feature='oracle')
+    await usage.consume(db, user, "oracle_turn")
     if not settings.oracle_available or await get_graph() is None:
         raise HTTPException(status_code=503, detail="Oracle is not enabled")
     await usage.enforce_quota(db, user)   # free-tier daily cap (429 when exceeded)
@@ -238,6 +239,7 @@ async def _record_decision(db: AsyncSession, user: User, thread_id: str, approve
 async def confirm(request: Request, payload: OracleConfirm, user: User = Depends(get_current_user),
                   db: AsyncSession = Depends(get_db)):
     await verification.require_verified_email(db, user, feature='oracle')
+    await usage.consume(db, user, "oracle_turn")
     if not settings.oracle_available or await get_graph() is None:
         raise HTTPException(status_code=503, detail="Oracle is not enabled")
     # A resume is a full agent turn (LLM + tools), so it draws on the same
