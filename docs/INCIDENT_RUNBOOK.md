@@ -227,3 +227,19 @@ Write these five lines somewhere durable — `docs/TODO.md` is fine:
 
 No blame section. The gates exist so that shipping a defect is a process
 outcome rather than a personal one.
+
+## Cost abuse (added 2026-08-23)
+
+`GET /admin/metrics/ceilings` shows pressure against the daily abuse ceilings
+for today: how many accounts have reached each one, how many are approaching it,
+and the busiest single count. Identifiers appear only for accounts that actually
+reached a ceiling — enough to act on, and no more.
+
+**Nobody is paged.** The payload says `alerting: false` for that reason. This is
+a surface someone has to open, which is the same honest limitation the rest of
+this runbook records.
+
+Reading it: an account at a ceiling is worth a look, since every ceiling is five
+to twenty times a heavy day of genuine use. A *crowd* approaching one is the
+opposite finding — the ceiling is too low, and the fix is the number in
+`services/usage.CEILINGS`, not the accounts.

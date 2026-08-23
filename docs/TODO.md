@@ -4,6 +4,46 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — you can now tell whether the ceilings have ever refused anybody (2026-08-23)
+
+`models/daily_usage.py` said an account reaching a ceiling "is worth knowing
+about", and nothing made that possible. The ceilings refuse calls quietly by
+design, so the product would have been defended and nobody could have told
+whether it had ever needed to be — which is also how a ceiling set too low goes
+unnoticed until it arrives as a support queue. A sentence in a docstring with no
+mechanism behind it is exactly what CLAIMS_MAP exists to catch, and this one was
+mine.
+
+`GET /admin/metrics/ceilings` reports, per feature and for today: the ceiling,
+how many accounts have reached it, how many are approaching it, and the busiest
+single count.
+
+**Where the line sits, and why.** Counts and account state, never content — the
+same boundary the rest of `services/metrics.py` keeps. Identifiers appear ONLY
+for accounts that have actually reached a ceiling, because an abuse control you
+can see but cannot act on is theatre, and acting means knowing which account.
+Everyone below that line is a number, including the accounts approaching one:
+the count is the signal that a ceiling is wrong, and an identity is not needed
+to fix a number. Two tests hold that boundary from both sides, and a mutant that
+names every account with any usage fails them.
+
+**`approaching` exists so a bad number surfaces before anybody is refused.** If
+this only reported accounts already turned away, the first evidence of a
+too-tight ceiling would be somebody complaining. Half the ceiling is a
+judgement, not a threshold with a meaning: early enough to notice, late enough
+that ordinary use does not fill the list.
+
+**The payload says `alerting: false` out loud.** There is no alerting in this
+product — docs/INCIDENT_RUNBOOK.md is honest about that — and a dashboard is
+very good at implying somebody is being paged. Stated in the response so a
+console cannot render this as a monitored system. That is pinned by a test too,
+because it is the kind of honesty that quietly rots when someone later adds a
+red badge.
+
+Every metered feature appears whether or not it saw traffic: a feature missing
+from the report reads as "no pressure", which is the same shape as "the meter is
+broken", and those two must not look alike.
+
 ## Done — the Android client understands the refusals too (2026-08-23)
 
 **`:app:check` green: unit tests, lint, jacoco 96.13% ≥ 96%.**

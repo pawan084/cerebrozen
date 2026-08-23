@@ -79,6 +79,17 @@ async def metrics_overview(db: AsyncSession = Depends(get_db)):
     return await metrics.overview(db)
 
 
+@router.get("/metrics/ceilings")
+async def metrics_ceilings(db: AsyncSession = Depends(get_db)):
+    """Pressure against the daily abuse ceilings, today.
+
+    The ceilings refuse calls quietly by design; this is the only place anyone
+    can see whether they ever have. Note `alerting: false` in the payload —
+    nobody is paged, this is a surface someone has to open.
+    """
+    return await metrics.ceiling_pressure(db)
+
+
 @router.get("/metrics/funnel")
 async def metrics_funnel(days: int = 30, db: AsyncSession = Depends(get_db)):
     """Onboarding funnel from anonymous product events (unique installs)."""

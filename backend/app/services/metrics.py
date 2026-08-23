@@ -302,3 +302,68 @@ async def onboarding_funnel(db: AsyncSession, days: int = 30) -> dict:
         "paywall_views": await uniques("paywall_view"),
         "paywall_taps": await uniques("paywall_cta"),
     }
+
+
+async def ceiling_pressure(db: AsyncSession) -> dict:
+    """Who is pushing against the daily abuse ceilings today.
+
+    `models/daily_usage.py` says anybody who reaches one of these is worth
+    knowing about. This is how anyone knows. Without it the ceilings would
+    refuse calls in silence — the product would be defended and nobody would be
+    able to tell whether it had ever needed to be, which is also how you never
+    find out a ceiling is set too low.
+
+    **What it reports, and why that line.** Counts and account state, never
+    content — the same boundary the rest of this module keeps. Identifiers are
+    included only for accounts that have actually reached a ceiling, because an
+    abuse control you can see but cannot act on is theatre, and acting means
+    knowing which account. Everyone below the line is a number: `approaching`
+    exists so a ceiling set too low shows up as a crowd nearing it rather than
+    as a support queue.
+
+    Deliberately not an alert. There is no alerting in this product yet
+    (docs/INCIDENT_RUNBOOK.md is honest about that), so this is a surface an
+    operator has to look at — which is worth saying out loud rather than
+    letting a dashboard imply somebody is being paged.
+    """
+    from app.models.daily_usage import DailyUsage
+    from app.services.usage import CEILINGS
+
+    today = utcnow().date()
+    rows = (
+        await db.execute(
+            select(DailyUsage.feature, DailyUsage.user_id, DailyUsage.count).where(
+                DailyUsage.day == today
+            )
+        )
+    ).all()
+
+    features: dict[str, dict] = {}
+    for feature, ceiling in sorted(CEILINGS.items()):
+        mine = [(uid, count) for f, uid, count in rows if f == feature]
+        at = [uid for uid, count in mine if count >= ceiling]
+        # Half is a judgement, not a threshold with a meaning: it is early
+        # enough to notice a ceiling that is too tight before anybody is
+        # refused, and late enough that ordinary use does not fill the list.
+        approaching = [uid for uid, count in mine if ceiling / 2 <= count < ceiling]
+        features[feature] = {
+            "ceiling": ceiling,
+            "accounts_at_ceiling": len(at),
+            "accounts_approaching": len(approaching),
+            "busiest_count": max((count for _uid, count in mine), default=0),
+            # Only the accounts that crossed the line the product itself set.
+            "at_ceiling": sorted(str(uid) for uid in at),
+        }
+
+    return {
+        "day": today.isoformat(),
+        "features": features,
+        # Stated in the payload rather than left to be inferred, so a console
+        # cannot render this as a monitored system.
+        "alerting": False,
+        "note": (
+            "Daily abuse ceilings are identical on every tier and sized well "
+            "above heavy use. An account at one is worth a look; a crowd "
+            "approaching one means the ceiling is too low."
+        ),
+    }
