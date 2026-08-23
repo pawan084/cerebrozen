@@ -136,6 +136,20 @@ _SYSTEM = prompts.register(
 )
 
 
+def keyword_floor(text: str) -> tuple[str, str]:
+    """The keyword net alone — no LLM call, no network, no cost.
+
+    Exposed because callers sometimes need to know "might this be a crisis?"
+    *before* they are willing to spend anything. `classify` cannot answer that:
+    it calls the model, so asking it in front of a quota check would let anyone
+    burn tokens by sending messages they are not entitled to send.
+
+    This is the same floor `classify` puts under the model, so a message this
+    flags is a message the full scan would also have flagged at least this high.
+    """
+    return _keyword_risk(text)
+
+
 async def classify(text: str) -> tuple[str, str]:
     """Return (risk_level, reason)."""
     text = (text or "").strip()

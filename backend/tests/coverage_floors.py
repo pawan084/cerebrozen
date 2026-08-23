@@ -57,6 +57,17 @@ FLOORS: dict[str, tuple[float, str]] = {
         "and both silent: refusing real people (a privacy relay read as a "
         "burner) or refusing nobody at all (a seam that never fires).",
     ),
+    "app/services/verification.py": (
+        100.0,
+        "Decides who may spend money AND how small an unverified account's "
+        "chat allowance is. Too strict walls people out of a product they can "
+        "still be in crisis inside; too loose is free LLM for a bot farm.",
+    ),
+    "app/services/usage.py": (
+        100.0,
+        "Carries the safety waiver: the daily cap must never be the thing "
+        "standing in front of a message the keyword floor has flagged.",
+    ),
     "app/services/crisis.py": (
         100.0,
         "Every line here ends with somebody dialling something.",

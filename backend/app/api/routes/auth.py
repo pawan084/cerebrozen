@@ -1,3 +1,4 @@
+import logging
 import secrets
 import uuid
 from datetime import timedelta
@@ -45,6 +46,8 @@ from app.schemas.user import UserOut
 from app.services import apple, botcheck, email, entitlements, google, nudges
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+_log = logging.getLogger("cerebro.auth")
 
 _MAX_FAILED_LOGINS = 5
 _LOCKOUT_MINUTES = 15
@@ -148,6 +151,25 @@ async def signup(request: Request, payload: SignupRequest, db: AsyncSession = De
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
     await db.refresh(user)
+    # Nothing was sent at signup until now, which made `email_verified` a column
+    # no ordinary user could set — and therefore a gate nothing could be built
+    # on (services/verification.py).
+    #
+    # The account is already COMMITTED here, so nothing below may be allowed to
+    # fail the request: a raise would leave a real account sitting behind a 500,
+    # and the retry would answer 409 "already registered" to somebody who never
+    # received a token. `send_email` swallows its own transport errors, but that
+    # is its promise to keep rather than ours to assume.
+    try:
+        await email.send_email(
+            user.email,
+            "Confirm your CereBro email",
+            "Welcome to CereBro. Confirm your email address:\n\n"
+            f"{settings.app_base_url}/verify?token={create_verify_token(str(user.id))}\n\n"
+            "This link expires in 24 hours.",
+        )
+    except Exception:  # noqa: BLE001 — a welcome email is never worth an account
+        _log.warning("signup_verification_email_failed user_id=%s", user.id)
     return _tokens(user)
 
 

@@ -18,7 +18,7 @@ from app.core.config import settings
 from app.core.database import utcnow
 from app.models.chat import ChatMessage
 from app.models.user import User
-from app.services import entitlements
+from app.services import entitlements, verification
 
 # The machine-readable marker clients branch on. Kept as a constant because it
 # is a cross-stack contract: iOS, Android and web all match this string.
@@ -51,7 +51,7 @@ def next_reset(now: datetime | None = None) -> datetime:
     return (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
 
 
-async def enforce_quota(db: AsyncSession, user: User) -> None:
+async def enforce_quota(db: AsyncSession, user: User, *, exempt: bool = False) -> None:
     """Raise 429 when a free-tier user has hit the daily message limit.
 
     The detail is a STRUCTURED object, not a sentence, because a client cannot
@@ -64,19 +64,26 @@ async def enforce_quota(db: AsyncSession, user: User) -> None:
     # Resolved, not read off the column: an organisation-sponsored member is
     # unlimited too, and reading `user.subscription_tier` here was the gate
     # that made sponsorship grant nothing.
+    # `exempt` is the safety waiver, passed by routes/chat.py when the free
+    # keyword floor flags the message. A daily allowance is a billing rule, and
+    # a billing rule must not be the thing standing between somebody and the
+    # sentence they are trying to type.
+    if exempt:
+        return
     if (await entitlements.resolve(db, user)).is_paid:
         return
+    limit = await verification.daily_message_allowance(db, user)
     used = await messages_today(db, user.id)
-    if used >= settings.free_daily_messages:
+    if used >= limit:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail={
                 "code": FREE_LIMIT_CODE,
                 "message": (
-                    f"Daily free limit reached ({settings.free_daily_messages} messages). "
+                    f"Daily free limit reached ({limit} messages). "
                     "Upgrade to Premium for unlimited conversations."
                 ),
-                "limit": settings.free_daily_messages,
+                "limit": limit,
                 "used": used,
                 "resets_at": next_reset().isoformat(),
             },

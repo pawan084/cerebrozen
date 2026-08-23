@@ -4,6 +4,79 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — email verification gating, and the safety bug it uncovered (WC-90 follow-on, 2026-08-23)
+
+**893 passed / 2 skipped, 13 coverage floors held, 46/46 mutants caught.**
+
+`email_verified` had been on `User` since the beginning, set by the Apple and
+Google flows and by `POST /auth/verify`, and **nothing read it**. It is the half
+of bot protection a challenge cannot do: a challenge proves a human was present
+for thirty seconds, a delivered email proves somebody controls a mailbox, and
+the second is the one that costs a farm money per account.
+
+**Two things had to be true before a gate could exist, and neither was.**
+
+*Signup sent nothing.* Verification was opt-in through an endpoint a signed-in
+user had to know about and ask for, so `email_verified` was a column no ordinary
+user could ever set. Signup now sends the link — inside a `try`, because the
+account is already committed at that point and a raise would leave a real
+account sitting behind a 500 while the retry answered 409 to somebody who never
+received a token. (`send_email` swallows its own transport errors, but that is
+its promise to keep rather than the call site's to assume — a test that
+monkeypatched it to raise found the call site had no guard.)
+
+*The daily cap was standing in front of the safety scan.* `enforce_quota` ran
+before anything looked at the text, so a free user at message 51 typing the
+worst sentence of their life met a 429 and an upgrade prompt: never scanned, no
+safety event, no escalation. The CLAIMS_MAP row for "Safety never blocks" was
+true of `services/safety.py` and false of the request. `routes/chat.py` now
+consults `safety.keyword_floor` first — local, free, no model call, so it cannot
+be used to burn tokens — and waives the cap for anything it flags. That row now
+names the mechanism, and mutants V1–V2 fail if either half is removed.
+
+Fixing that had to come first: adding a second gate in front of chat without it
+would have deepened the hole rather than found it.
+
+**The gate itself, in `services/verification.py`.** Three exemptions, each
+because the obvious version breaks something real:
+
+* **Inert unless the deployment can send email at all.** No SMTP means no
+  message exists to act on, so demanding the proof would be an outage wearing
+  the clothes of a policy. The capability is the switch (mutant V3).
+* **Paying accounts are exempt.** A card is a stronger proof of a person than an
+  email; walling a subscriber out of a feature they have bought, over an address
+  they never confirmed, is indefensible (V5).
+* **Chat is never locked shut.** It is the safety surface. An unverified account
+  gets `UNVERIFIED_DAILY_MESSAGES` (5) instead of 50 — bounded, not closed —
+  with the keyword-floor waiver on top. A first conversation is exactly when
+  somebody is deciding whether this product is worth trusting, and it is also
+  when they may be least able to go and check their inbox.
+
+Gated: voice STT/TTS, plan generation, goal decomposition, assessment topics,
+both oracle turns. Explicitly not gated, and asserted as a class of its own:
+`/users/me`, journal, moods, export, safety plan. Confirming an address is a
+condition for spending our money, never for reaching your own words or leaving.
+
+Refusals are a **403 with a structured `detail`** carrying `code` and the
+`feature` name, so a client can say which thing is waiting rather than showing a
+generic wall.
+
+**Note on where this is exercised.** Being inert without SMTP means CI and the
+e2e stack never run with the gate on; the tests turn it on explicitly with a
+fixture. That is the right production behaviour but it does mean the *enabled*
+path has no end-to-end coverage — worth remembering the day `SMTP_HOST` is set
+in production for the first time.
+
+*Two badly built mutants again.* One changed the verification email's SUBJECT
+and was reported as a gap, when the test asserts the link is in the BODY and was
+right to ignore a rename; the real mutation deletes the send, and is caught.
+Fifth time in this repo. The check is now reflexive: before believing a
+survivor, confirm the mutant does what its label says.
+
+**Still open (WC-89 follow-on):** per-minute caps bound burst, not daily spend.
+A verified free account can still call plan generation 14,400 times a day.
+`services/usage.py` remains the only daily account cap and covers chat alone.
+
 ## Done — bot protection on the public write endpoints (WC-90, 2026-08-23)
 
 **872 passed / 2 skipped, 11 coverage floors held, 41/41 mutants caught.**

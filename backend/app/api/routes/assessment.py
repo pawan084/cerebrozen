@@ -2,10 +2,13 @@
 from fastapi import APIRouter, Depends, Request
 
 from app.core.deps import get_current_user
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.database import get_db
 from app.core.ratelimit import account_limit, limiter
 from app.models.user import User
 from app.schemas.assessment import AssessmentStructureOut, TopicsOut, TopicsRequest
-from app.services import assessment
+from app.services import assessment, verification
 
 router = APIRouter(prefix="/assessment", tags=["assessment"])
 
@@ -23,12 +26,14 @@ async def topics(
     request: Request,
     payload: TopicsRequest = TopicsRequest(),
     user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Generate tappable conversation topics from the user's self-reflection.
 
     Falls back to the user's saved onboarding selection when the request omits
     one; always returns a non-empty list (deterministic when no LLM is set).
     """
+    await verification.require_verified_email(db, user, feature='assessment')
     motivations = payload.motivations if payload.motivations is not None else (user.motivations or [])
     goals = payload.goals if payload.goals is not None else (user.goals or [])
     language = payload.language or (user.language or "English")

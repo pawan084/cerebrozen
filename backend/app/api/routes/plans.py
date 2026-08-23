@@ -10,7 +10,7 @@ from app.core.ratelimit import account_limit, limiter
 from app.models.plan import Plan, PlanStep
 from app.models.user import User
 from app.schemas.plan import PlanOut, StepToggle
-from app.services import agentic
+from app.services import agentic, verification
 
 router = APIRouter(prefix="/plans", tags=["plans"])
 
@@ -64,6 +64,7 @@ async def regenerate_plan(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await verification.require_verified_email(db, user, feature='plans')
     plan = await agentic.generate_plan(db, user)
     await db.commit()
     await db.refresh(plan)

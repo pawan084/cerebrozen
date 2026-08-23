@@ -79,7 +79,14 @@ async def send_message(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await usage.enforce_quota(db, user)   # free-tier daily cap (429 when exceeded)
+    # The daily cap used to be enforced BEFORE anything looked at the text, so a
+    # person at message 51 typing the worst sentence of their life got a 429 and
+    # an upgrade prompt — never scanned, no safety event, no escalation. The
+    # keyword floor is local and free (no model call), so consulting it first
+    # costs nothing and cannot be used to burn tokens: only a message the floor
+    # already flags gets through the cap.
+    floor, _floor_reason = safety.keyword_floor(payload.text)
+    await usage.enforce_quota(db, user, exempt=floor in {"elevated", "crisis"})
     # The message is flushed first so the safety event can point at it
     # (register C71: `source_id=None` meant the admin queue could name the
     # risk but never the message it came from). Safety still never blocks —

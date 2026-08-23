@@ -18,7 +18,7 @@ from app.core.deps import get_current_user
 from app.core.ratelimit import account_limit, limiter
 from app.models.user import User
 from app.models.consent import consent_allows
-from app.services import usage, voice
+from app.services import usage, verification, voice
 
 router = APIRouter(prefix="/voice", tags=["voice"])
 
@@ -50,7 +50,9 @@ async def speech_to_text(
     request: Request,
     audio: UploadFile = File(...),
     user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
+    await verification.require_verified_email(db, user, feature='voice')
     if not settings.stt_enabled:
         raise HTTPException(status_code=503, detail="Speech-to-text is not configured")
     # Read at most cap+1 bytes and reject on overflow — never buffer an
@@ -90,6 +92,7 @@ async def text_to_speech(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await verification.require_verified_email(db, user, feature='voice')
     if not settings.tts_enabled:
         raise HTTPException(status_code=503, detail="Text-to-speech is not configured")
     # TTS bills the provider per call and voices chat replies, so it draws on

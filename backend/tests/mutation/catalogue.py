@@ -77,6 +77,10 @@ RATELIMIT = "app/core/ratelimit.py"
 RATELIMIT_TESTS = ("tests/test_ratelimit_account.py", "tests/test_ratelimit_key.py")
 BOTCHECK = "app/services/botcheck.py"
 BOTCHECK_TESTS = ("tests/test_botcheck.py",)
+VERIFICATION = "app/services/verification.py"
+CHAT_ROUTE = "app/api/routes/chat.py"
+USAGE = "app/services/usage.py"
+VERIFICATION_TESTS = ("tests/test_email_verification_gate.py",)
 
 CATALOGUE: list[Mutant] = [
     # ── Safety: the floor ────────────────────────────────────────────────
@@ -614,5 +618,72 @@ CATALOGUE: list[Mutant] = [
         old='    await botcheck.guard(payload.email, payload.challenge_token, client_ip(request))\n    existing = await db.scalar(select(User).where(User.email == payload.email.lower()))\n    if existing:\n        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")',
         new='    existing = await db.scalar(select(User).where(User.email == payload.email.lower()))\n    if existing:\n        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")\n    await botcheck.guard(payload.email, payload.challenge_token, client_ip(request))',
         caught_by=BOTCHECK_TESTS,
+    ),
+    Mutant(
+        id="V1-the-daily-cap-stands-in-front-of-a-crisis",
+        breaks=(
+            "A person at message 51 typing the worst sentence of their life "
+            "meets a 429 and an upgrade prompt: never scanned, no safety "
+            "event, no escalation. A billing rule standing between somebody "
+            "and the sentence they are trying to send. This was the SHIPPED "
+            "behaviour until 2026-08-23 — enforce_quota ran before anything "
+            "looked at the text — and it is the reason the waiver exists at "
+            "all. Of everything in this file, this is the mutant whose "
+            "survival would matter most."
+        ),
+        path=CHAT_ROUTE,
+        old='await usage.enforce_quota(db, user, exempt=floor in {"elevated", "crisis"})',
+        new='await usage.enforce_quota(db, user)',
+        caught_by=VERIFICATION_TESTS,
+    ),
+    Mutant(
+        id="V2-the-waiver-is-ignored-inside-the-quota",
+        breaks=(
+            "The route passes the safety waiver and the quota drops it on "
+            "the floor. Identical outcome to V1 with the call site still "
+            "reading correctly, which is what makes it worth its own entry."
+        ),
+        path=USAGE,
+        old='    if exempt:\n        return',
+        new='    if False:\n        return',
+        caught_by=VERIFICATION_TESTS,
+    ),
+    Mutant(
+        id="V3-the-gate-fires-with-no-way-to-verify",
+        breaks=(
+            "With no SMTP configured nothing is ever sent, so a user cannot "
+            "confirm anything — and the gate then refuses every free account "
+            "forever. Demanding a proof the product is incapable of "
+            "delivering is not strictness, it is an outage that looks like "
+            "policy."
+        ),
+        path=VERIFICATION,
+        old='    return bool(settings.smtp_host)',
+        new='    return True',
+        caught_by=VERIFICATION_TESTS,
+    ),
+    Mutant(
+        id="V4-unverified-accounts-get-the-full-free-allowance",
+        breaks=(
+            "The gate reads as present and bounds nothing: an unattended "
+            "signup draws the same 50 messages of real LLM completion a day "
+            "it always did."
+        ),
+        path=VERIFICATION,
+        old='    return min(settings.unverified_daily_messages, settings.free_daily_messages)',
+        new='    return settings.free_daily_messages',
+        caught_by=VERIFICATION_TESTS,
+    ),
+    Mutant(
+        id="V5-paying-subscribers-are-walled-out",
+        breaks=(
+            "A card is a stronger proof of a person than an email, and this "
+            "turns a paid subscriber away from a feature they have bought "
+            "over an address they never got round to confirming."
+        ),
+        path=VERIFICATION,
+        old='    return (await entitlements.resolve(db, user)).is_paid',
+        new='    return False',
+        caught_by=VERIFICATION_TESTS,
     ),
 ]

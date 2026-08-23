@@ -37,7 +37,7 @@ from app.schemas.content_data import (
     HabitUpdate,
 )
 from app.schemas.plan import PlanOut
-from app.services import agentic, safety
+from app.services import agentic, safety, verification
 
 router = APIRouter(tags=["goals"])
 
@@ -141,6 +141,7 @@ async def decompose_goal(
     product has exactly one plan at a time, and two competing lists is how a
     calm app becomes a task manager.
     """
+    await verification.require_verified_email(db, user, feature='goals')
     goal = await _owned_goal(db, user, goal_id)
     plan = await agentic.generate_plan(db, user, focus_goal=goal.title)
     await db.commit()

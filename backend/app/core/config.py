@@ -71,6 +71,9 @@ class Settings(BaseSettings):
     # Free-tier server-side quota: messages/day before a paywall (429). Premium
     # tiers are unlimited. Enforced in /chat and /oracle.
     free_daily_messages: int = 50
+    # What an account that has not confirmed its address gets instead. Not
+    # zero on purpose: see services/verification.daily_message_allowance.
+    unverified_daily_messages: int = 5
 
     # StoreKit 2 server-side receipt validation. Path to Apple's Root CA (G3) PEM.
     # When set, the transaction cert chain is pinned to it; empty = verify the
