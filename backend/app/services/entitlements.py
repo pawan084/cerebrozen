@@ -100,6 +100,15 @@ async def user_out(db: AsyncSession, user: User) -> UserOut:
     override is applied to the response model, never to the ORM row.
     """
     ent = await resolve(db, user)
+    # Same reasoning as the tier, for the same reason: the client needs the
+    # answer the gate will give. `verification.is_exempt` already folds in
+    # grandfathering, payment and whether the deployment can send email at all.
+    from app.services import verification  # local: avoids an import cycle
+
     return UserOut.model_validate(user).model_copy(
-        update={"subscription_tier": ent.tier, "sponsored": ent.sponsored}
+        update={
+            "subscription_tier": ent.tier,
+            "sponsored": ent.sponsored,
+            "email_verification_required": not await verification.is_exempt(db, user),
+        }
     )

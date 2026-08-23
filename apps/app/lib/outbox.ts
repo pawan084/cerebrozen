@@ -20,7 +20,7 @@
 //    behind "saved, will sync" is a lie discovered later. Only 408/429/5xx and
 //    outright network failures are retryable — the same predicate as Android.
 
-import { FreeLimitError, api } from "./api";
+import { DailyCeilingError, FreeLimitError, VerificationRequiredError, api } from "./api";
 
 // Kept in sync by hand with `PERSONAL_KEYS` in lib/api.ts, which is what
 // clears it on sign-out. A queue that outlives its author is a queue that
@@ -114,8 +114,20 @@ export async function send<T = any>(path: string, body: unknown): Promise<T | nu
  * the server having decided, and "saved, will sync" would be a lie the person
  * discovers when the entry never appears.
  */
-function queueable(e: unknown): boolean {
-  if (e instanceof FreeLimitError) return false;
+export function queueable(e: unknown): boolean {
+  // These three are decisions, not outages, and none of them carries a
+  // `.status` — so without naming them here `statusOf` returns null, the
+  // failure is read as "the network never answered", and the entry is queued
+  // to be retried forever. The daily ceiling is the sharpest case: it IS a 429,
+  // which the rule below would otherwise treat as temporary, and it will not
+  // clear until tomorrow.
+  if (
+    e instanceof FreeLimitError ||
+    e instanceof DailyCeilingError ||
+    e instanceof VerificationRequiredError
+  ) {
+    return false;
+  }
   const status = statusOf(e);
   if (status === null) return true;
   return status >= 500 || status === 408 || status === 429;

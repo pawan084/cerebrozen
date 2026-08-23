@@ -4,6 +4,45 @@
 > implementation pass the same day. Check items off as they land; re-run a review pass
 > periodically. Companions: [ARCHITECTURE.md](ARCHITECTURE.md), [TECHNICAL.md](TECHNICAL.md).
 
+## Done — the web client understands the new refusals (2026-08-23)
+
+**914 backend / 1202 web tests passing.**
+
+Four structured refusal codes were added across this session and every one was
+recorded with the same note: *no client renders it yet*. The verification gate
+becomes active the moment production deploys with SMTP configured, so new
+signups would have met bare 403s on voice, plans and the Oracle with nothing
+saying why or what to do. That debt is mine and this closes it for the web app.
+
+**`/auth/me` now reports `email_verification_required`** — the gate's own answer
+(`verification.is_exempt`), not the raw `email_verified` column. The two differ
+for everyone the gate exempts: an account older than the rule, a paying
+subscriber, a deployment with no mail configured. Reporting the column would nag
+exactly those people to fix something that is not stopping them, which is the
+mistake `subscription_tier` already exists to avoid.
+
+**`<VerifyEmailNotice>` appears before the wall, not after it.** A quiet strip on
+settings with a resend action, shown while the gate applies. Nothing is broken
+when it shows — chat still works — so it is deliberately not a modal.
+
+**Two new error types in `lib/api.ts`.** `DailyCeilingError` and
+`VerificationRequiredError`, both read from `detail.code` rather than the status,
+because three different 429s now mean three different things and one of the
+wrong answers is manipulative: offering an upgrade for a ceiling that is
+identical on every tier would be selling a fix that is not for sale.
+
+**The bug worth recording.** Neither new error carries a `.status`, and
+`outbox.queueable` reads a missing status as "the network never answered". So
+until they were named there, a 403 would have been queued and retried on every
+drain, forever, while the person was told it was saved and would sync. The
+daily ceiling is the sharper case: it IS a 429, which the existing rule treats
+as temporary, and it does not clear until tomorrow. Pinned by tests, and all
+three mutations of that logic are caught.
+
+**Still not wired:** iOS and Android. Both fall through to the server's own
+prose, which is readable but not actionable — no resend button, no reset time.
+iOS needs a Mac; Android is reachable from here and is the obvious next step.
+
 ## Done — daily ceilings on the calls that cost money (WC-89 follow-on, 2026-08-23)
 
 **911 passed / 2 skipped, 49/49 mutants caught.**

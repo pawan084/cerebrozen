@@ -60,6 +60,14 @@ class UserOut(BaseModel):
     #: stored billing truth, not the effective tier) never claims sponsorship.
     sponsored: bool = False
     subscription_expires_at: datetime | None = None
+    #: Whether the verification gate will actually refuse this caller — NOT
+    #: whether the address is confirmed. The two differ for everyone the gate
+    #: exempts: an account that predates it, a paying subscriber, or any
+    #: deployment with no SMTP configured. Reporting the raw flag would nag
+    #: those people to fix something that is not stopping them, which is the
+    #: same mistake `subscription_tier` above exists to avoid — the client must
+    #: be told the answer the gate will give, not the column behind it.
+    email_verification_required: bool = False
     email_nudges: bool = False
     age_confirmed_at: datetime | None = None
     ai_disclosure_ack_at: datetime | None = None

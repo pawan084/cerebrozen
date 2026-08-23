@@ -169,12 +169,71 @@ export class FreeLimitError extends Error {
 
   /** "5:30 AM" in the browser's timezone. */
   get resetText(): string {
-    if (!this.resetsAt) return "midnight UTC";
-    const d = new Date(this.resetsAt);
-    return Number.isNaN(d.getTime())
-      ? "midnight UTC"
-      : d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    return formatReset(this.resetsAt);
   }
+}
+
+/** Shared by both quota errors so their copy cannot drift apart.
+ *
+ *  Both windows are UTC, so "midnight" is wrong for most of the world — in
+ *  India these reset at 05:30 local. The instant is rendered in the reader's
+ *  own timezone, and only falls back to naming UTC when there is nothing to
+ *  render. */
+function formatReset(iso: string): string {
+  if (!iso) return "midnight UTC";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? "midnight UTC"
+    : d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+/**
+ * A daily abuse ceiling on a feature that costs money to run.
+ *
+ * NOT the free-tier cap above, and the difference matters to what we show: that
+ * one means "upgrade and this goes away", this one means "come back tomorrow".
+ * The ceilings are identical on every tier, so offering an upgrade here would
+ * be selling a fix that is not for sale.
+ */
+export class DailyCeilingError extends Error {
+  readonly feature: string;
+  readonly limit: number;
+  readonly resetsAt: string;
+
+  constructor(detail: { message?: string; feature?: string; limit?: number; resets_at?: string }) {
+    super(detail.message ?? "You've hit today's limit for this.");
+    this.name = "DailyCeilingError";
+    this.feature = detail.feature ?? "";
+    this.limit = detail.limit ?? 0;
+    this.resetsAt = detail.resets_at ?? "";
+  }
+
+  get resetText(): string {
+    return formatReset(this.resetsAt);
+  }
+}
+
+/**
+ * The account has not confirmed its email, and this feature needs that.
+ *
+ * Carries the feature name so a screen can say which thing is waiting rather
+ * than showing a generic wall. Recoverable by the user without leaving the app
+ * — `resendVerification()` below is the whole remedy — which is why it is its
+ * own type rather than a message.
+ */
+export class VerificationRequiredError extends Error {
+  readonly feature: string;
+
+  constructor(detail: { message?: string; feature?: string }) {
+    super(detail.message ?? "Confirm your email address to use this.");
+    this.name = "VerificationRequiredError";
+    this.feature = detail.feature ?? "";
+  }
+}
+
+/** Ask the server to send the confirmation link again. */
+export async function resendVerification(): Promise<void> {
+  await api("/auth/verify/request", { method: "POST" });
 }
 
 export async function api<T = any>(path: string, init: RequestInit = {}): Promise<T> {
@@ -188,6 +247,15 @@ export async function api<T = any>(path: string, init: RequestInit = {}): Promis
       if (res.status === 429 && body?.detail?.code === "free_daily_limit") {
         throw new FreeLimitError(body.detail);
       }
+      // Same status as the free cap and as slowapi's throttle, three different
+      // meanings — which is exactly why the server sends a code and this reads
+      // it rather than branching on 429.
+      if (res.status === 429 && body?.detail?.code === "daily_ceiling") {
+        throw new DailyCeilingError(body.detail);
+      }
+      if (res.status === 403 && body?.detail?.code === "email_unverified") {
+        throw new VerificationRequiredError(body.detail);
+      }
       // `error` is slowapi's key for the IP rate limiter — without it a
       // throttled user only sees "Request failed: 429".
       detail =
@@ -195,7 +263,13 @@ export async function api<T = any>(path: string, init: RequestInit = {}): Promis
         body?.error ??
         detail;
     } catch (e) {
-      if (e instanceof FreeLimitError) throw e;
+      if (
+        e instanceof FreeLimitError ||
+        e instanceof DailyCeilingError ||
+        e instanceof VerificationRequiredError
+      ) {
+        throw e;
+      }
     }
     // The status rides ALONG with the message. The offline queue has to tell
     // "the server refused this" (never retry) from "the network never

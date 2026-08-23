@@ -334,3 +334,42 @@ class TestChatIsNeverLockedShut:
         assert urgent.status_code != 429, (
             "a message the keyword floor flags met the daily cap — safety never blocks"
         )
+
+
+class TestTheClientIsToldTheAnswerTheGateWillGive:
+    """`/auth/me` reports whether the gate WILL refuse, not whether the address
+    was confirmed.
+
+    The two differ for everyone the gate exempts — an account older than the
+    rule, a paying subscriber, a deployment with no SMTP — and reporting the raw
+    column would nag exactly those people to fix something that is not stopping
+    them. The same mistake `subscription_tier` already exists to avoid: a
+    sponsored member was shown a paywall the backend would never have enforced.
+    """
+
+    @pytest.mark.asyncio
+    async def test_an_unconfirmed_account_is_told_to_confirm(self, client, gate_on):
+        _address, token = await _signup(client)
+        client.headers["Authorization"] = f"Bearer {token}"
+        me = (await client.get("/auth/me")).json()
+        assert me["email_verification_required"] is True
+
+    @pytest.mark.asyncio
+    async def test_a_grandfathered_account_is_not_nagged(self, client, gate_on):
+        address, token = await _signup(client)
+        await _set(address, verification_grandfathered=True)
+        client.headers["Authorization"] = f"Bearer {token}"
+        me = (await client.get("/auth/me")).json()
+        assert me["email_verification_required"] is False, (
+            "an account that predates the gate was told to fix something that "
+            "is not stopping it"
+        )
+
+    @pytest.mark.asyncio
+    async def test_nobody_is_nagged_where_email_cannot_be_sent(self, client):
+        """No SMTP means the gate is inert, so the prompt must not appear —
+        it would ask for a link the deployment is incapable of sending."""
+        _address, token = await _signup(client)
+        client.headers["Authorization"] = f"Bearer {token}"
+        me = (await client.get("/auth/me")).json()
+        assert me["email_verification_required"] is False

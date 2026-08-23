@@ -25,6 +25,7 @@ function PaywallSeen() {
   return null;
 }
 import { Icon } from "@/components/icons";
+import { VerifyEmailNotice } from "@/components/VerifyEmailNotice";
 
 type Consent = {
   mood_history: boolean; ai_memory: boolean; voice_storage: boolean;
@@ -249,6 +250,12 @@ export default function Account() {
   return (
     <>
       <AppHeader eyebrow="Private by default" title="Settings" />
+      {/* Before the wall, not after it: the server gates voice, plans and the
+          Oracle on a confirmed address, and meeting that as a 403 partway
+          through a task is a bad way to find out. `email_verification_required`
+          is the server's answer to "will the gate refuse this caller", so an
+          account the gate exempts is never nagged. */}
+      {me?.email_verification_required ? <VerifyEmailNotice email={me.email} /> : null}
       <div className="page-body">
 
       {me && (
