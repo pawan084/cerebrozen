@@ -98,20 +98,46 @@ class ConsentFlowE2ETest {
         )
     }
 
+    /**
+     * The server's view of one consent key, waited for rather than sampled.
+     *
+     * `turnOn`/`turnOff` return when the SWITCH reads the wanted state, and the
+     * PATCH that tells the server is a different, asynchronous thing. Reading
+     * the server the instant the UI settles therefore races the write it is
+     * meant to be checking — which is exactly how this failed in CI on
+     * 2026-08-24: `the switch read On but the server did not record the grant`,
+     * with 21 of 22 tests green and a rerun of the same commit passing.
+     *
+     * Polling to a deadline keeps the assertion honest in both directions. It
+     * still fails if the write never lands (the bug worth catching), and it no
+     * longer fails because the emulator was a few hundred milliseconds slower
+     * than the assertion. It returns the LAST value seen, so the failure
+     * message still describes what the server actually believes.
+     */
+    private fun serverConsent(key: String, want: Boolean, timeoutMs: Long = 10_000): Boolean {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        var seen = BackendFixture.onServer { Api.consent() }.optBoolean(key, false)
+        while (seen != want && System.currentTimeMillis() < deadline) {
+            Thread.sleep(200)
+            seen = BackendFixture.onServer { Api.consent() }.optBoolean(key, false)
+        }
+        return seen
+    }
+
     @Test
     fun the_switch_is_wired_to_the_server_in_both_directions() {
         launchPrivacy().use {
             compose.turnOn(switchFor("AI memory"))
             assertTrue(
                 "the switch read On but the server did not record the grant",
-                BackendFixture.onServer { Api.consent() }.optBoolean("ai_memory", false),
+                serverConsent("ai_memory", want = true),
             )
 
             compose.turnOff(switchFor("AI memory"))
             assertFalse(
                 "the switch read Off but the server still believes consent was given — " +
                     "the person thinks they withdrew it and they did not",
-                BackendFixture.onServer { Api.consent() }.optBoolean("ai_memory", false),
+                serverConsent("ai_memory", want = false),
             )
         }
     }
@@ -134,7 +160,7 @@ class ConsentFlowE2ETest {
         launchPrivacy().use { compose.turnOff(switchFor("AI memory")) }
         assertFalse(
             "consent did not actually go off",
-            BackendFixture.onServer { Api.consent() }.optBoolean("ai_memory", false),
+            serverConsent("ai_memory", want = false),
         )
 
         val wroteAnyway = runCatching {

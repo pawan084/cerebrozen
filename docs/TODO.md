@@ -25,6 +25,23 @@ covers both. If it is a different one, rotate it too.
 been tracked. The exposure is the `.example` file, which is exactly the trap
 that kind of file sets: it looks like it cannot hold anything real.
 
+## Done — a consent test was racing the write it checks (2026-08-24)
+
+`ConsentFlowE2ETest > the_switch_is_wired_to_the_server_in_both_directions`
+failed in CI with "the switch read On but the server did not record the grant",
+21 of 22 green, and a rerun of the same commit passed — a flake, in the suite
+that proves the DPDP consent switches are real.
+
+The cause is a seam, not luck: `turnOn`/`turnOff` return when the SWITCH reads
+the wanted state, while the PATCH that tells the server is separate and
+asynchronous. Reading the server the instant the UI settles races the write the
+assertion exists to check.
+
+Three assertions now poll to a deadline instead of sampling once. They still
+fail if the write never lands — the bug worth catching — and no longer fail
+because the emulator was slower than the assertion. The helper returns the last
+value seen, so the message still says what the server actually believes.
+
 ## Done — the Android app was talking to a different product's API (2026-08-24)
 
 A device walk showed the app failing every request: `POST /auth/refresh -> 404`,
