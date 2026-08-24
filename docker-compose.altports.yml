@@ -1,16 +1,44 @@
 # Spare host ports for a manual walkthrough.
 #
-# 3000/3001/3002 are already taken on this machine by another product's dev
-# servers ("HeyCere — Deterministic AI Coaching"), so the usual mappings fail to
-# bind. This overlay moves ONLY the host side; nothing about the images or the
-# container ports changes, and the other product is left alone.
+# 3000/3001/3002 AND 8000 are already taken on this machine by another product's
+# dev servers ("HeyCere — Deterministic AI Coaching" — the same product that
+# holds cerebrozen.in, see the guard in .github/workflows/deploy.yml). This
+# overlay moves ONLY the host side; nothing about the images or the container
+# ports changes, and the other product is left alone.
 #
-#   docker compose -f docker-compose.yml -f docker-compose.altports.yml up -d web admin
+#   docker compose -f docker-compose.yml -f docker-compose.altports.yml up -d
 #
 # CORS is widened to match, because the browser will now be loading these pages
 # from :3100/:3101 and the API refuses origins it was not told about.
+#
+# ── Why the API is in here, and why the collision was invisible ──────────────
+#
+# The other product runs `uvicorn app:app --host 0.0.0.0 --port 8000`, which
+# binds IPv4. Our container binds IPv6 as well. Port 8000 therefore has THREE
+# listeners at once, and which one a client reaches depends on how it resolves
+# `localhost`:
+#
+#   curl / any MSYS or WSL tool   -> ::1        -> wslrelay -> our container
+#   native Win32 clients (adb)    -> 127.0.0.1  -> the other product's uvicorn
+#
+# So `curl http://localhost:8000/health` answers with OUR payload while an
+# `adb reverse tcp:8000 tcp:8000` tunnel silently hands the phone to somebody
+# else's API. On 2026-08-24 that cost a full Android device walk: every request
+# the app made came back `{"detail":"Not Found"}` from a FastAPI that was not
+# ours, our API logged nothing at all, and it read as a bug in the app.
+#
+# Binding our API to a port nobody else holds removes the ambiguity — there is
+# no resolution order to get wrong when only one process is listening:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.altports.yml up -d api
+#   adb reverse tcp:8000 tcp:8010     # phone's :8000 -> host :8010 -> ours
+#
+# Verify with an IPv4 literal, never `localhost` — `curl http://127.0.0.1:8010/health`
+# — because `localhost` is exactly the thing that lies here.
 services:
   api:
+    ports: !override
+      - "8010:8000"
     environment:
       CORS_ORIGINS: >-
         http://localhost:3000,http://localhost:3001,http://localhost:3002,
