@@ -123,8 +123,13 @@ fun WorkCoachScreen(onBack: () -> Unit, onOpen: (String) -> Unit) {
     }
 
     PremiumSubPage(
+        // The one-line promise rides the SUBTITLE slot; the bar's big line is
+        // the screen's short name. The old order put the two-line work_title
+        // sentence into a single-line bar, which ellipsized it to
+        // "Talk it through,…" in every locale (2026-08-24 screen review) —
+        // a headline whose whole second half is its payoff, cut at the comma.
+        stringResource(R.string.work_bar_sub),
         stringResource(R.string.work_eyebrow),
-        stringResource(R.string.work_title),
         onBack,
         onUrgent = { onOpen("crisis") },
     ) {

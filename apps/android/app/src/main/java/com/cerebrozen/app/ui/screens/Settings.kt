@@ -854,9 +854,13 @@ fun RemindersScreen(onBack: () -> Unit) {
                 hour, 0, android.text.format.DateFormat.is24HourFormat(context),
             ).show()
         }) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically) {
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                // The label column takes the flexible width and WRAPS; the value
+                // never does. Unweighted, the hint's intrinsic width squeezed the
+                // time into a sliver and "9:00 AM" wrapped mid-token — "9:00 A"
+                // over "M" (2026-08-24 screen review, the review's one fix-now).
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(stringResource(R.string.reminders_time_title), style = MaterialTheme.typography.titleMedium, color = TextSoft)
                     Text(stringResource(R.string.reminders_time_hint),
                         style = MaterialTheme.typography.bodyMedium, color = TextMuted)
@@ -866,6 +870,7 @@ fun RemindersScreen(onBack: () -> Unit) {
                         java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT),
                     ),
                     style = MaterialTheme.typography.titleMedium, color = Periwinkle,
+                    maxLines = 1, softWrap = false,
                 )
             }
         }

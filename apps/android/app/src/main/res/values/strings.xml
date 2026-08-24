@@ -569,7 +569,6 @@
          a description of the backend boundary (stateless turns, no org read
          path), not marketing. -->
     <string name="work_eyebrow">Work coaching</string>
-    <string name="work_title">Talk it through,\nleave with a plan.</string>
     <string name="work_privacy_line">Private to you. Your organisation pays for access and never sees what you write here.</string>
     <string name="work_empty_title">What\'s heavy at work right now?</string>
     <string name="work_empty_sub">Workload, focus, a hard conversation, boundaries, growth — start anywhere. When you\'re ready, one tap turns the conversation into a plan.</string>
@@ -2044,4 +2043,5 @@ everything.</string>
     <string name="oracle_tool_log_sleep">your sleep diary</string>
     <string name="oracle_tool_running">Using %1$s…</string>
     <string name="oracle_tool_used">Used %1$s</string>
+    <string name="work_bar_sub">Talk it through, leave with a plan</string>
 </resources>

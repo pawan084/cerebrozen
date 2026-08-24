@@ -195,6 +195,42 @@ fail if the write never lands — the bug worth catching — and no longer fail
 because the emulator was slower than the assertion. The helper returns the last
 value seen, so the message still says what the server actually believes.
 
+## Done — the 54-screen review, two fixes shipped, the rest ledgered (2026-08-24)
+
+Every screen in the nav graph captured on the CPH2681 (English, normal scale)
+and reviewed one by one. 44 of 54 pass clean. Two fixes shipped same-day:
+
+- **Reminders: "9:00 AM" wrapped mid-token** ("9:00 A" / "M") — the unweighted
+  label column squeezed the value into a sliver. The label column now takes
+  `weight(1f)` and wraps; the value is `maxLines=1, softWrap=false`.
+- **Work coaching: the bar ellipsized its own headline** ("Talk it through,…"
+  — cut at the comma, losing the payoff). The bar now reads "Work coaching /
+  Talk it through, leave with a plan" (new `work_bar_sub`, both locales);
+  `work_title` retired from both locales per the graveyard rule.
+
+Also cleaned: **18 instrumented-test goals** ("Goal e2e-…") deleted off the
+demo account — device suites wrote through the signed-in session instead of a
+throwaway. Follow-up: point the goals flow's device tests at the
+BackendFixture throwaway pattern the consent suite already uses.
+
+Ledgered, in rough priority:
+1. **Mindful Games cards clamp meaning-bearing copy** — "Sometimes the move is
+   not movi…" is the game's whole insight, cut. Unclamp the accent line or
+   shorten the strings.
+2. **Plan "why" clamps the rationale mid-thought** ("…energy and stress le…")
+   — server text, two-line clamp; the line is the plan's justification.
+3. **CBT-I + MBCT collapsed cards** mis-align the radio circle against the
+   title (expanded cards align correctly). One fix, two screens.
+4. **Guided Imagery emoji overlays** — Mountain Peak's plain black ▲ reads as
+   a glitch; the photos don't need the emojis.
+5. **Imagery intro dead space** — content starts ~300px down.
+6. **Mixer prints "70%" twice** in the volume card.
+7. **Practices hub** — only header not in the serif face; Bubble pop and
+   Mindful Games share one icon.
+8. **Label-as-placeholder duplication** on safety plan + trusted contact
+   ("Warning signs I notice" twice).
+9. **Model output can lack a space after sentence periods** ("…further.Writing")
+   — stored transcript, would need render-side cleanup if ever addressed.
 ## Done — platform polish: real per-app language, a lighter file, 200% font, a startup profile (Agentic Wave D, 2026-08-24)
 
 **WC-193.** The in-app language choice now writes the OS per-app locale

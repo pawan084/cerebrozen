@@ -1837,7 +1837,6 @@
     <string name="work_plan_ready">आपकी योजना</string>
     <string name="work_privacy_line">सिर्फ़ आपके लिए निजी। आपका संगठन पहुँच का ख़र्च उठाता है और यहाँ आपका लिखा कभी नहीं देखता।</string>
     <string name="work_send_failed">यह भेजा नहीं जा सका — आपके शब्द यहीं हैं। दोबारा कोशिश करें।</string>
-    <string name="work_title">बात करके सुलझाएँ,\nयोजना लेकर जाएँ।</string>
     <string name="you_group_personalize">अपने मुताबिक</string>
     <string name="you_group_progress">आपकी प्रगति</string>
     <string name="you_group_safety">निजता और सुरक्षा</string>
@@ -1937,4 +1936,5 @@
     <string name="oracle_tool_log_sleep">आपकी नींद की डायरी</string>
     <string name="oracle_tool_running">%1$s इस्तेमाल हो रहा है…</string>
     <string name="oracle_tool_used">%1$s इस्तेमाल हुआ</string>
+    <string name="work_bar_sub">बात करके सुलझाएँ, योजना लेकर जाएँ</string>
 </resources>
