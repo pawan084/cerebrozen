@@ -1,0 +1,17 @@
+# The judged eval layer's dependencies — DELIBERATELY not in requirements-dev.
+#
+# CI installs requirements-dev on every backend run and runs hermetic with
+# blank provider keys; DeepEval is a judge framework whose metrics call an LLM,
+# so in CI it could only ever import-and-skip while pulling a heavy dependency
+# tree into every build. It installs here instead, next to the suite that uses
+# it:
+#
+#     pip install -r requirements-evals.txt
+#     RUN_LLM_TESTS=1 python -m pytest tests/evals/ -q
+#
+# tests/evals/ import-or-skips deepeval, so a checkout without this file's
+# packages still runs the full hermetic suite untouched. See docs/EVALS.md.
+# >=3: the 1.x line imports langchain.schema (long removed) and its dep tree
+# upgrades langchain-core over the app's own LangGraph pins — an install that
+# breaks the thing it evaluates. 3.x has no langchain dependency at all.
+deepeval>=3,<4

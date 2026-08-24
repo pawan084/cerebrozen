@@ -33,8 +33,12 @@ def test_length_is_calibrated_not_capped():
 def test_the_banned_openers_are_named():
     # Named literally so the model is told the exact tics, and so this test
     # fails if someone "simplifies" the list away.
-    for tic in ("'I hear you'", "'It sounds like'", "'I understand'"):
+    for tic in ("'I hear you'", "'It sounds like'", "'It seems", "'I understand'"):
         assert tic in prompts.RESPONSE_STYLE
+    # The judged suite's first run caught the model swapping a banned opener
+    # for its unlisted sibling ("It seems like"), so the rule now bans the
+    # CLASS — this pin keeps the closing clause that makes it a class ban.
+    assert "any variant" in prompts.RESPONSE_STYLE
 
 
 def test_ai_disclaimers_are_unvolunteered_never_concealed():
