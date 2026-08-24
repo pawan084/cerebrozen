@@ -95,15 +95,25 @@ internal object DeviceE2E {
         // the screen, and a guard built on that reported success while the test
         // read a splash nobody could see.
         if (device.wait(Until.hasObject(By.pkg(BuildConfig.APPLICATION_ID).depth(0)), timeoutMs)) return
+        // Say who ACTUALLY owns the screen instead of guessing. The first
+        // version of this message asserted it was ColorOS's scanner — true on
+        // the handset it was written against, and wrong the first time the
+        // guard fired anywhere else: a CI emulator run failed here on
+        // 2026-08-24 with no scanner in existence, and the message sent its
+        // reader hunting one. Whatever covered the app there was transient
+        // (the activity had reached RESUMED under it), which is why the
+        // diagnosis matters more than the timeout.
+        val owner = runCatching { device.findObject(By.depth(0))?.applicationPackage }.getOrNull()
         assertTrue(
-            "another window is in front of the app under test. On CPH2681 this is " +
-                "ColorOS's full-screen \"Security test\", which it opens over every " +
-                "`adb install` and leaves up; the handset also refuses " +
-                "`settings put global verifier_verify_adb_installs 0`, so it cannot be " +
-                "turned off from adb. Dismiss it by hand and re-run, or let the " +
-                "`android-device` CI job run this suite on an emulator, which has no " +
-                "such scanner. (Pressing Back to clear it is NOT the answer: it walks " +
-                "the app out to the launcher and the run then hangs.)",
+            "another window is in front of the app under test — the root window " +
+                "belongs to ${owner ?: "<no queryable window>"} (currentPackageName says " +
+                "${device.currentPackageName}, but that lies: it answered the app's name " +
+                "through a full run the OEM scanner owned). Known owners: on CPH2681, " +
+                "ColorOS's full-screen \"Security test\" opens over every `adb install`, " +
+                "cannot be disabled from adb, and must be dismissed by hand; on a slow " +
+                "CI emulator a transient system dialog can cover a RESUMED activity. " +
+                "(Pressing Back to clear an overlay is NOT the answer: it walks the app " +
+                "out to the launcher and the run then hangs.)",
             false,
         )
     }
