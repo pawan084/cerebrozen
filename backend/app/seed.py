@@ -26,6 +26,28 @@ logger = logging.getLogger("cerebro.seed")
 # licensed art per item via the CMS when it exists.
 _IMG = ""
 
+# Hindi display overlays for the seeded catalogue (2026-08-25). English stays
+# the canonical row; these change only what a Hindi-profile user SEES
+# (services/content_i18n.py). Written by the same hand as values-hi and
+# subject to the same eventual native-reader pass; none of this is crisis
+# copy, so the clinical hold does not apply.
+_I18N_HI = {
+    "Rain over quiet hills": {"title": "शांत पहाड़ियों पर बारिश", "subtitle": "नींद की कहानी · 18 मिनट"},
+    "Ocean breathing": {"title": "सागर जैसी साँसें", "subtitle": "साँस का अभ्यास · 5 मिनट"},
+    "Deep night drift": {"title": "गहरी रात का बहाव", "subtitle": "साउंडस्केप · 45 मिनट"},
+    "Morning calm": {"title": "सुबह की शांति", "subtitle": "दिन की शुरुआत · 6 मिनट"},
+    "Soft focus": {"title": "कोमल एकाग्रता", "subtitle": "गहरा काम · 12 मिनट"},
+    "Body scan": {"title": "बॉडी स्कैन", "subtitle": "तनाव छोड़ें · 10 मिनट"},
+    "Ease work stress": {"title": "काम का तनाव हल्का करें", "subtitle": "7-दिन की योजना · साँस + जर्नल"},
+    "Sleep deeper": {"title": "और गहरी नींद", "subtitle": "10-दिन का विश्राम कार्यक्रम"},
+    "Stop overthinking": {"title": "ज़्यादा सोचना रोकें", "subtitle": "5-दिन का CBT फ़ोकस"},
+    "Sleep Reset": {"title": "स्लीप रीसेट", "subtitle": "7-दिन की योजना · हर रात एक स्थिर आदत"},
+    "Keep a steady wake time": {"title": "उठने का समय एक-सा रखें", "subtitle": "आपकी शरीर-घड़ी का लंगर — कठिन रात के बाद भी"},
+    "Dim the inputs": {"title": "इनपुट धीमे करें", "subtitle": "सोने से 30 मिनट पहले — स्क्रीन नीचे, रोशनी कम"},
+    "Bed is for sleep": {"title": "बिस्तर सोने के लिए है", "subtitle": "20+ मिनट जागे? उठें, हल्का रीसेट, नींद आने पर लौटें"},
+    "Slow the body first": {"title": "पहले शरीर को धीमा करें", "subtitle": "बत्ती बुझाने से पहले दो मिनट की कोमल साँसें"},
+}
+
 _CONTENT = [
     ("Rain over quiet hills", "Sleep story · 18 min", "sleep", "moon.stars", 18, False),
     ("Ocean breathing", "Breathwork · 5 min", "breath", "waveform", 5, False),
@@ -720,9 +742,19 @@ async def seed(db: AsyncSession) -> None:
                 premium=premium,
                 narration_script=_SCRIPTS.get(title, ""),
                 day_guides=_DAY_GUIDES.get(title),
+                i18n=({"hi": _I18N_HI[title]} if title in _I18N_HI else None),
             )
         )
         added += 1
+
+    # Backfill translations onto rows that predate the i18n column — but only
+    # where i18n IS NULL, honouring the same principle as the title check
+    # above: an admin's edit (including an admin's own translation) is never
+    # overwritten by a boot.
+    for row in (await db.scalars(select(ContentItem).where(ContentItem.i18n.is_(None)))).all():
+        translation = _I18N_HI.get(row.title)
+        if translation:
+            row.i18n = translation and {"hi": translation}
     if added:
         logger.info("Seeded %d content items", added)
 

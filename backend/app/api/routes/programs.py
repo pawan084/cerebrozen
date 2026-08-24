@@ -17,6 +17,7 @@ from app.core.localtime import local_date, local_today
 from app.models.content import ContentItem
 from app.models.program import ProgramEnrollment
 from app.models.user import User
+from app.services import content_i18n
 
 router = APIRouter(prefix="/programs", tags=["programs"])
 
@@ -81,7 +82,7 @@ async def _active(db: AsyncSession, user: User) -> ProgramEnrollment | None:
     )
 
 
-async def _full_view(db: AsyncSession, e: ProgramEnrollment, tz: str = "") -> dict:
+async def _full_view(db: AsyncSession, e: ProgramEnrollment, tz: str = "", lang: str | None = None) -> dict:
     """The enrollment WITH its day guides.
 
     Both /active and /enroll return "the program", so both must return the same
@@ -92,6 +93,12 @@ async def _full_view(db: AsyncSession, e: ProgramEnrollment, tz: str = "") -> di
     """
     view = _view(e, tz)
     item = await db.get(ContentItem, e.content_id)
+    # The enrollment snapshots the ENGLISH title (its wire identity); a
+    # Hindi-profile caller sees the catalogue's translation over it, same
+    # overlay rule as /content (2026-08-25). The item is already in hand.
+    localized = content_i18n.localized_title(item, lang)
+    if localized:
+        view["title"] = localized
     guide = _today_guide(item, view["day"])
     if guide is not None:
         view["today_guide"] = guide
@@ -108,7 +115,7 @@ async def active_program(
     e = await _active(db, user)
     if e is None:
         return {"program": None}
-    return {"program": await _full_view(db, e, user.timezone)}
+    return {"program": await _full_view(db, e, user.timezone, content_i18n.code_for(user))}
 
 
 @router.post("/enroll", status_code=201)
@@ -154,7 +161,7 @@ async def enroll(
         prior.active = True
         await db.commit()
         await db.refresh(prior)
-        return {"program": await _full_view(db, prior, user.timezone)}
+        return {"program": await _full_view(db, prior, user.timezone, content_i18n.code_for(user))}
 
     e = ProgramEnrollment(
         user_id=user.id, content_id=item.id, title=item.title, days=payload.days
@@ -162,7 +169,7 @@ async def enroll(
     db.add(e)
     await db.commit()
     await db.refresh(e)
-    return {"program": await _full_view(db, e, user.timezone)}
+    return {"program": await _full_view(db, e, user.timezone, content_i18n.code_for(user))}
 
 
 @router.delete("/active", status_code=200)

@@ -7,13 +7,13 @@ from app.core.deps import get_optional_user
 from app.models.content import ContentItem
 from app.models.user import User
 from app.schemas.content_data import ContentOut
-from app.services import entitlements, media
+from app.services import content_i18n, entitlements, media
 from app.services.textsearch import escape_like
 
 router = APIRouter(prefix="/content", tags=["content"])
 
 
-def _serialize(item: ContentItem, tier: str) -> ContentOut:
+def _serialize(item: ContentItem, tier: str, lang: str | None = None) -> ContentOut:
     """Render one catalogue row for a caller on ``tier``.
 
     ``audio_url`` is replaced rather than passed through: the stored value is a
@@ -24,9 +24,14 @@ def _serialize(item: ContentItem, tier: str) -> ContentOut:
 
     Takes the resolved tier, not the user: entitlement is one query per
     request, not one per catalogue row.
+
+    ``lang`` overlays translated display fields the same way (2026-08-25):
+    the response model changes, the ORM row never does — English stays the
+    canonical value search matched two lines up.
     """
     return ContentOut.model_validate(item).model_copy(
-        update={"audio_url": media.playback_url(item, tier)}
+        update={"audio_url": media.playback_url(item, tier),
+                **content_i18n.overrides(item, lang)}
     )
 
 
@@ -56,4 +61,5 @@ async def list_content(
         ))
     rows = await db.scalars(stmt.order_by(ContentItem.title))
     tier = await entitlements.effective_tier(db, user)
-    return [_serialize(item, tier) for item in rows.all()]
+    lang = content_i18n.code_for(user)
+    return [_serialize(item, tier, lang) for item in rows.all()]

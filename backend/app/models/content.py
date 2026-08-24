@@ -42,3 +42,11 @@ class ContentItem(Base):
     day_guides: Mapped[list[dict] | None] = mapped_column(
         JSONB(none_as_null=True), nullable=True
     )
+    # Per-language display overrides: {"hi": {"title": …, "subtitle": …}}.
+    # English stays the canonical row — search, admin and the claims gate all
+    # read it — and a translation only ever changes what a matching-profile
+    # user SEES (services/content_i18n.py). NULL means untranslated, and the
+    # seed backfill's IS NULL check must keep meaning that (none_as_null).
+    i18n: Mapped[dict | None] = mapped_column(
+        JSONB(none_as_null=True), nullable=True
+    )

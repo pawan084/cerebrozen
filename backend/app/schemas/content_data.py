@@ -139,10 +139,21 @@ class ContentBase(BaseModel):
         return _require_web_url(v)
 
 
+class I18nEntry(BaseModel):
+    """One language's display overlay. Same column bounds as the canonical
+    fields (register C24) — a translation is not a way around a length limit."""
+
+    title: str = Field(default="", max_length=160)
+    subtitle: str = Field(default="", max_length=255)
+
+
 class ContentCreate(ContentBase):
     narration_script: str = ""
     # Per-day program structure (W17); None for non-programs.
     day_guides: list[DayGuide] | None = None
+    # Per-language display overlays, e.g. {"hi": {"title": …}} (2026-08-25).
+    # English stays the canonical row; see services/content_i18n.py.
+    i18n: dict[str, I18nEntry] | None = None
 
 
 class ContentUpdate(BaseModel):
@@ -181,6 +192,9 @@ class AdminContentOut(ContentOut):
     audio_generated_at: datetime | None = None
     # Per-day program structure; None for non-programs and legacy rows.
     day_guides: list[DayGuide] | None = None
+    # The admin sees translations; the public catalogue serves them already
+    # overlaid and never ships the raw map.
+    i18n: dict[str, I18nEntry] | None = None
 
 
 # ── Insight ─────────────────────────────────────────────────────────────

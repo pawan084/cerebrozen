@@ -195,6 +195,28 @@ fail if the write never lands — the bug worth catching — and no longer fail
 because the emulator was slower than the assertion. The helper returns the last
 value seen, so the message still says what the server actually believes.
 
+## Done — the catalogue speaks the profile's language (Wave R5, 2026-08-25)
+
+The last localization gap: every programme, sound and wind-down title arrived
+from `content_items` in English inside fully-Hindi chrome, on every client.
+Closed as a DISPLAY overlay, not a translation model: `content_items.i18n`
+(migration `a1d4f7c2e9b6`, JSONB, nullable) holds `{"hi": {title, subtitle}}`;
+`services/content_i18n.py` overlays it at serialization in `/content` and
+`/programs` when the caller's PROFILE language maps to a translated code —
+the same `user.language` switch the reply directive follows, so the model's
+replies and the catalogue flip together. English stays the canonical row:
+search matches it, admin edits it, enrollments snapshot it, and the overlay
+never rewrites anything. Absence degrades field-by-field (a blank translated
+subtitle cannot blank a screen — pinned). The seed carries Hindi for all 14
+catalogue items and backfills EXISTING rows only where `i18n IS NULL`, the
+same never-overwrite-an-admin principle the title check already enforces.
+Admin can author translations through the API (`I18nEntry`, same column
+bounds as the canonical fields); an admin-UI editor for them is the follow-up.
+Clients needed zero changes — the localized value arrives in the `title`
+field they already render. Proven live on dev: a Hindi profile's `/content`
+returns the full catalogue in Hindi. Suite: 955 passed; 7 new pins in
+`test_content_i18n.py`.
+
 ## Done — the 54-screen review, and all eleven findings closed (2026-08-24)
 
 Every screen in the nav graph captured on the CPH2681 (English, normal scale)
