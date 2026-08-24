@@ -972,6 +972,11 @@ fun DataExportScreen(onBack: () -> Unit) {
     PremiumSubPage(stringResource(R.string.export_eyebrow), stringResource(R.string.export_title), onBack) {
         Text(stringResource(R.string.export_intro),
             style = MaterialTheme.typography.bodyMedium, color = TextSoft)
+        // What arrives and where it goes — the screen was one button on an
+        // empty page (2026-08-24 review). Copy matches the code: the payload
+        // lands in-app and the share sheet is the way out; nothing is emailed.
+        Text(stringResource(R.string.export_detail),
+            style = MaterialTheme.typography.bodySmall, color = TextMuted)
         PrimaryButton(
             text = if (busy) stringResource(R.string.export_preparing) else stringResource(R.string.export_title),
             enabled = !busy,

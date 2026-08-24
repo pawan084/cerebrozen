@@ -112,6 +112,10 @@ fun PlanScreen(onBack: () -> Unit, onOpen: (String) -> Unit = {}) {
             // Rationale hero — a photographic gradient card in the teammate's look.
             HeroCard(
                 kind = "program",
+                // Four lines, not the default two: the rationale is server
+                // text and the whole reason the plan exists — the review
+                // caught it ending mid-thought at "…energy and stress le…".
+                subtitleMaxLines = 4,
                 eyebrow = stringResource(R.string.plan_hero_eyebrow),
                 title = p.optString("focus").ifBlank { stringResource(R.string.today_plan_eyebrow) },
                 subtitle = p.optString("rationale")

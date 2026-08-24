@@ -1937,4 +1937,8 @@
     <string name="oracle_tool_running">%1$s इस्तेमाल हो रहा है…</string>
     <string name="oracle_tool_used">%1$s इस्तेमाल हुआ</string>
     <string name="work_bar_sub">बात करके सुलझाएँ, योजना लेकर जाएँ</string>
+    <string name="trusted_name_hint">जैसे: आशा</string>
+    <string name="trusted_value_hint_email">name@example.com</string>
+    <string name="trusted_value_hint_phone">+91 98765 43210</string>
+    <string name="export_detail">JSON के रूप में यहीं मिलती है — फिर इसे अपनी फ़ाइलों, ड्राइव या मेल में भेजें।</string>
 </resources>

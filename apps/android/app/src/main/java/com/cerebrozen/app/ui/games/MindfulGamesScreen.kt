@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -103,12 +104,16 @@ fun MindfulGamesScreen(onBack: () -> Unit, onOpenGame: (String) -> Unit) {
         GameCategory.entries.forEach { category ->
             Text(stringResource(category.titleRes).uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = gameAccent(category))
             MindfulGameRegistry.games.filter { it.category == category }.chunked(2).forEach { pair ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                // IntrinsicSize.Max keeps the pair level while letting BOTH
+                // grow: the 2026-08-24 review found the clamps cutting the copy
+                // that justifies each game ("Sometimes the move is not movi…"),
+                // and more lines only help if the row can take the tallest card.
+                Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 pair.forEach { game ->
                     val name = stringResource(game.nameRes)
                     val description = stringResource(game.descriptionRes)
                     val accent = gameAccent(game.category)
-                    Box(Modifier.weight(1f).heightIn(min = 210.dp)) {   // B39: grows at large font
+                    Box(Modifier.weight(1f).fillMaxHeight().heightIn(min = 210.dp)) {   // B39: grows at large font
                     SectionCard(onClick = { onOpenGame(game.id) }, modifier = Modifier.fillMaxSize()) {
                         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Box(Modifier.fillMaxWidth().height(3.dp).clip(CircleShape).background(accent.copy(alpha = 0.75f)))
@@ -122,7 +127,7 @@ fun MindfulGamesScreen(onBack: () -> Unit, onOpenGame: (String) -> Unit) {
                                     tint = TextPrimary, modifier = Modifier.size(26.dp))
                             }
                             Text(name, style = MaterialTheme.typography.titleMedium, color = TextPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            Text(description, style = MaterialTheme.typography.bodySmall, color = TextMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text(description, style = MaterialTheme.typography.bodySmall, color = TextMuted, maxLines = 3, overflow = TextOverflow.Ellipsis)
                             Spacer(Modifier.weight(1f))
                             // Two lines, not one. This is the "what this
                             // practises" line — the only thing on the card that
@@ -131,7 +136,7 @@ fun MindfulGamesScreen(onBack: () -> Unit, onOpenGame: (String) -> Unit) {
                             // one thing amon…", "Hold back the easy a…"), which
                             // is worse than omitting it.
                             Text(stringResource(game.practiceRes), style = MaterialTheme.typography.labelSmall, color = accent,
-                                maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                maxLines = 3, overflow = TextOverflow.Ellipsis)
                         }
                     }
                     }

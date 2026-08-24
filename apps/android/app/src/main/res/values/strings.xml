@@ -2044,4 +2044,8 @@ everything.</string>
     <string name="oracle_tool_running">Using %1$s…</string>
     <string name="oracle_tool_used">Used %1$s</string>
     <string name="work_bar_sub">Talk it through, leave with a plan</string>
+    <string name="trusted_name_hint">e.g. Aisha</string>
+    <string name="trusted_value_hint_email">name@example.com</string>
+    <string name="trusted_value_hint_phone">+91 98765 43210</string>
+    <string name="export_detail">Arrives right here as JSON — then share it to your files, drive or mail.</string>
 </resources>

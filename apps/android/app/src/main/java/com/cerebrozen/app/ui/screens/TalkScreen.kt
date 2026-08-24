@@ -342,6 +342,12 @@ internal fun stripMarkdownLite(s: String): String = s
     .replace(Regex("""\*\*(.+?)\*\*"""), "$1")
     .replace(Regex("""(?<![\w*])\*([^*\n]+)\*(?![\w*])"""), "$1")
     .replace(Regex("""^[ \t]*#{1,4}[ \t]+""", RegexOption.MULTILINE), "")
+    // A live model occasionally omits the space after a sentence period
+    // ("…further.Writing down…", seen in a stored transcript, 2026-08-24
+    // review). Display-only healing, deliberately narrow: lowercase-period-
+    // Uppercase only, so decimals (2.5), acronyms (U.S.), versions and URLs
+    // never match.
+    .replace(Regex("""(?<=[a-z])\.(?=[A-Z])"""), ". ")
 
 /** Display resource for a KNOWN server chip label — chips arrive as English
  * wire strings; the display localizes, the RAW label is what gets sent back

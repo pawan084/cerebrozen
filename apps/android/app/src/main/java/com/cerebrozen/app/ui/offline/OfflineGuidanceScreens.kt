@@ -154,7 +154,11 @@ fun GuidedImageryScreen(onBack: () -> Unit) {
                                         null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
                                     )
                                     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, ArtScrim.copy(alpha = 0.7f)))))
-                                    Text(item.glyph, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.align(Alignment.BottomStart).padding(12.dp))
+                                    // No emoji overlay: the photograph and the label ARE the
+                                    // tile. The glyphs rendered per-OEM — Mountain Peak's came
+                                    // out as a plain black triangle and read as a glitch
+                                    // (2026-08-24 review). The glyph survives in data for the
+                                    // completion panel, where it is deliberate celebration.
                                 }
                                 Text(stringResource(item.titleRes), style = MaterialTheme.typography.titleSmall, color = TextPrimary, maxLines = 2)
                             }

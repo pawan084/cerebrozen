@@ -77,6 +77,7 @@ import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.SelfImprovement
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Spa
+import androidx.compose.material.icons.outlined.BlurOn
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.Waves
 import androidx.compose.material.icons.outlined.WarningAmber
@@ -1778,13 +1779,9 @@ private fun PremiumMixerSlider(value: Float, onValueChange: (Float) -> Unit, lab
                 }
             },
         )
-        Text(
-            text = "$percentage%",
-            style = MaterialTheme.typography.labelMedium,
-            color = TextSoft,
-            textAlign = TextAlign.End,
-            modifier = Modifier.size(width = 38.dp, height = 20.dp),
-        )
+        // No trailing value: the card header already shows the percentage in
+        // the accent, and the drag tooltip shows it live — a third copy printed
+        // "70%" twice at rest in one card (2026-08-24 review).
     }
 }
 
@@ -2222,7 +2219,9 @@ fun ToolkitScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
             ToolkitExerciseCard(
                 stringResource(R.string.toolkit_bubble_title), stringResource(R.string.toolkit_bubble_subtitle),
                 stringResource(R.string.toolkit_duration_open), stringResource(R.string.toolkit_level_easy),
-                Icons.Outlined.SportsEsports, Ok, 1,
+                // Bubbles, not a gamepad: two adjacent cards shared one icon
+                // and read as duplicates of each other (2026-08-24 review).
+                Icons.Outlined.BlurOn, Ok, 1,
             ) { openTool("bubblepop") }
             // The door to the twelve offline games. It was orphaned for a day:
             // the only onOpen("games") lived in the retired legacy Toolkit, so
@@ -2346,7 +2345,13 @@ private fun ToolkitHeroHeader(onBack: () -> Unit) {
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(stringResource(R.string.toolkit_eyebrow).uppercase(), style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.7.sp), color = EyebrowMuted)
-            Text(stringResource(R.string.toolkit_title), style = MaterialTheme.typography.headlineMedium, color = TextPrimary)
+            // The one screen title in the app that wasn't set in the serif —
+            // every sibling hub uses Newsreader (2026-08-24 review).
+            Text(stringResource(R.string.toolkit_title),
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontFamily = androidx.compose.ui.text.font.FontFamily(
+                        androidx.compose.ui.text.font.Font(R.font.newsreader))),
+                color = TextPrimary)
             Text(stringResource(R.string.toolkit_intro), style = MaterialTheme.typography.bodySmall, color = TextMuted, maxLines = 2)
         }
     }

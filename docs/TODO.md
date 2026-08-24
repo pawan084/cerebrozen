@@ -195,7 +195,7 @@ fail if the write never lands — the bug worth catching — and no longer fail
 because the emulator was slower than the assertion. The helper returns the last
 value seen, so the message still says what the server actually believes.
 
-## Done — the 54-screen review, two fixes shipped, the rest ledgered (2026-08-24)
+## Done — the 54-screen review, and all eleven findings closed (2026-08-24)
 
 Every screen in the nav graph captured on the CPH2681 (English, normal scale)
 and reviewed one by one. 44 of 54 pass clean. Two fixes shipped same-day:
@@ -213,7 +213,24 @@ demo account — device suites wrote through the signed-in session instead of a
 throwaway. Follow-up: point the goals flow's device tests at the
 BackendFixture throwaway pattern the consent suite already uses.
 
-Ledgered, in rough priority:
+**All nine ledgered findings closed the same day (Wave R1):** games grid rows
+take IntrinsicSize and the clamps went to three lines, so every card's copy
+completes; the plan rationale gets four lines; CBT-I/MBCT module cards
+top-align the circle with the title in both states; the imagery tiles lost
+their emoji overlays (the black ▲ with them) and the intro lost its 600dp
+floor and centering; the mixer prints its percentage once; the Practices title
+joined the serif face and Bubble pop got its own icon; trusted-contact
+placeholders are examples ("e.g. Aisha", a method-aware address format)
+instead of the label repeated — the safety plan's in-field text turned out to
+be the Material a11y label working as designed and stays; export says what
+arrives and how it leaves, with the copy corrected against the code before it
+shipped (the first draft claimed the export was emailed — it is fetched
+in-app and shared, and a claims-checked product does not get new false copy
+from its own reviewer); and stripMarkdownLite heals the model's missing
+space after sentence periods, display-only, with decimals/acronyms/URLs
+pinned untouched by SentenceSpacingTest.
+
+Originally ledgered as:
 1. **Mindful Games cards clamp meaning-bearing copy** — "Sometimes the move is
    not movi…" is the game's whole insight, cut. Unclamp the accent line or
    shorten the strings.

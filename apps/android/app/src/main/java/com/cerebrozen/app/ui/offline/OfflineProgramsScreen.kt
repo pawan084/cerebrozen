@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
@@ -20,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.cerebrozen.app.R
@@ -63,10 +65,18 @@ private fun OfflineProgramScreen(program: OfflineProgram, onBack: () -> Unit) {
         program.modules.forEachIndexed { index, module ->
             val done = index in completed
             SectionCard(onClick = { expanded = index }) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                // Top-aligned, not centered: a collapsed card's column holds a
+                // title plus a two-line preview, so centering floated the circle
+                // beside the PREVIEW while the title hung above it — expanded
+                // cards (title first in a taller column) happened to look right,
+                // and the two states disagreed (2026-08-24 review, CBT-I/MBCT).
+                // The small top padding sits the icon on the title's optical line.
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Icon(
                         if (done) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
                         null, tint = if (done) Ok else TextMuted2,
+                        modifier = Modifier.padding(top = 2.dp),
                     )
                     Column(Modifier.weight(1f)) {
                         Text("${index + 1}. ${stringResource(module.titleRes)}", style = MaterialTheme.typography.titleMedium, color = TextPrimary)

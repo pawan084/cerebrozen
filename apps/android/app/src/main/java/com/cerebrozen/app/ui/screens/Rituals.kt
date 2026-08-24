@@ -876,11 +876,15 @@ fun GuidedImageryScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
 
 @Composable
 private fun ImageryIntro(onOpen: (String) -> Unit, onBegin: () -> Unit) {
+    // Top-aligned, no floor: the old 600dp minimum + SpaceBetween + a centering
+    // weight floated the intro a third of the way down the screen, with ~300px
+    // of unexplained blank above it (2026-08-24 review). Content starts where
+    // reading starts.
     Column(
-        Modifier.fillMaxWidth().heightIn(min = 600.dp),
-        verticalArrangement = Arrangement.SpaceBetween,
+        Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        Box(Modifier.fillMaxWidth().weight(1f).padding(bottom = 58.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopStart) {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(stringResource(R.string.imagery_intro),
                     style = MaterialTheme.typography.bodyMedium, color = TextSoft)

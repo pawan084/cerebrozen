@@ -175,8 +175,12 @@ fun TrustedContactScreen(onBack: () -> Unit) {
                 style = MaterialTheme.typography.titleLarge, color = TextPrimary)
             Text(stringResource(R.string.trusted_name_label),
                 style = MaterialTheme.typography.labelLarge, color = TextSoft)
+            // An example, not the label again — the label already sits one
+            // line up, and repeating it inside the box said nothing twice
+            // (2026-08-24 review; same pattern was on the safety plan, where
+            // the in-field text is the Material a11y label and stays).
             AppTextField(name, { name = it; status = null }, label = "", singleLine = true,
-                placeholderText = stringResource(R.string.trusted_name_label))
+                placeholderText = stringResource(R.string.trusted_name_hint))
             Text(stringResource(R.string.trusted_method_label),
                 style = MaterialTheme.typography.labelLarge, color = TextSoft)
             ChipWrapOptions(METHODS, method) { method = it; status = null }
@@ -184,7 +188,10 @@ fun TrustedContactScreen(onBack: () -> Unit) {
                 style = MaterialTheme.typography.labelLarge, color = TextSoft)
             AppTextField(
                 value, { value = it; status = null }, label = "",
-                placeholderText = stringResource(R.string.trusted_value_label),
+                placeholderText = stringResource(
+                    if (method == "email") R.string.trusted_value_hint_email
+                    else R.string.trusted_value_hint_phone,
+                ),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = trustedKeyboard(method)),
             )
