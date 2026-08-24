@@ -1,0 +1,21 @@
+# Startup baseline profile (WC-196) — curated, not generated.
+#
+# The honest version of this file is produced by a macrobenchmark run on a
+# managed device, which this repo does not have a rig for yet; that remains the
+# WC-196 follow-up. What a curated profile CAN claim: the classes below are on
+# every cold start's critical path (MainActivity.onCreate → Session.init →
+# theme → CereBroApp composition → the Chat tab it opens on), and AOT-compiling
+# them via profileinstaller trims the JIT tax on exactly the frames a first
+# launch shows. Wildcards are deliberate at package granularity where the whole
+# package runs at startup, and absent where it does not (games, sleep player,
+# onboarding run once or lazily).
+HSPLcom/cerebrozen/app/MainActivity;->**(**)**
+HSPLcom/cerebrozen/app/net/Session;->**(**)**
+HSPLcom/cerebrozen/app/net/Outbox;->**(**)**
+HSPLcom/cerebrozen/app/ui/CereBroApp**->**(**)**
+HSPLcom/cerebrozen/app/ui/theme/**->**(**)**
+HSPLcom/cerebrozen/app/ui/screens/TalkScreen**->**(**)**
+HSPLcom/cerebrozen/app/ui/screens/Common**->**(**)**
+Lcom/cerebrozen/app/MainActivity;
+Lcom/cerebrozen/app/net/Session;
+Lcom/cerebrozen/app/ui/CereBroAppKt;

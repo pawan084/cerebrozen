@@ -168,7 +168,7 @@ fun PracticeBreathingScreen(onBack: () -> Unit, onUrgent: () -> Unit, onBegin: (
     var haptics by remember { mutableStateOf(Chime.breatheHapticsEnabled) }
     Column(Modifier.fillMaxSize().background(Night)) {
         Row(
-            Modifier.fillMaxWidth().height(76.dp).background(CardFill.copy(alpha = .94f))
+            Modifier.fillMaxWidth().heightIn(min = 76.dp).background(CardFill.copy(alpha = .94f))
                 .border(.5.dp, LineStroke.copy(alpha = .65f)).padding(horizontal = 13.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(11.dp),
@@ -265,7 +265,7 @@ fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
                 value = reflection,
                 onValueChange = { reflection = it; status = null },
                 placeholder = { Text(stringResource(R.string.gratituderef_hint), color = TextMuted) },
-                modifier = Modifier.fillMaxWidth().height(78.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 78.dp),
                 shape = RoundedCornerShape(18.dp),
                 minLines = 2,
                 maxLines = 3,
@@ -548,7 +548,7 @@ private fun PracticeHeader(
     onUrgent: () -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().height(76.dp).background(CardFill.copy(alpha = .94f))
+        Modifier.fillMaxWidth().heightIn(min = 76.dp).background(CardFill.copy(alpha = .94f))
             .border(.5.dp, LineStroke.copy(alpha = .65f)).padding(horizontal = 17.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(11.dp),
@@ -575,7 +575,7 @@ private fun BreathingSetting(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().height(73.dp).then(if (showDivider) Modifier.border(0.dp, Color.Transparent) else Modifier),
+        Modifier.fillMaxWidth().heightIn(min = 73.dp).then(if (showDivider) Modifier.border(0.dp, Color.Transparent) else Modifier),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {

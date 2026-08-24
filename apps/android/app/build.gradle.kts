@@ -365,6 +365,7 @@ tasks.named("check") { dependsOn(jacocoLogicCoverageVerification) }
 dependencies {
     implementation(libs.billing.ktx)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.profileinstaller)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

@@ -273,15 +273,27 @@ fun LanguageScreen(onBack: () -> Unit) {
             ) {
                 val prev = current
                 current = option.id
-                applyOnboardingLanguage(context, option.id)
                 scope.launch {
+                    // Save FIRST, flip the chrome after. The old order applied
+                    // the locale before the PATCH, which was harmless under the
+                    // deprecated updateConfiguration hack — it never recreated
+                    // anything — and became a self-defeating race the moment
+                    // LocaleManager did this correctly: setting the per-app
+                    // locale recreates the activity, recreation cancels this
+                    // very coroutine, runCatching read the cancellation as
+                    // failure, and the rollback stomped the locale it had just
+                    // set. Picking Hindi ticked the row and changed nothing.
+                    //
                     // The wire value stays the English string (cross-stack
                     // contract with iOS/web); only the label localizes.
                     runCatching { Api.updateProfile(JSONObject().put("language", option.id)) }
-                        .onFailure {
-                            current = prev
-                            prev?.let { applyOnboardingLanguage(context, it) }
-                        }   // never show a choice the server refused
+                        .onSuccess { applyOnboardingLanguage(context, option.id) }
+                        .onFailure { e ->
+                            // Cancellation is not a server verdict; rethrowing
+                            // keeps structured concurrency honest.
+                            if (e is kotlin.coroutines.cancellation.CancellationException) throw e
+                            current = prev   // never show a choice the server refused
+                        }
                 }
             }
         }

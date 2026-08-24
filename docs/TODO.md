@@ -195,6 +195,45 @@ fail if the write never lands — the bug worth catching — and no longer fail
 because the emulator was slower than the assertion. The helper returns the last
 value seen, so the message still says what the server actually believes.
 
+## Done — platform polish: real per-app language, a lighter file, 200% font, a startup profile (Agentic Wave D, 2026-08-24)
+
+**WC-193.** The in-app language choice now writes the OS per-app locale
+(`LocaleManager`, Tiramisu+): picking हिंदी in Settings → Language saves the
+profile, sets the store the system owns (visible under Settings → App
+languages), and the activity recreates into full Hindi chrome in one tap. The
+deprecated `updateConfiguration` path survives only as the API 26–32 fallback.
+Two real bugs fell out: the old `else -> "en"` mapping FORCED English chrome on
+anyone picking Punjabi/Tamil as a reply language — the audience most likely to
+want Hindi buttons — now those choices clear the override and follow the phone;
+and doing this correctly exposed a race the old hack had hidden — the locale
+was applied before the profile PATCH, LocaleManager's recreation cancelled the
+PATCH coroutine, `runCatching` read cancellation as failure, and the rollback
+stomped the locale (Hindi ticked, nothing changed). Save-first-flip-after, and
+cancellation rethrows.
+
+**WC-195.** 309 dead string keys (~15% of the file) removed from BOTH locales —
+whole retired screens (old Today, the tour, patternglow, zen, the gratitude
+garden, the old voice landing), every one dutifully translated, some
+hand-repaired for encoding, all for copy no screen could show.
+`StringGraveyardTest` now fails the build on any key nothing references —
+lint's UnusedResources sees this class and warns into a void; nothing FAILED,
+which is how it reached 15%.
+
+**WC-185.** A 200% font-scale walk (emulator — ColorOS refuses shell writes to
+`font_scale`) found one systemic class: fixed dimensions clipping scaled text.
+Seven sites fixed to minimums: the shared `CereBroTopBar` (its 60dp clipped
+every screen's subtitle mid-glyph), the bottom nav, the sleep hero, the five
+quality tiles (labels cut mid-word — "बहुत ख़", "ठीक-ट" — meaning-destroying on
+a rating scale; they now wrap to two lines, which the fixed height had made
+impossible), the time boxes ("23:0"), and two PracticeLibrary headers.
+Re-walked at 200%: whole glyphs everywhere.
+
+**WC-196.** Baseline-profile infrastructure: `profileinstaller` +
+`app/src/main/baseline-prof.txt`, a CURATED startup profile (MainActivity →
+Session → theme → chat composition) that the release pipeline verifiably
+compiles (7.5KB binary `baseline.prof`). The generated-by-macrobenchmark
+version needs a rig this repo doesn't have; the profile file says so itself.
+
 ## Done — the offline queue drains with the app dead (Agentic Wave C, 2026-08-24)
 
 WC-190: the Outbox has always survived process death; its DRAIN only ran while

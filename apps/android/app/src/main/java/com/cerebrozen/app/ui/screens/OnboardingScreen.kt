@@ -868,15 +868,41 @@ internal fun detectedLanguageId(iso: String): String? = when (iso.lowercase()) {
 /** Apply the languages for which this APK actually contains localized UI.
  * Other listed languages remain valid companion-language preferences, but do
  * not falsely switch the app chrome when no matching resource bundle exists. */
-@Suppress("DEPRECATION")
 internal fun applyOnboardingLanguage(context: Context, language: String) {
-    val tag = when (language) {
+    // Hindi and English have full resource bundles, so choosing them switches
+    // the chrome. Every other reply language maps to NO override — follow the
+    // phone. The old mapping's `else -> "en"` FORCED English chrome on someone
+    // whose phone is set to Hindi the moment they picked Punjabi or Tamil as a
+    // reply language: the one audience most likely to want Hindi buttons,
+    // switched away from them by a setting about something else entirely.
+    val tag: String? = when (language) {
         "Hindi" -> "hi"
-        else -> "en"
+        "English" -> "en"
+        else -> null
     }
-    val locale = java.util.Locale.forLanguageTag(tag)
     context.applicationContext.getSharedPreferences("cerebro", Context.MODE_PRIVATE)
         .edit().putString("app_language", language).apply()
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        // The platform's own per-app locale store (WC-193): the OS persists it,
+        // shows it under Settings → App languages, restores it on boot and
+        // backup, and recreates the activity so the change is visible
+        // immediately — five jobs the updateConfiguration hack did badly or
+        // not at all. An empty list CLEARS the override, which the old path
+        // could not express.
+        context.getSystemService(android.app.LocaleManager::class.java).applicationLocales =
+            if (tag == null) LocaleList.getEmptyLocaleList()
+            else LocaleList(java.util.Locale.forLanguageTag(tag))
+    } else {
+        legacyApplyLocale(context, tag ?: return)
+    }
+}
+
+/** The pre-Tiramisu fallback: mutate the process's resource configuration.
+ * Deprecated, fragile across config changes, and unable to clear an override —
+ * kept only for the API 26–32 tail, where the platform offers nothing better. */
+@Suppress("DEPRECATION")
+private fun legacyApplyLocale(context: Context, tag: String) {
+    val locale = java.util.Locale.forLanguageTag(tag)
     java.util.Locale.setDefault(locale)
     listOf(context.resources, context.applicationContext.resources).distinct().forEach { resources ->
         val configuration = android.content.res.Configuration(resources.configuration)
@@ -889,8 +915,11 @@ internal fun applyOnboardingLanguage(context: Context, language: String) {
     }
 }
 
-/** Restore the explicit in-app language before the first Compose frame. */
+/** Restore the explicit in-app language before the first Compose frame.
+ * On Tiramisu+ this is a no-op by design: the OS owns the per-app locale and
+ * has already applied it before any of our code runs. */
 internal fun restoreAppLanguage(context: Context) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) return
     val saved = context.applicationContext.getSharedPreferences("cerebro", Context.MODE_PRIVATE)
         .getString("app_language", null) ?: return
     applyOnboardingLanguage(context, saved)

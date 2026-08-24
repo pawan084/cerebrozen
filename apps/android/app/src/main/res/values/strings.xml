@@ -47,7 +47,6 @@
          Today · Explore · Talk · Journal · You. `tab_home` is retired in favour
          of `tab_today`; Sleep left the tab bar and now lives under Explore, so
          `tab_sleep` is only the Explore row label and the screen title. -->
-    <string name="tab_today">Today</string>
     <!-- V3-a: the tab is Home now (Today's jobs moved into the hero + care card);
          tab_today stays for the screens that still cite the old name. -->
     <string name="tab_home">Home</string>
@@ -55,25 +54,12 @@
     <string name="tab_explore">Explore</string>
     <string name="tab_sleep">Sleep</string>
     <string name="tab_talk">Chat</string>
-    <string name="tab_journal">Journal</string>
-    <string name="tab_you">You</string>
 
     <!-- ── Explore (ui/screens/ExploreScreen.kt) ───────────────────────── -->
-    <string name="explore_eyebrow">Start where you are</string>
-    <string name="explore_title">Explore</string>
-    <string name="explore_intro">Six ways in. Pick whichever fits the moment — they stay here, and none of them expects anything of you.</string>
     <string name="explore_sleep_title">Sleep</string>
-    <string name="explore_sleep_subtitle">Wind down, log a night, and see how you have been resting.</string>
     <string name="explore_calm_title">Calm now</string>
-    <string name="explore_calm_subtitle">A two-minute breathing reset for when things feel fast.</string>
-    <string name="explore_sounds_title">Sounds</string>
-    <string name="explore_sounds_subtitle">Ambient beds and mixes to sit with, or to sleep to.</string>
-    <string name="explore_thought_title">Thought work</string>
-    <string name="explore_thought_subtitle">Look at a thought again, gently, and find a steadier one.</string>
     <string name="explore_mindful_title">Mindful activities</string>
-    <string name="explore_mindful_subtitle">Grounding, imagery, body scan and other small steadying things.</string>
     <string name="explore_programmes_title">Programmes</string>
-    <string name="explore_programmes_subtitle">Longer guided journeys you move through at your own pace.</string>
     <!-- The insight-reel row on Explore, unified with its list siblings (audit I#8). -->
     <!-- The Explore hero door (audit I#7): a tappable panel that carried no
          words — the largest element above the fold said nothing about the tap. -->
@@ -85,10 +71,6 @@
     <string name="explore_support_subtitle">Real people, any hour. Always here, never behind a plan.</string>
 
     <!-- ── Crisis screen (Extras.kt) ───────────────────────────────────── -->
-    <string name="crisis_eyebrow">You\'re not alone</string>
-    <string name="crisis_title">Urgent support</string>
-    <string name="crisis_hero_eyebrow">You deserve support</string>
-    <string name="crisis_hero_title">If you\'re in immediate danger, please reach out now.</string>
     <string name="crisis_line_telemanas">Tele-MANAS — real people, 24/7</string>
     <string name="crisis_line_emergency">Emergency services</string>
     <string name="crisis_line_kiran">KIRAN mental-health helpline</string>
@@ -100,14 +82,6 @@
     <string name="crisis_line_samaritans">Samaritans</string>
     <string name="crisis_line_au_lifeline">Lifeline</string>
     <string name="crisis_line_nz_1737">Need to talk? Free call or text</string>
-    <string name="crisis_region_showing">Numbers for %1$s</string>
-    <string name="crisis_region_change">Change region</string>
-    <string name="crisis_trusted_contact_unknown">Couldn\'t check just now — tap to view or add</string>
-    <string name="crisis_safety_plan_title">Your safety plan</string>
-    <string name="crisis_safety_plan_sub">Your own words, for exactly this moment</string>
-    <string name="crisis_ground_title">Can\'t call right now?</string>
-    <string name="crisis_ground_sub">A two-minute grounding practice — works offline</string>
-    <string name="crisis_trusted_contact_title">Trusted contact</string>
     <!-- Trusted contact editor. The Crisis screen said "add one in Settings" and
          Settings had no such setting: the backend and iOS and web all had it,
          Android had only the read. -->
@@ -115,7 +89,6 @@
     <string name="trusted_title">Trusted contact</string>
     <string name="you_trusted_subtitle">One person, only if things get hard</string>
     <string name="you_trusted_saved">Saved · %1$s</string>
-    <string name="you_crisisregion_state">Current · %1$s</string>
     <string name="you_support_call">Call</string>
     <string name="you_support_open">Open</string>
     <string name="you_support_call_cd">Call %1$s (%2$s)</string>
@@ -145,7 +118,6 @@
     <string name="trusted_reach_email">Email them now</string>
     <string name="trusted_reach_sms">Text them now</string>
     <string name="trusted_reach_phone">Call them now</string>
-    <string name="crisis_trusted_contact_empty">Not set — add one in Settings so CereBro can reach them in a crisis (with your consent).</string>
     <string name="crisis_open_cd">Open %1$s</string>
     <string name="crisis_call_cd">Call %1$s %2$s</string>
     <!-- Urgent support screen. Every line here was a Kotlin literal until now, so
@@ -216,23 +188,9 @@
          what "How are you feeling today?" and "Say what's on your mind…" did. -->
     <string name="talk_eyebrow">here with you</string>
     <string name="talk_title">CereBro</string>
-    <string name="talk_good_morning">Good morning</string>
-    <string name="talk_good_afternoon">Good afternoon</string>
-    <string name="talk_good_evening">Good evening</string>
-    <string name="talk_home_subtitle">Take a breath. You can speak freely here.</string>
-    <string name="talk_tap_start">Tap to start talking</string>
-    <string name="talk_chat_cta">Continue with AI Chat</string>
-    <string name="talk_chat_eyebrow">Text fallback</string>
-    <string name="talk_chat_title">AI Chat</string>
-    <string name="talk_open_chat_cd">Open AI Chat</string>
-    <string name="talk_back">Back</string>
-    <string name="talk_landing_body">Tap the orb to start a real conversation. I\'ll listen, then talk it through with you.</string>
-    <string name="talk_send_cd">Send message</string>
-    <string name="talk_history_start">Start of this conversation</string>
     <string name="talk_offline_banner">You\'re offline — the companion needs a connection. The Toolkit below still works.</string>
     <string name="talk_offline_action">Toolkit</string>
     <string name="talk_disclosure_pill">AI companion — not a therapist or crisis service</string>
-    <string name="talk_disclosure_details">Details</string>
     <string name="talk_crisis_title">You matter. Support is available right now.</string>
     <string name="talk_crisis_subtitle">Tap for crisis resources — real people, 24/7.</string>
     <string name="talk_disclosure_dialog_title">About your AI companion</string>
@@ -251,11 +209,9 @@
     <string name="talk_day_today">Today</string>
     <string name="talk_day_yesterday">Yesterday</string>
     <string name="talk_retry">Try sending again</string>
-    <string name="talk_copied">Copied</string>
     <string name="talk_field_followup">Message CereBro…</string>
     <string name="talk_starters_header">Or start from where you are</string>
     <string name="talk_save_journal">Save this conversation to my journal</string>
-    <string name="talk_save_journal_short">Save to Journal</string>
     <string name="talk_journal_entry_title">Talk reflection</string>
     <string name="talk_saved_status">Saved to your journal.</string>
     <string name="talk_save_failed">Couldn\'t save — try again.</string>
@@ -264,15 +220,12 @@
     <string name="talk_error_generic">Something went wrong — please try again.</string>
     <string name="talk_approve">Approve</string>
     <string name="talk_not_now">Not now</string>
-    <string name="talk_sos_title">Quick SOS reset</string>
-    <string name="talk_sos_subtitle">Fast anxiety/stress reset — 2 minutes</string>
     <string name="talk_type_instead">Type instead</string>
     <!-- Shown under the composer in guest mode, BEFORE a send is attempted:
          every guest send is refused by design (Session.ensureAccess), so an
          enabled composer with no warning was a promise the tap would break
          (audit I#13). -->
     <string name="talk_guest_compose">Chatting needs an account — as a guest, messages can\'t be sent yet.</string>
-    <string name="talk_type_message">Type a message</string>
     <string name="talk_field_label">Message</string>
     <string name="talk_send_failed">Couldn\'t send.</string>
     <string name="talk_mic_unavailable">Microphone unavailable right now.</string>
@@ -280,13 +233,6 @@
     <string name="talk_transcribe_failed">Couldn\'t transcribe — you can type below.</string>
     <string name="talk_mic_off">Microphone access is off — you can still type below.</string>
     <string name="talk_live_session">LIVE SESSION</string>
-    <string name="talk_status_listening">Listening…</string>
-    <string name="talk_status_thinking">Thinking…</string>
-    <string name="talk_status_speaking">Speaking…</string>
-    <string name="talk_status_ready">I’m here</string>
-    <string name="talk_companion_name">CereBro</string>
-    <string name="talk_mute">Mute</string>
-    <string name="talk_unmute">Unmute</string>
     <string name="talk_state_speaking_interrupt">Speaking — tap the orb to interrupt</string>
     <string name="talk_state_listening">Listening… tap the orb when you\'re done</string>
     <string name="talk_state_orb">Tap the orb to speak</string>
@@ -306,18 +252,13 @@
     <string name="talk_orb_talk_cd">Talk to CereBro</string>
 
     <!-- ── Today (TodayScreen.kt) ──────────────────────────────────────── -->
-    <string name="today_eyebrow">Today</string>
     <string name="today_eyebrow_goal">Your focus · %1$s</string>
     <string name="today_eyebrow_goal_working">Working on · %1$s</string>
     <string name="today_eyebrow_goal_return">Back to · %1$s</string>
-    <string name="today_search_hint">Library</string>
-    <string name="today_profile_cd">Open your space</string>
     <string name="today_banner_offline_send">Send now</string>
     <string name="talk_start_fresh">Start fresh</string>
-    <string name="talk_saved_view">Saved — view in Journal</string>
     <string name="talk_jump_latest_cd">Jump to the latest reply</string>
     <string name="talk_presence_line">%1$s · %2$s</string>
-    <string name="talk_presence_ready">here with you</string>
     <string name="talk_presence_listening">listening…</string>
     <string name="talk_presence_thinking">thinking…</string>
     <string name="talk_presence_speaking">speaking…</string>
@@ -353,59 +294,30 @@
          real now, and the guest fallback carries the gentle line instead. -->
     <string name="today_greeting_format">%1$s,\n%2$s.</string>
     <string name="today_friend">take it gently</string>
-    <string name="today_search_cd">Search the library</string>
     <string name="today_banner_offline">You\'re offline — showing your last copy.</string>
     <string name="today_banner_sleep">How was last night? A 20-second check-in.</string>
-    <string name="today_banner_sleep_action">Log it</string>
     <!-- One row, two trailing controls: this line has ~250px on a 720px screen.
          The old copy ("The day is winding down — a quieter mix, or tonight's
          wind-down guide?") ran to two ellipsised lines, so the offer was never
          visible — and it named a destination the button does not open: the
          action is openMixer, not the wind-down guide. Copy, label and action
          now all mean the same thing. -->
-    <string name="today_banner_winddown">Wind down with a quieter mix</string>
-    <string name="today_banner_winddown_action">Quieter mix</string>
-    <string name="today_banner_program">Day %1$d of %2$d · %3$s</string>
     <!-- TOD-01: the check-in is the screen's SECOND decision and says out loud
          what it is not. "does not create a diagnosis or a score" is a
          disclaimer, not a claim (docs/CLAIMS_MAP.md). -->
-    <string name="today_checkin_title">How are you right now?</string>
-    <string name="today_checkin_subtitle"></string>
-    <string name="today_checkin_say_more">Say more in Journal</string>
     <string name="today_checkin_undone">Removed — how are you now?</string>
     <string name="today_checkin_settled">Logged for today · %1$s</string>
-    <string name="today_settled_trends_cd">Open trends</string>
-    <string name="today_plan_start">Start</string>
     <plurals name="today_plan_left_tonight">
         <item quantity="one">One step still open tonight</item>
         <item quantity="other">%1$d steps still open tonight</item>
     </plurals>
-    <string name="today_checkin_cta">Check in</string>
-    <string name="today_checkin_done">Checked in — noted gently.</string>
     <string name="today_checkin_logged">%1$s — noted</string>
     <string name="today_checkin_undo">Undo</string>
     <string name="today_checkin_failed">Couldn\'t check in.</string>
     <string name="today_plan_eyebrow">Today\'s plan</string>
-    <string name="today_plan_next">Next: %1$s</string>
-    <string name="today_plan_done_count">%1$d of %2$d done</string>
-    <string name="today_rail_ambient">Ambient</string>
-    <string name="today_toolkit_title">Toolkit</string>
-    <string name="today_toolkit_subtitle">Small practices for right now</string>
-    <string name="today_quick_access_title">Quick Access</string>
-    <string name="today_quick_access_subtitle">A calmer moment is one tap away.</string>
-    <string name="today_quick_games_title">Games</string>
-    <string name="today_quick_games_description">Quick calming activities</string>
-    <string name="today_quick_insights_title">Insights</string>
-    <string name="today_quick_insights_description">AI wellness insights</string>
-    <string name="today_quick_programs_title">Programs</string>
-    <string name="today_quick_programs_description">Daily guided plans</string>
-    <string name="today_quick_sounds_title">Sounds</string>
-    <string name="today_quick_sounds_description">Relaxing soundscapes</string>
     <!-- Weekly-insights teaser (iOS/web parity). The subtitle states the real
          last-7-days check-in count when there is one, and promises nothing when
          there isn't. -->
-    <string name="today_insights_title">Weekly insights</string>
-    <string name="today_insights_subtitle">See what changed</string>
     <plurals name="today_insights_count">
         <item quantity="one">%1$d check-in this week — see what changed.</item>
         <item quantity="other">%1$d check-ins this week — see what changed.</item>
@@ -414,8 +326,6 @@
         <item quantity="one">%1$d check-in — building your first week.</item>
         <item quantity="other">%1$d check-ins — building your first week.</item>
     </plurals>
-    <string name="today_toolkit_recent">Last practice · %1$s</string>
-    <string name="today_presence_window">Last 7 days</string>
     <plurals name="today_presence_merged">
         <item quantity="one">You showed up — %1$d day this week</item>
         <item quantity="other">You showed up — %1$d days this week</item>
@@ -424,19 +334,11 @@
         <item quantity="one">+%1$d more today</item>
         <item quantity="other">+%1$d more today</item>
     </plurals>
-    <string name="today_kind_sleep">Sleep story</string>
-    <string name="today_kind_meditation">Meditation</string>
-    <string name="today_kind_soundscape">Soundscape</string>
-    <string name="today_presence_title">You showed up</string>
-    <string name="today_presence_ready">Whenever you\'re ready</string>
     <plurals name="today_presence_days">
         <item quantity="one">%1$d day this week — once a day is plenty.</item>
         <item quantity="other">%1$d days this week — once a day is plenty.</item>
     </plurals>
     <string name="today_presence_empty">One small check-in counts as showing up — gentle, no pressure.</string>
-    <string name="today_recent_title">Recent check-ins</string>
-    <string name="today_recent_open">Trends</string>
-    <string name="today_week_section">Your week</string>
     <!-- One line of continuity under the greeting when a check-in exists today. -->
     <string name="today_earlier_line">Earlier · %1$s</string>
     <!-- Relative-time labels for recent check-in rows. -->
@@ -447,7 +349,6 @@
     <string name="today_time_days">%1$dd ago</string>
 
     <!-- ── Sleep (SleepScreen.kt) ──────────────────────────────────────── -->
-    <string name="sleep_eyebrow">Wind down and sleep better</string>
     <string name="sleep_title">Sleep</string>
     <string name="sleep_premium_subtitle">Wind down and sleep better</string>
     <string name="sleep_hero_eyebrow">Wind down</string>
@@ -455,8 +356,6 @@
     <string name="sleep_hero_subtitle">Slow down for tonight.</string>
     <string name="sleep_tonight_badge">TONIGHT</string>
     <string name="sleep_estimated_duration">Plays as long as you need — timer optional</string>
-    <string name="sleep_sounds_empty">No sleep sounds downloaded yet.</string>
-    <string name="sleep_guides_empty">Start your first relaxing session.</string>
     <string name="sleep_play_cd">Play the ambient bed</string>
     <string name="sleep_checkin_title">Morning check-in</string>
     <string name="sleep_checkin_subtitle">How rested do you feel?</string>
@@ -465,7 +364,6 @@
     <string name="sleep_time_earlier_cd">Set %1$s 30 minutes earlier</string>
     <string name="sleep_time_later_cd">Set %1$s 30 minutes later</string>
     <string name="sleep_time_pick_cd">Set %1$s to an exact time</string>
-    <string name="sleep_premium_subtitle_live">Averaging %1$s this week</string>
     <string name="sleep_evidence_chip">CBT-I-informed</string>
     <string name="sleep_moon_cd">Quick calm — breathing, or the player while something plays</string>
     <string name="sleep_hero_pause">Pause</string>
@@ -481,7 +379,6 @@
     <string name="sleep_editing_night">Editing %1$s — Save updates that night</string>
     <string name="sleep_bed_window">Bedtimes landed %1$s–%2$s</string>
     <string name="sleep_programs_enrolled">Day %1$d of %2$d · %3$s</string>
-    <string name="sleep_sounds_all">All sounds</string>
     <string name="sleep_timer_row">Sleep timer</string>
     <string name="sleep_timer_off">Off — tap to set</string>
     <string name="sleep_timer_min">%1$d min</string>
@@ -524,7 +421,6 @@
     <string name="sleep_week_title">This week</string>
     <string name="sleep_week_summary">%1$s avg · feeling %2$s/5 · trend %3$s</string>
     <string name="sleep_week_empty">Log a few more nights and honest averages appear here — no guesses.</string>
-    <string name="sleep_rhythm_title">Your rhythm</string>
     <string name="sleep_rhythm_line">You averaged %1$s. Your bedtime varied by about %2$s this week.</string>
     <string name="sleep_mixer_nav_title">Mix your own soundscape</string>
     <string name="sleep_mixer_nav_subtitle">Build the exact sound that puts you under</string>
@@ -538,8 +434,6 @@
     <string name="sleep_waketime_body">Your body clock anchors on when you get up.</string>
     <string name="sleep_cbti_why">From CBT-I — the sleep approach with the strongest evidence in this category.</string>
     <string name="sleep_diary_title">Diary</string>
-    <string name="sleep_diary_line">%1$s · %2$s · felt %3$d/5</string>
-    <string name="sleep_chart_title">Last 7 nights</string>
     <string name="sleep_chart_cd">Sleep durations, last %1$d nights, average %2$s</string>
     <string name="sleep_chart_footer">avg %1$s · %2$d nights</string>
 
@@ -613,7 +507,6 @@
     <string name="journal_tuned_tired_title">Put the day down</string>
     <string name="journal_tuned_tired_prompt">List what can wait until tomorrow — and give yourself permission.</string>
     <string name="journal_new_title">New entry</string>
-    <string name="journal_new_subtitle">Private writing — heavy moments offer support</string>
     <!-- The blank-page row under the prompt hero. Both open the composer; the
          difference (hero prefills the prompt, this starts blank) was stated
          nowhere while both wore primary-action clothes (audit I#14). -->
@@ -633,7 +526,6 @@
          "phone". The idiom (your call = your decision) is also the kind that
          lands badly for the many Indian users reading English as a second
          language. Same meaning, no ambiguity. -->
-    <string name="you_appearance_state">%1$s · switches with your phone, or your choice</string>
     <string name="journal_lock_state_on">Lock is on · manage privacy</string>
     <string name="journal_lock_state_off">Lock is off · manage privacy</string>
     <plurals name="journal_month_count">
@@ -642,7 +534,6 @@
     </plurals>
     <string name="journal_history_subtitle">Your past entries, searchable</string>
     <string name="journal_private_mode">Private mode</string>
-    <string name="journal_private_subtitle">Lock the journal, manage privacy</string>
     <string name="journal_support_title">You don\'t have to carry this alone</string>
     <string name="journal_support_body">That entry sounded heavy. If things feel urgent, real people can help right now.</string>
     <string name="journal_support_more">More support</string>
@@ -656,25 +547,15 @@
     <string name="you_companion_title">Companion style</string>
     <string name="you_companion_subtitle">%1$s · how CereBro talks with you</string>
     <string name="you_language_title">Language</string>
-    <string name="you_language_subtitle">%1$s · the language replies come back in</string>
-    <string name="you_appearance_title">Appearance</string>
-    <string name="you_appearance_subtitle">Night, dawn, or match your system</string>
-    <string name="you_tour_title">Take a quick tour</string>
-    <string name="you_tour_subtitle">Replay the Home walkthrough</string>
     <string name="you_reminder_title">Daily reminder</string>
-    <string name="you_reminder_subtitle">Gentle daily check-in</string>
     <string name="you_insights_title">Weekly insights</string>
     <string name="you_insights_subtitle">Your progress and patterns</string>
     <string name="you_privacy_title">Privacy &amp; memory</string>
     <string name="privacy_control_line">Control what CereBro remembers</string>
-    <string name="you_patterns_title">Pattern dashboard</string>
-    <string name="you_patterns_subtitle">What the AI has learned · delete anytime</string>
     <string name="you_premium_title">Premium plan</string>
     <string name="you_premium_subtitle">Unlock the full library</string>
     <string name="you_premium_subtitle_sponsored">Provided by your organisation</string>
     <string name="you_premium_subtitle_active">Active · the full library is open</string>
-    <string name="you_crisisregion_title">Crisis region</string>
-    <string name="you_crisisregion_subtitle">Which helplines to show</string>
     <string name="you_humansupport_subtitle">Directories to real people, when you want one</string>
     <string name="you_legal_header">LEGAL &amp; ACCOUNT</string>
     <string name="you_export_subtitle">Download a full copy</string>
@@ -731,28 +612,13 @@
     <string name="ob_disclosure_sub">CereBro is a wellness tool. It cannot diagnose, treat or replace qualified professional care.</string>
     <!-- V2-c walk fix: the next step is Privacy choices now, not the check-in. -->
     <string name="ob_disclosure_cta">Continue</string>
-    <string name="ob_danger_line">If you are in immediate danger, call emergency services now.</string>
     <!-- The age gate STATES the requirement; the CTA below is where the user confirms it.
          It used to read "Confirmed: I am 18 or older" / "Thank you" under a tick, on
          arrival, before the user had done anything — a compliance surface showing a
          pre-made affirmation. -->
-    <string name="ob_confirmed_18">CereBro is for adults — 18 and over</string>
-    <string name="ob_thank_you">Confirm with the button below</string>
-    <string name="ob_can_help_title">Can help</string>
-    <string name="ob_can_help_body">Listen, reflect, guide tools, suggest a plan.</string>
-    <string name="ob_cant_do_title">Can\'t do</string>
-    <string name="ob_cant_do_body">Diagnose, prescribe, replace therapy, or handle emergencies.</string>
-    <string name="ob_language_eyebrow">Language</string>
-    <string name="ob_language_title">Choose what feels natural.</string>
-    <string name="ob_language_sub">We detected English. Language and region settings also shape support resources.</string>
     <string name="ob_state_eyebrow">A quick check-in</string>
     <string name="ob_state_title">What feels most true right now?</string>
     <string name="ob_state_sub">There is no wrong answer. This only shapes the first suggestion.</string>
-    <string name="ob_reset_eyebrow">Your first reset</string>
-    <string name="ob_reset_title">Breathe in slowly.</string>
-    <string name="ob_reset_sub">Follow the orb for two gentle cycles. Nothing to achieve.</string>
-    <string name="ob_reset_cta">I am ready</string>
-    <string name="ob_reset_skip">Skip</string>
     <string name="ob_consent_eyebrow">Privacy choices</string>
     <string name="ob_consent_title">You stay in control.</string>
     <string name="ob_consent_sub">Choose the minimum CereBro may remember. Detailed controls remain available later.</string>
@@ -768,11 +634,6 @@
     <string name="ob_consent_voice_hint">Off by default</string>
     <string name="ob_consent_training">Model training</string>
     <string name="ob_consent_training_hint">Never on without you switching it on</string>
-    <string name="ob_notify_eyebrow">Gentle reminders</string>
-    <string name="ob_notify_title">When should CereBro check in?</string>
-    <string name="ob_notify_sub">No streaks. No guilt. You can pause reminders at any time.</string>
-    <string name="ob_notify_cta">Continue to save your progress</string>
-    <string name="ob_notify_sub_skipped">No streaks. No guilt. You can pause reminders at any time.</string>
 
     <!-- ── Auth (AuthScreen.kt) ────────────────────────────────────────── -->
     <string name="auth_eyebrow">PRIVATE BY DESIGN</string>
@@ -821,36 +682,22 @@
          grounding": the intro line above repeated the name and then truncated
          mid-word ("…through you…") in the row's two lines. -->
     <string name="toolkit_grounding_card_sub">Come back to the present through your senses.</string>
-    <string name="toolkit_zen_title">Zen ripples</string>
-    <string name="toolkit_zen_subtitle">Tap the water, let it widen</string>
     <string name="toolkit_bubble_title">Bubble pop</string>
     <string name="toolkit_bubble_subtitle">Pop gently — no timer, no losing. Just breathe and tap.</string>
     <string name="toolkit_box_title">Box breathing</string>
     <string name="toolkit_box_subtitle">In, hold, out, hold — four counts each</string>
     <string name="toolkit_reset_title">Two-minute reset</string>
-    <string name="toolkit_reset_subtitle">A gentle in and out, nothing to hold</string>
     <string name="toolkit_cbt_title">Untangle a thought</string>
     <string name="toolkit_cbt_subtitle">CBT reframe — from stuck to balanced</string>
     <string name="toolkit_tipp_title">TIPP skill</string>
     <string name="toolkit_tipp_subtitle">A strong reset for very intense moments</string>
     <string name="toolkit_gratitude_title">Gratitude garden</string>
-    <string name="toolkit_onegood_title">One good thing</string>
-    <string name="toolkit_onegood_subtitle">Name one small win from today</string>
-    <string name="toolkit_intention_title">Tomorrow\'s intention</string>
-    <string name="toolkit_intention_subtitle">One thing that would steady tomorrow</string>
-    <string name="toolkit_gratitude_subtitle">A flower for every thank-you</string>
-    <string name="toolkit_pattern_title">Pattern glow</string>
-    <string name="toolkit_pattern_subtitle">Watch the light, repeat it</string>
     <string name="toolkit_sounds_title">Sounds</string>
-    <string name="toolkit_sounds_subtitle">Soundscapes and sleep stories</string>
     <string name="toolkit_support_title">Need support right now?</string>
-    <string name="toolkit_playable_badge">PLAYABLE</string>
     <string name="toolkit_ground_description">Reconnect with the present.</string>
     <string name="toolkit_breathe_description">Slow your nervous system.</string>
     <string name="toolkit_reframe_description">Change your perspective.</string>
     <string name="toolkit_settle_description">Relax before rest.</string>
-    <string name="toolkit_header_support">Support</string>
-    <string name="toolkit_support_description">Reach trusted help when you need it.</string>
     <string name="toolkit_ground_title">5-4-3-2-1 grounding</string>
     <string name="toolkit_badge_ground">GROUND</string>
     <string name="toolkit_duration_1">1 min</string>
@@ -858,10 +705,8 @@
     <string name="toolkit_duration_3">3 min</string>
     <string name="toolkit_duration_5">5 min</string>
     <string name="toolkit_duration_open">Open-ended</string>
-    <string name="toolkit_level_gentle">Gentle</string>
     <string name="toolkit_level_easy">Easy</string>
     <string name="toolkit_level_guided">Guided</string>
-    <string name="toolkit_begin">Begin</string>
 
     <!-- ── Grounding stepper (Extras.kt) ───────────────────────────────── -->
     <string name="ground_counter">5 · 4 · 3 · 2 · 1</string>
@@ -875,7 +720,6 @@
     <string name="ground_step4_hint">Or two scents you like.</string>
     <string name="ground_step5_title">1 thing you can taste</string>
     <string name="ground_step5_hint">Or one slow, full breath.</string>
-    <string name="ground_start_over">Start over</string>
 
     <!-- ── Bubble pop (Extras.kt) ──────────────────────────────────────── -->
     <string name="bubblepop_eyebrow">A tiny reset</string>
@@ -890,13 +734,11 @@
     <string name="sounds_section_mixer">Mixer</string>
     <string name="sounds_intro">Soundscapes and sleep stories to slow a racing mind.</string>
     <string name="sounds_favourites_header">Favourites</string>
-    <string name="sounds_meta_favourite">Favourite</string>
     <string name="sounds_meta_ambient">Continuous ambient</string>
     <string name="sounds_sleep_stories_header">Sleep stories</string>
     <string name="sounds_narration_note">Titles with narration play their own audio; the rest play a calming ambient bed.</string>
     <string name="sounds_fading_out_in">Fading out in %1$s</string>
     <string name="sounds_sleep_timer_short">Sleep timer: %1$dm</string>
-    <string name="mixer_intro">Blend rain, ocean, wind and a soft drone into your own calm — nudge each one to taste.</string>
     <string name="mixer_eyebrow">Immersive ambient audio</string>
     <string name="mixer_title">Sound Mixer</string>
     <string name="mixer_subtitle">Create your perfect relaxing atmosphere.</string>
@@ -913,7 +755,6 @@
     <string name="mixer_wind_description">Soft moving air to quiet a busy mind.</string>
     <string name="mixer_drone_description">A warm low tone that grounds the whole mix.</string>
     <string name="mixer_master_volume">Master volume</string>
-    <string name="mixer_fades_note">Fades out in %1$s — drift off, it stops itself.</string>
     <!-- W27 §3: one-tap mixer presets (stable keys in SoundscapeMixer.presets). -->
     <string name="mixer_preset_monsoon">Monsoon night</string>
     <string name="mixer_preset_shoreline">Shoreline</string>
@@ -1006,10 +847,6 @@
     <string name="companion_eyebrow">How CereBro talks with you</string>
     <string name="companion_title">Companion style</string>
     <string name="companion_intro">Same care, different voice. Change it any time — conversations adapt from the next message.</string>
-    <string name="ob_language_bar_title">Choose language</string>
-    <string name="ob_language_continue_in">Continue in %1$s</string>
-    <string name="ob_lang_detected">Detected on this device</string>
-    <string name="ob_lang_view_all">View all languages</string>
     <string name="onboarding_step_counter">%1$d of %2$d</string>
     <string name="onboarding_urgent_cd">Urgent support</string>
     <string name="inbox_eyebrow">What CereBro has sent you</string>
@@ -1027,10 +864,9 @@
     <string name="inbox_dismiss">Dismiss</string>
     <string name="inbox_clear_all">Clear all</string>
     <string name="inbox_local_note">This list is kept on this device only and is never uploaded.</string>
-    <string name="today_notifications_cd">Notifications</string>
     <string name="language_eyebrow">The language CereBro replies in</string>
     <string name="language_title">Language</string>
-    <string name="language_intro">Replies, plans and suggested topics come back in the language you pick here. Change it any time — it applies from your next message. The app\'s own buttons and labels follow your phone\'s language setting instead.</string>
+    <string name="language_intro">Replies, plans and suggested topics come back in the language you pick here. Change it any time — it applies from your next message. Picking Hindi or English switches the app\'s own buttons and labels too; other languages leave them on your phone\'s language setting.</string>
     <string name="language_custom_hint">Set on another device</string>
     <string name="language_crisis_note">Helpline names and numbers stay exactly as published, in every language.</string>
     <string name="appearance_eyebrow">Night or dawn</string>
@@ -1085,7 +921,6 @@
     <string name="premium_monthly">Monthly</string>
     <string name="premium_monthly_price">₹499 / month</string>
     <string name="premium_monthly_note">Cancel anytime</string>
-    <string name="premium_cta">Start free trial</string>
     <!-- The old line was developer-speak ("wired", "Play Console setup") shipped
          to users (audit K). Same honesty, human words. -->
     <!-- Shown when Play has nothing purchasable to offer — no Play Console
@@ -1093,12 +928,10 @@
          button that opens an empty sheet is the dead CTA audit H1 removed. -->
     <string name="premium_billing_note">Purchases aren\'t available in this version of the app yet.</string>
     <string name="premium_buy_cta">Subscribe with Google Play</string>
-    <string name="premium_restore_cta">Restore a purchase</string>
     <string name="premium_buy_working">Talking to Google Play…</string>
     <!-- After Play takes the money, the SERVER decides the tier — so the app
          says what is happening rather than flipping the UI optimistically. -->
     <string name="premium_buy_verifying">Confirming your subscription…</string>
-    <string name="premium_buy_failed">Google Play couldn\'t complete that. Nothing was charged.</string>
     <string name="premium_verify_deferred">Bought — we\'ll finish confirming it next time you\'re online.</string>
     <string name="premium_verify_rejected">That purchase couldn\'t be applied to this account. Google Play will refund it automatically.</string>
     <!-- Premium paid for by an organisation. No prices, because there is
@@ -1239,7 +1072,6 @@
     <string name="breathe_box_detail">4-4-4-4 Guided Exercise</string>
     <string name="breathe_reset_detail">4-4 Guided Reset</string>
     <string name="breathe_color_detail">Guided Color Exercise</string>
-    <string name="breathe_estimated_time">Estimated time • 2 min</string>
     <string name="breathe_pace_title">Breathing pace</string>
     <string name="breathe_settings_title">Guidance</string>
     <!-- The number is drawn separately, above this label, so the plural carries
@@ -1292,36 +1124,10 @@
     <string name="breathe_chime_label">Soft chime on phase change</string>
 
     <!-- ── Games (Games.kt) ────────────────────────────────────────────── -->
-    <string name="patternglow_eyebrow">Follow the light</string>
-    <string name="patternglow_title">Pattern glow</string>
-    <string name="patternglow_note_start">Watch the glow, then repeat it.</string>
-    <string name="patternglow_note_success">Round %1$d — lovely. One more glow.</string>
-    <string name="patternglow_note_reset">Reached round %1$d. Fresh start, no rush.</string>
-    <string name="patternglow_pad_cd">Pad %1$d</string>
-    <string name="patternglow_watching">Watching…</string>
-    <string name="patternglow_your_turn">Your turn</string>
-    <string name="patternglow_progress">%1$d of %2$d taps</string>
-    <string name="patternglow_best">Best round %1$d</string>
-    <string name="zen_eyebrow">Still water</string>
-    <string name="zen_title">Zen ripples</string>
-    <string name="zen_intro">Tap anywhere on the water. Watch each ripple widen and let go.</string>
-    <string name="zen_canvas_cd">Ripple canvas</string>
-    <string name="zen_water_sound">Water-drop sound</string>
-    <string name="zen_ripple_count">%1$d ripples</string><string name="zen_tap_hint">Touch the water</string>
-    <string name="gratitude_eyebrow">Grow something good</string>
-    <string name="gratitude_title">Gratitude garden</string>
-    <string name="gratitude_intro">Name one small thing you\'re thankful for — a flower is planted for each.</string>
-    <string name="gratitude_field_label">One good thing…</string>
-    <string name="gratitude_plant_cta">Plant it</string>
-    <string name="gratitude_soil_cd">Gratitude garden soil with %1$d flowers</string>
-    <string name="gratitude_empty">Your garden is waiting for its first flower.</string>
-    <string name="gratitude_flower_cd">Flower: %1$s</string>
-    <string name="gratitude_first">Plant one small good thing.</string>
     <plurals name="gratitude_flower_count">
         <item quantity="one">%1$d flower and counting.</item>
         <item quantity="other">%1$d flowers and counting.</item>
     </plurals>
-    <string name="gratitude_why">Noticing good things, briefly and often, is linked to steadier mood.</string>
 
     <!-- ── Plan (PlanScreen.kt) ────────────────────────────────────────── -->
     <!-- "Agentic" is engineering vocabulary (audit K); say what it does instead. -->
@@ -1342,7 +1148,6 @@
     <string name="patterns_eyebrow">Transparent AI memory</string>
     <string name="patterns_title">Pattern dashboard</string>
     <string name="patterns_intro">Everything CereBro has learned about you — visible, honest, and yours to delete.</string>
-    <string name="patterns_remembers_title">What CereBro remembers</string>
     <string name="patterns_error_fallback">Couldn\'t load your patterns — try again.</string>
     <string name="patterns_loading">Looking at your data…</string>
     <string name="patterns_empty">Nothing yet. Patterns only appear once a few weeks of real check-ins support them — no guesses, ever.</string>
@@ -1393,20 +1198,9 @@
     <string name="search_refine">Showing first 20 — refine your search.</string>
 
     <!-- ── Guided tour (GuidedTour.kt) ─────────────────────────────────── -->
-    <string name="tour_stop1_title">Check in daily</string>
     <!-- Audit K: the tour cards floated over Home naming things they did not
          point at ("check in daily" with the grid hidden, "the hero" — a word
          users don't know). Each body now names what is visibly on screen. -->
-    <string name="tour_stop1_body">One tap on the "How are you right now?" tiles below tells CereBro how you\'re arriving — plans, insights and starters all personalize from it.</string>
-    <string name="tour_stop2_title">Your plan adapts</string>
-    <string name="tour_stop2_body">Three small steps a day, rebuilt from your check-ins and sleep diary. The big card at the top of this screen is where they live.</string>
-    <string name="tour_stop3_title">Talk it through</string>
-    <string name="tour_stop3_body">A voice companion that listens first. It\'s AI — never a therapist, and always honest about that.</string>
-    <string name="tour_stop4_title">Private by default</string>
-    <string name="tour_stop4_body">Nothing is remembered without your say-so. Change anything under You → Privacy &amp; memory.</string>
-    <string name="tour_header">GUIDED TOUR · %1$d OF %2$d</string>
-    <string name="tour_skip">Skip</string>
-    <string name="tour_begin">Let\'s begin</string>
 
     <!-- ── Baseline (Baseline.kt) ──────────────────────────────────────── -->
     <string name="baseline_eyebrow">Two quick scales</string>
@@ -1444,7 +1238,6 @@
     <string name="today_greeting_morning">good morning</string>
     <string name="today_greeting_afternoon">good afternoon</string>
     <string name="today_greeting_evening">good evening</string>
-    <string name="today_milestone_line">🎉 %1$d days of showing up — beautifully done</string>
     <string name="today_rail_morning">For this morning</string>
     <string name="today_rail_midday">A midday reset</string>
     <string name="today_rail_tonight">For tonight</string>
@@ -1466,37 +1259,12 @@
 
     <!-- i18n pass 2 (2026-07-25): display labels split from persisted values
          (state options, languages, reminder picks, mood taxonomy, companions). -->
-    <string name="ob_state_stressed">Stressed and tense</string>
-    <string name="ob_state_night">Can\'t switch off at night</string>
-    <string name="ob_state_overthinking">Overthinking everything</string>
-    <string name="ob_state_doubting">Doubting myself</string>
-    <string name="ob_state_distant">Feeling distant from people</string>
-    <string name="ob_state_consistency">Can\'t stay consistent</string>
-    <string name="lang_english">English</string>
-    <string name="lang_hindi">Hindi</string>
-    <string name="lang_hinglish">Hinglish</string>
-    <string name="lang_punjabi">Punjabi</string>
-    <string name="lang_tamil">Tamil</string>
-    <string name="ob_notify_morning">Morning · 8:00 AM</string>
-    <string name="ob_notify_evening">Evening · 9:00 PM</string>
-    <string name="ob_notify_previews">Private previews</string>
-    <string name="ob_notify_custom">Custom time</string>
-    <string name="ob_notify_none">Not now</string>
     <string name="mood_good">Good</string>
     <string name="mood_anxious">Anxious</string>
     <string name="mood_low">Low</string>
     <string name="mood_tired">Tired</string>
     <string name="mood_overwhelmed">Overwhelmed</string>
     <string name="mood_unsure">Not sure</string>
-    <string name="mood_okay">Okay</string>
-    <string name="companion_calm_guide">Calm Guide</string>
-    <string name="companion_calm_guide_detail">Steady and soothing — grounds you first, never rushes</string>
-    <string name="companion_warm_friend">Warm Friend</string>
-    <string name="companion_warm_friend_detail">Encouraging and familiar — like a friend who gets it</string>
-    <string name="companion_straight_talker">Straight Talker</string>
-    <string name="companion_straight_talker_detail">Clear and direct — kind, but skips the padding</string>
-    <string name="companion_quiet_coach">Quiet Coach</string>
-    <string name="companion_quiet_coach_detail">Action-first — one small concrete step at a time</string>
 
     <!-- ── Guided routines: wind-down ritual + guided imagery ──────────────
          Copy hand-synced with the web app (apps/app `/sleep/ritual` and
@@ -1562,7 +1330,6 @@
     <string name="imagery_closing_body">You built it, so you can get back to it — it takes less time each go.</string>
     <string name="imagery_why">The detail does the work — sound, light and temperature make the calm real.</string>
     <string name="toolkit_imagery_title">A place you can go</string>
-    <string name="toolkit_bodyscan_subtitle">Attention through the body, nothing to force</string>
     <string name="toolkit_imagery_subtitle">Build somewhere calm, one sense at a time</string>
     <string name="toolkit_ritual_title">Your ritual</string>
     <string name="toolkit_ritual_subtitle">String a few of these together, on a cue you already have</string>
@@ -1651,7 +1418,6 @@
     <string name="mood_unsure_note">Closest fit right now</string>
 
     <!-- ── Home copy that used to live in pure functions ─────────────────── -->
-    <string name="today_milestone">🎉 %1$d days of showing up — beautifully done</string>
 
     <!-- ── Sleep copy that used to live in pure functions ────────────────── -->
 
@@ -1671,13 +1437,11 @@
     <string name="ob_state_sub_overwhelmed">Too much at once</string>
     <string name="ob_state_sub_unsure">I cannot name it</string>
     <string name="ob_state_bar_title">What feels true</string>
-    <string name="ob_reset_bar_title">First reset</string>
     <string name="ob_lang_english">English</string>
     <string name="ob_lang_hindi">Hindi</string>
     <string name="ob_lang_hinglish">Hinglish</string>
     <string name="ob_lang_punjabi">Punjabi</string>
     <string name="ob_lang_tamil">Tamil</string>
-    <string name="ob_notify_private">Private previews</string>
 
     <!-- ── Companion styles (display labels; wire values stay in code) ───── -->
     <string name="companion_calm_title">Calm Guide</string>
@@ -1719,7 +1483,7 @@
     <string name="safetyplan_eyebrow">Yours, in your words</string>
     <string name="safetyplan_title">My safety plan</string>
     <string name="safetyplan_intro">A plan you write while things are steady, so a harder day has fewer decisions in it. Fill in as much or as little as you like — a part-written plan still helps.</string>
-    <!-- Crisis verification. A badge is a claim: it may only appear where we have actually checked the numbers against a named source. India is that region today; the ref/ audit found the opposite bug, Indian numbers badged Verified for every country. --><string name="crisis_screen_title">Urgent support</string><string name="crisis_screen_subtitle">Human help comes first</string><string name="crisis_headline">Human help\ncomes first.</string><string name="crisis_immediate_danger">If there is immediate danger, call %1$s now.</string><string name="crisis_not_emergency">CereBro is not an emergency service and cannot monitor your safety.</string><string name="crisis_region_language">%1$s · ENGLISH</string><string name="crisis_reach_verified">Reach verified human support quickly with offline fallbacks.</string><string name="crisis_reach_plain">Reach human support quickly, with offline fallbacks.</string><string name="crisis_call_emergency">Call emergency services</string><string name="crisis_emergency_detail">%1$s · police, fire, health and other emergencies</string><string name="crisis_call_line">Call %1$s</string><string name="crisis_mental_india">%1$s · free 24/7 mental-health support in 20 languages</string><string name="crisis_mental_other">%1$s · 24/7 mental-health support</string><string name="crisis_trusted_title">Contact my trusted person</string><string name="crisis_trusted_detail">Someone you selected; reached automatically only if you switched that on</string><!-- Guest / signed-out: no trusted person can exist yet, so the card says it is a setup door rather than presenting a contact that is not there (audit I#21). --><string name="crisis_trusted_setup_title">Set up a trusted person</string><string name="crisis_trusted_setup_detail">Someone you choose — not set up yet</string><string name="crisis_cannot_call">I cannot call</string><string name="crisis_cannot_call_detail">See text, in-person and grounding alternatives</string><string name="crisis_cached_title">Cached support details</string><string name="crisis_sources">Sources: Government and verified regional support directories. When offline, confirm details if you can because services may change.</string><string name="crisis_change_region">Change region</string><string name="crisis_open_safety_plan">Open my safety plan</string><string name="crisis_verified">Verified</string><string name="crisis_not_verified">Not verified yet</string><string name="crisis_unverified_note">We haven’t checked these against an official source. Please confirm the number locally if you can.</string><string name="crisis_mental_generic">24/7 mental-health support</string><!-- Guest mode: a guest never signed in, so a 401 from a server-backed screen is the product working as designed, not a network failure. --><string name="net_guest_mode">Sign in to keep this. You’re looking around as a guest, so nothing is saved yet.</string><string name="sleep_insights_link">See the longer view →</string><string name="safetyplan_loading">Opening your plan…</string><string name="goals_loading">Opening your goals…</string><string name="trends_window_loading">Updating the range…</string><string name="safetyplan_privacy_note">CereBro doesn\'t read this back to you as advice, score it, or share it.</string>
+    <!-- Crisis verification. A badge is a claim: it may only appear where we have actually checked the numbers against a named source. India is that region today; the ref/ audit found the opposite bug, Indian numbers badged Verified for every country. --><string name="crisis_screen_title">Urgent support</string><string name="crisis_screen_subtitle">Human help comes first</string><string name="crisis_headline">Human help\ncomes first.</string><string name="crisis_immediate_danger">If there is immediate danger, call %1$s now.</string><string name="crisis_not_emergency">CereBro is not an emergency service and cannot monitor your safety.</string><string name="crisis_region_language">%1$s · ENGLISH</string><string name="crisis_reach_verified">Reach verified human support quickly with offline fallbacks.</string><string name="crisis_reach_plain">Reach human support quickly, with offline fallbacks.</string><string name="crisis_call_emergency">Call emergency services</string><string name="crisis_emergency_detail">%1$s · police, fire, health and other emergencies</string><string name="crisis_call_line">Call %1$s</string><string name="crisis_mental_india">%1$s · free 24/7 mental-health support in 20 languages</string><string name="crisis_mental_other">%1$s · 24/7 mental-health support</string><string name="crisis_trusted_title">Contact my trusted person</string><string name="crisis_trusted_detail">Someone you selected; reached automatically only if you switched that on</string><!-- Guest / signed-out: no trusted person can exist yet, so the card says it is a setup door rather than presenting a contact that is not there (audit I#21). --><string name="crisis_trusted_setup_title">Set up a trusted person</string><string name="crisis_trusted_setup_detail">Someone you choose — not set up yet</string><string name="crisis_cannot_call">I cannot call</string><string name="crisis_cannot_call_detail">See text, in-person and grounding alternatives</string><string name="crisis_cached_title">Cached support details</string><string name="crisis_sources">Sources: Government and verified regional support directories. When offline, confirm details if you can because services may change.</string><string name="crisis_change_region">Change region</string><string name="crisis_open_safety_plan">Open my safety plan</string><string name="crisis_verified">Verified</string><string name="crisis_not_verified">Not verified yet</string><string name="crisis_unverified_note">We haven’t checked these against an official source. Please confirm the number locally if you can.</string><!-- Guest mode: a guest never signed in, so a 401 from a server-backed screen is the product working as designed, not a network failure. --><string name="net_guest_mode">Sign in to keep this. You’re looking around as a guest, so nothing is saved yet.</string><string name="sleep_insights_link">See the longer view →</string><string name="safetyplan_loading">Opening your plan…</string><string name="goals_loading">Opening your goals…</string><string name="trends_window_loading">Updating the range…</string><string name="safetyplan_privacy_note">CereBro doesn\'t read this back to you as advice, score it, or share it.</string>
     <string name="safetyplan_offline">Showing the copy saved on this device — we couldn\'t reach the server.</string>
     <string name="safetyplan_load_failed_title">We couldn\u0027t load your plan</string>
     <string name="safetyplan_load_failed_body">Couldn\'t load your plan. Nothing is deleted — it\'s still on your account.</string>
@@ -1875,8 +1639,6 @@
 
     <!-- Offline queue. Says what actually happened rather than "Saved". -->
     <string name="today_checkin_queued">Kept on this device — it will sync when you\'re back online.</string>
-    <string name="journal_entry_queued">Kept on this device — it will sync when you\'re back online.</string>
-    <string name="outbox_pending">%d waiting to sync</string>
     <string name="today_banner_offline_queued">You\'re offline — showing the last copy. %1$d thing(s) you wrote are saved here and will send themselves when you\'re back.</string>
     <!-- Online, but the queue has not emptied yet. The offline sentence above
          explains the stale reads as well, so it cannot be reused here. -->
@@ -1919,9 +1681,6 @@
          rendering fault rather than as the absence it is (device walk, 2026-08-22). -->
     <string name="trends_chart_gap_note">Dotted where you did not check in.</string>
     <string name="trends_chart_gap_note_sleep">Dotted where you did not log a night.</string>
-    <string name="trends_open">See your trends</string>
-    <string name="you_trends_title">Trends</string>
-    <string name="you_trends_subtitle">Your check-ins and nights, over time</string>
 
     <!-- Journal search: says where results came from, so older entries pulled
          from the server don't look like they were in the list all along. -->
@@ -1982,11 +1741,6 @@
          AI path is sent recent journal TITLES (backend services/agentic.py
          `_recent_signals`, journal_memory consent) and never the entry bodies.
          ───────────────────────────────────────────────────────────────────── -->
-    <string name="today_date_pattern">EEEE · d MMMM</string>
-    <string name="today_lede">Choose one useful next step without browsing the whole product.</string>
-    <string name="today_hero_eyebrow">Your next helpful step</string>
-    <string name="today_hero_chip_offline">Works offline</string>
-    <string name="today_hero_chip_no_score">Nothing to score</string>
     <string name="today_hero_why_rule">Chosen from your goal, your recent check-ins and your sleep diary. It did not read your journal.</string>
     <string name="today_hero_why_ai">Shaped from your goal, your recent check-ins, your sleep diary and your journal titles. It did not read the entries themselves.</string>
     <string name="today_hero_why_fallback">No plan yet. Try this three-minute grounding practice.</string>
@@ -2000,30 +1754,11 @@
          check-in, and always false in guest mode (audit I#1). The fallback is
          the same for everyone, and now says so. -->
     <string name="today_hero_fallback_title">Settle loud thoughts</string>
-    <string name="today_hero_fallback_sub">A three-minute grounding practice — brief, steady, and the same for everyone.</string>
-    <string name="today_hero_chip_3min">3 min</string>
-    <string name="today_hero_open_day">Look at your day</string>
-    <string name="today_hero_alt">Choose another option</string>
-    <string name="today_fold_day">Your day</string>
-    <string name="today_fold_day_none">Nothing planned yet</string>
-    <string name="today_fold_tonight">Tonight</string>
-    <string name="today_fold_tonight_summary">A wind-down whenever you\'re ready</string>
-    <string name="today_fold_tonight_body">Dim the room, slow the breath, and let a quieter mix carry the end of the day.</string>
-    <string name="today_fold_tonight_row_title">Sleep and wind-down</string>
-    <string name="today_fold_tonight_row_subtitle">Tonight\'s plan, sounds and your sleep diary</string>
-    <string name="today_fold_week">This week</string>
-    <string name="today_view_weekly_insights">View weekly insights →</string>
     <string name="insights_metric_sessions">Calm sessions</string>
     <string name="insights_metric_journal">Journal entries</string>
     <string name="insights_metric_sleep">Sleep</string>
     <string name="insights_metric_mood">Mood stability</string>
     <string name="insights_metric_plan">Plan follow-through</string>
-    <string name="today_day_step_done">Done</string>
-    <string name="today_day_step_open">Open</string>
-    <string name="today_day_blank">Flexible, not a streak. Do what helps and skip what does not — blank days are simply blank.</string>
-    <string name="today_day_plan_title">Your daily plan</string>
-    <string name="today_day_plan_subtitle">A flexible guide, not a checklist</string>
-    <string name="today_week_blank">These count the days you were here. Nothing here counts the days you were not.</string>
 
     <string name="journal_searching">Looking through your older entries…</string>
     <plurals name="journal_found_older">
@@ -2031,18 +1766,6 @@
         <item quantity="other">Found %d older entries</item>
     </plurals>
     <!-- Canonical mobile.html onboarding (ONB-01…ONB-11). -->
-    <string name="ob_intro_bar_title">Welcome</string>
-    <string name="ob_intro_eyebrow">Welcome to CereBro</string>
-    <string name="ob_intro_title">You do not have to fix everything tonight.</string>
-    <string name="ob_intro_sub">Start with one small thing that matches how you feel right now.</string>
-    <string name="ob_intro_section">What you can do here</string>
-    <string name="ob_intro_settle">Settle your body</string>
-    <string name="ob_intro_settle_sub">Breathing, grounding and sensory practices</string>
-    <string name="ob_intro_talk">Talk things through</string>
-    <string name="ob_intro_talk_sub">A wellness companion with clear boundaries</string>
-    <string name="ob_intro_write">Write privately</string>
-    <string name="ob_intro_write_sub">Journal prompts, history and device protection</string>
-    <string name="ob_intro_cta">Continue to Honesty first</string>
     <string name="ob_immediate_danger">In immediate danger?</string>
     <string name="ob_immediate_danger_sub">Urgent support stays available without accepting terms or confirming age.</string>
     <string name="ob_urgent_support">Get urgent human support</string>
@@ -2050,16 +1773,6 @@
     <!-- "This prototype" was user-facing copy on a compliance surface (audit K). -->
     <string name="ob_age_confirm_sub">CereBro currently provides the adult wellness experience.</string>
     <string name="ob_under_18">I am under 18</string>
-    <string name="ob_reflection_bar_title">How was that?</string>
-    <string name="ob_reflection_eyebrow">A private reflection</string>
-    <string name="ob_reflection_title">Did anything shift?</string>
-    <string name="ob_reflection_sub">This answer helps CereBro avoid repeating something that did not help.</string>
-    <string name="ob_reflection_calmer">A little calmer</string>
-    <string name="ob_reflection_same">About the same</string>
-    <string name="ob_reflection_unsettled">More unsettled</string>
-    <string name="ob_reflection_skip">I would rather not say</string>
-    <string name="ob_reflection_private">No response will be stored</string>
-    <string name="ob_notify_recommended">Recommended for your selected state</string>
     <string name="ob_guest_bar_title">Save your progress</string>
     <string name="ob_guest_eyebrow">Guest first</string>
     <string name="ob_guest_title">Use CereBro without an account.</string>
@@ -2069,12 +1782,7 @@
     <string name="ob_guest_continue">Continue as guest</string>
     <string name="ob_guest_create">Create account</string>
     <string name="ob_guest_sign_in">Sign in instead</string>
-    <string name="ob_ready_bar_title">You are ready</string>
-    <string name="ob_ready_eyebrow">Ready</string>
-    <string name="ob_ready_title">Your next helpful step is waiting.</string>
-    <string name="ob_ready_sub">CereBro will begin with one recommendation—not a wall of features.</string>
     <!-- "Enter Today" assumed the user already knew the tab's name (audit K). -->
-    <string name="ob_ready_cta">Take me there</string>
     <string name="ob_underage_bar_title">For younger users</string>
     <string name="ob_underage_eyebrow">Age-appropriate support</string>
     <string name="ob_underage_title">This adult experience is not designed for you yet.</string>
@@ -2091,14 +1799,6 @@
     <string name="sleep_delete_body">The sleep record for %1$s will be permanently removed.</string>
     <!-- Gratitude reflection. The reflection is stored as a journal entry, which
          is why the queued copy promises a sync rather than a local-only save. -->
-    <string name="practice_gratitude_title">Gratitude</string>
-    <string name="practice_gratitude_subtitle">Positive reflection</string>
-    <string name="practice_gratitude_eyebrow">GRATITUDE REFLECTION</string>
-    <string name="practice_gratitude_hero">Notice one
-thing—not
-everything.</string>
-    <string name="practice_gratitude_intro">This is not about forcing positivity. A small neutral or supportive detail is enough.</string>
-    <string name="practice_gratitude_placeholder">One thing that made today slightly easier…</string>
     <string name="practice_gratitude_save">Save privately</string>
     <string name="practice_gratitude_entry_title">Gratitude reflection</string>
     <string name="practice_gratitude_queued">Saved on this phone — it syncs when you\'re back online.</string>
@@ -2107,20 +1807,11 @@ everything.</string>
     <!-- V2-b Today (REDESIGN_V2 §3.1) — the fused check-in→step card and its zones -->
     <string name="today_hint">Tap how you feel — CereBro suggests one step</string>
     <string name="today_checkin_note">add a note with it →</string>
-    <string name="today_hero_more">more options →</string>
-    <string name="today_hero_step_progress">step %1$d of %2$d</string>
-    <string name="today_your_day">Your day</string>
     <string name="today_tonight_title">Tonight</string>
     <string name="today_tonight_wind">Wind down · 10 min</string>
     <string name="today_tonight_ready">Tonight\'s wind-down, ready</string>
     <string name="today_prompt_title">Tonight\'s prompt</string>
     <string name="today_prompt_sub">One thing you handled today</string>
-    <string name="today_program_day">Day %1$d of %2$d</string>
-    <string name="today_quick_helps">Quick helps</string>
-    <string name="today_qh_breathe">Breathe</string>
-    <string name="today_qh_ground">Ground</string>
-    <string name="today_qh_sounds">Sounds</string>
-    <string name="today_qh_games">Games</string>
     <string name="today_week_sentence">You showed up %1$d of the last 7 days</string>
     <string name="today_guest_line">save your progress · sign in</string>
 

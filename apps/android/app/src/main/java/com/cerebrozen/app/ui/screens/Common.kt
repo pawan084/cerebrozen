@@ -993,7 +993,12 @@ internal fun CereBroTopBar(
     Row(
         modifier
             .fillMaxWidth()
-            .height(60.dp)
+            // A MINIMUM, not a size (WC-185): at 200% font scale the fixed
+            // 60dp clipped the subtitle mid-glyph on every screen this bar
+            // serves — the emulator walk showed "लगभग 20 सेकंड लगते हैं" cut in
+            // half. The bar grows with its text; 60dp stays the floor so the
+            // normal-scale look is untouched.
+            .heightIn(min = 60.dp)
             // Fixed bars must be fully opaque. At 96% the high-contrast hero
             // and progress rows remained visibly ghosted behind the title on
             // a 720px ColorOS device, making both layers harder to read.

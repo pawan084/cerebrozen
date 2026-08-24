@@ -1156,7 +1156,7 @@ private fun PremiumWindDownHero(
             .fillMaxWidth()
             // Respect the caller's height — the old 250dp floor silently grew
             // every hero and ate half a 720px viewport.
-            .height(height)
+            .heightIn(min = height)   // the caller sets the floor; text may grow it (WC-185)
             .shadow(28.dp, shape, ambientColor = Periwinkle.copy(alpha = 0.27f), spotColor = Periwinkle.copy(alpha = 0.2f))
             .clip(shape)
             // Owner call 2026-08-05: this hero follows the theme. The paint
@@ -1249,7 +1249,7 @@ private fun SleepMoodChip(
     val stroke by animateColorAsState(if (selected) Periwinkle else LineStroke, label = "moodStroke")
     Column(
         modifier
-            .height(76.dp)
+            .heightIn(min = 76.dp)   // grows at 200% font (WC-185)
             .clip(shape)
             .background(fill)
             .border(1.dp, stroke, shape)
@@ -1268,10 +1268,13 @@ private fun SleepMoodChip(
             tint = if (selected) Periwinkle else TextMuted,
             modifier = Modifier.size(24.dp),
         )
-        // One line, never wrapped: the chip widens to fit ("Rested" used to
-        // wrap inside the fixed-height chip and clip to "Reste…").
+        // Up to two lines, centred. The one-line rule existed because the
+        // FIXED height clipped any wrap ("Reste…"); with the height a minimum
+        // that hazard is gone, and at 200% font five-across one-liners are
+        // impossible — the emulator walk showed "बहुत ख़" and "ठीक-ट" cut
+        // mid-word, which for a rating scale destroys the meaning.
         Text(label, style = MaterialTheme.typography.bodySmall, color = TextPrimary,
-            maxLines = 1, softWrap = false)
+            maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }
 
@@ -1512,7 +1515,7 @@ private fun TimeRow(label: String, minutes: Int, onChange: (Int) -> Unit) {
                     ).show()
                 }
                 .semantics { contentDescription = pickCd }
-                .width(60.dp)
+                .widthIn(min = 60.dp)   // "23:00" clipped to "23:0" at 200% (WC-185)
                 .padding(vertical = 12.dp),
         )
         TimeStep(R.string.sleep_plus_30, laterCd) { onChange(minutes + 30) }

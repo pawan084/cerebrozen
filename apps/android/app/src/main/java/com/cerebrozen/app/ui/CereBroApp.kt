@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -318,7 +319,7 @@ internal fun BottomNavBar(
         Row(
             Modifier
                 .fillMaxWidth()
-                .height(68.dp)
+                .heightIn(min = 68.dp)   // grows at large font scale (WC-185)
                 // The pill's lift comes from the theme's shadow tokens, not a
                 // hardcoded 40% black: on Dawn a black drop under an ivory
                 // capsule reads as a grey smudge (CardShadow is warm-plum).
