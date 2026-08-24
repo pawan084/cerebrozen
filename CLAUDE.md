@@ -27,7 +27,8 @@ apps/ios/      SwiftUI app (Xcode 27 project, synchronized file groups — new .
 apps/android/  Kotlin + Compose full client (5 tabs, ~40 routes, offline queue, FCM-ready)
 apps/web/      Next.js landing :3000        apps/admin/  Next.js dashboard :3001
 apps/app/      Next.js web app :3002 (authenticated client — app.cerebrozen.in)
-backend/       FastAPI + Postgres :8000     e2e/         Playwright (web+admin+app)
+apps/portal/   Next.js org portal :3003 (B2B2C — no public host until SSO lands)
+backend/       FastAPI + Postgres :8000     e2e/         Playwright (web+admin+app+portal)
 deploy/        Caddyfile + bootstrap.sh     docs/        this doc set
 ```
 
@@ -38,7 +39,7 @@ docker compose up --build                      # full dev stack (api/web/admin/a
 docker compose run --rm api sh -c \
   "pip install -r requirements-dev.txt && python -m pytest -q --cov=app"   # backend tests
 docker compose -f docker-compose.e2e.yml up --build \
-  --abort-on-container-exit --exit-code-from e2e                           # web+admin e2e
+  --abort-on-container-exit --exit-code-from e2e                           # web+admin+app+portal e2e
 xcodebuild test -project apps/ios/CereBro.xcodeproj -scheme CereBro \
   -destination 'platform=iOS Simulator,name=<installed sim>'               # iOS UI tests
 ```
