@@ -51,12 +51,18 @@ so a future session sees this is a clinical-review question, not a translation
 gap, and doesn't quietly "fix" it back into the same unreviewed state.
 
 Verified: XML well-formed (1939 `<string>` entries, 2027 − 88), all four
-`HindiOrthographyTest` checks green, `:app:check` exit 0. **Not verified on
-device** — the phone was unreachable at push time (not enumerating on USB;
-needs a physical check, not something fixable from this side) — so the visual
-confirmation that these 88 keys actually render in English rather than blank
-is still owed. The fallback is guaranteed Android resource-qualifier behavior,
-not a guess, so this shipped rather than waiting on a cable.
+`HindiOrthographyTest` checks green, `:app:check` exit 0. **Device-verified
+later the same day** (the phone was unreachable at push time — a dead cable;
+swapped and reconnected): with the app locale set to `hi`, the crisis screen
+renders the reverted keys in English — headline on its two lines, banner,
+call rows, Verified pill — with nothing blank and no crash, while the chat,
+tabs, and the AI-disclosure dialog around it stay fully Hindi. One expected
+wrinkle worth knowing: `crisis_call_line` composes as "Call %1$s", so the
+Tele-MANAS row reads mixed ("Call टेली-मानस — असली लोग…") — the English
+format string is a reverted key, the Hindi argument is the line's own label,
+which had a translation before the July hold and was not part of the 88.
+The clinical reviewer will meet a screen that is part English (the 88),
+part pre-hold Hindi — the review should cover both.
 
 Un-reverted and unchanged: the other ~667 strings from the same pass, which
 were never blocked on anything.
