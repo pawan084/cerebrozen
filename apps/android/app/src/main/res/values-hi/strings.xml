@@ -1463,9 +1463,20 @@
 
     <!-- "Confirm your email" notice (Settings). -->
     <string name="verify_email_title">अपना ईमेल पक्का करें</string>
-    <string name="verify_email_body">हमने %1$s पर एक लिंक भेजा है। इसे पक्का करने पर आव़ाज़, योजनाएँ और ओरेकल खुल जाएँगे — तब तक बाकी सब सामान्य रूप से चलता रहेगा।</string>
+    <string name="verify_email_body">हमने %1$s पर एक लिंक भेजा है। इसे पक्का करने पर आवाज़, योजनाएँ और ओरेकल खुल जाएँगे — तब तक बाकी सब सामान्य रूप से चलता रहेगा।</string>
     <string name="verify_email_resend">लिंक दोबारा भेजें</string>
     <string name="verify_email_sending">भेजा जा रहा है…</string>
     <string name="verify_email_sent">लिंक भेज दिया — अपना इनबॉक्स देखें।</string>
     <string name="verify_email_retry">फिर कोशिश करें</string>
+    <!-- Leaks found by walking the app in Hindi on a device (2026-08-24): each of
+         these three renders in English on a primary surface — the Home hero's
+         only call to action, the Sleep tab's own subtitle, and the whole body of
+         the Health Connect card. They are the visible tip of a much larger gap;
+         see docs/TODO.md for the count and the ratchet that stops it growing. -->
+    <string name="today_hero_start">शुरू करें</string>
+    <string name="sleep_premium_subtitle">दिन को धीमा करें, बेहतर सोएँ</string>
+    <!-- Names the button by its Hindi label (रात सहेजें), not a translation of
+         the English one — the hint is useless if it points at a control the
+         reader cannot find on screen. -->
+    <string name="sleep_hc_boundary_hint">पिछली रात का हाल इसी फ़ोन से पढ़ता है। जब तक आप “रात सहेजें” नहीं दबाते, कुछ भी सहेजा नहीं जाता।</string>
 </resources>

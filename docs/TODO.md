@@ -25,6 +25,73 @@ covers both. If it is a different one, rotate it too.
 been tracked. The exposure is the `.example` file, which is exactly the trap
 that kind of file sets: it looks like it cannot hold anything real.
 
+## Done — the Android app was talking to a different product's API (2026-08-24)
+
+A device walk showed the app failing every request: `POST /auth/refresh -> 404`,
+eleven times a launch, with `{"detail":"Not Found"}` in the body. Our API logged
+nothing at all. It read as an app bug, and an hour went into reading Kotlin that
+was correct the whole time.
+
+Port 8000 on this machine has **three** listeners. The other product on this box
+("aira", the same one holding 3000-3002 and cerebrozen.in) runs
+`uvicorn app:app --host 0.0.0.0 --port 8000`, which takes IPv4. Our container
+binds IPv6 as well. Which one a client reaches depends on how it resolves
+`localhost`:
+
+    curl, and every MSYS/WSL tool   -> ::1        -> our container
+    native Win32 clients, incl. adb -> 127.0.0.1  -> the other product
+
+So `curl http://localhost:8000/health` answered `{"ai_enabled":true}` — ours —
+while `adb reverse tcp:8000 tcp:8000` handed the phone to somebody else's
+FastAPI. Every probe I ran to check the backend confirmed the wrong thing,
+because the probe and the phone were not talking to the same server.
+
+Fixed by binding our API where nothing else is: `docker-compose.altports.yml`
+now maps `api` to **8010** alongside the web/admin overrides it already had, and
+the tunnel becomes `adb reverse tcp:8000 tcp:8010` — the app keeps its
+`localhost:8000` and no rebuild is needed. The file carries the explanation.
+
+**The rule this earns: when a port is contested, probe it with `127.0.0.1`, never
+`localhost`.** `localhost` is exactly the thing that lies. A 200 with the right
+JSON is not proof you reached your own server — the same mistake, at the domain
+level, is what `.github/workflows/deploy.yml` already guards against.
+
+## Open — the Hindi UI is 37% English (2026-08-24)
+
+Walking the app with `cmd locale set-app-locales com.cerebrozen.app --locales hi`
+found **758 of 2025 strings (37.4%) with no Hindi at all**. The gap tracks
+recency rather than screen importance: the older screens are complete, while the
+sleep module, Health Connect and the V3 home hero largely are not, because each
+shipped its strings into `values/` and stopped there.
+
+It is not cosmetic. On the Home tab the *only call to action* rendered as
+"Start" in an otherwise Hindi screen; the Sleep tab's own subtitle was English;
+the Health Connect card was an English paragraph. Those three
+(`today_hero_start`, `sleep_premium_subtitle`, `sleep_hc_boundary_hint`) are now
+translated and confirmed on device. The other ~755 are not.
+
+Also fixed while there: `verify_email_body` read आव़ाज़ for आवाज़ — a nukta on व,
+which is not a letter Hindi has. It survived review, translation and `:app:check`
+and was caught by counting codepoints.
+
+`HindiOrthographyTest` now guards all of it: nuktas may only sit on the eight
+bases that take one, no U+FFFD or Devanagari-as-escape (both signatures of the
+encode/decode round-trip that has mangled this file twice), format placeholders
+must match the English original (a dropped `%1$s` is a crash in Hindi only), and
+coverage may not fall below **62%**. That floor is a ratchet — raise it as
+coverage improves, never lower it to make a build green.
+
+Two things remain open:
+
+- **The ~755 untranslated strings.** This is a translation wave, not a code
+  change, and the copy carries safety weight in places — worth a native reader
+  rather than a bulk machine pass.
+- **Server-supplied content has no localisation at all.** Programme and routine
+  titles come from the backend in English only, so "Sleep Reset" and "Morning
+  Ritual: Breath and Mindfulness" sit inside an otherwise Hindi Home tab no
+  matter how complete `values-hi` gets. That is a backend content model gap and
+  none of the above touches it.
+
 ## Done — the Oracle admin test was passing on a loading state (2026-08-24)
 
 `admin.spec.ts` › "the Oracle tab holds up with the agent switched off" failed in
