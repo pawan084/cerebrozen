@@ -60,6 +60,14 @@ class WriteFlowE2ETest {
         reduceMotionOverrideForTests = true
         DeviceE2E.resetToFirstRun(context)
         BackendFixture.signInOrSkip(context)
+        // A THROWAWAY account, not the shared demo login signInOrSkip leaves
+        // behind. This suite writes real rows, and its own cleanup can only
+        // "release" a goal (there is no DELETE) — released goals render
+        // forever in "Finished and let go", which is how the 2026-08-24
+        // review found 18 "Goal e2e-…" rows on the demo account's screen.
+        // signInOrSkip stays first: it is the backend-reachability gate.
+        DeviceE2E.resetToFirstRun(context)
+        BackendFixture.asThrowaway("writeflow")
     }
 
     @After

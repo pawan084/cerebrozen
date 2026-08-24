@@ -67,19 +67,32 @@ golden by running the real code and recording what it does — the table's
 comment carries the capture date — and treat any later diff as a reviewed
 behaviour change, not a test to silence.
 
-## Known reds (measured, kept red on purpose)
+## Resolved reds (kept for the method, 2026-08-25)
 
-- **Mood-history capability honesty is marginal.** With the strengthened
-  prompt, "what did my sleep look like this week" now passes consistently, but
-  "how has my mood been lately?" holds only ~50–60% of sampled turns — the
-  model sometimes answers from vibes instead of calling
-  `get_weekly_insights`, and sometimes hedges about access. The sampled test
-  (3 turns, ≥2 must pass) fails at exactly the rate the defect occurs, and the
-  failure message quotes the judge per sample. Next levers, in order of cost:
-  a few-shot exemplar turn in the prompt; dropping the agent temperature below
-  0.4; forcing `tool_choice` when the router classifies the turn as a
-  history question. Greening the test by weakening the criterion is the one
-  move that is not on the list.
+- **Mood-history capability honesty — RESOLVED, in three layers, each found by
+  the previous one.** (1) The live failure was real: the model answered "how
+  has my mood been lately?" from vibes or with a false "I don't have access".
+  A prompt exemplar moved it to green-in-isolation but not in-suite. (2) The
+  lever that cannot flake: `wants_history_tool` (app/agent/graph.py) forces
+  `tool_choice=get_weekly_insights` on history-question turns — a deterministic
+  classifier golden-pinned in BOTH directions by `tests/test_history_intent.py`,
+  because a classifier that force-calls a tool must never grab
+  "I feel low lately" away from the anxiety→activity rule. (3) The residual
+  in-suite failures turned out to be an INFRASTRUCTURE bug wearing the model's
+  costume: the cached graph's asyncio lock was bound to the first test's event
+  loop, later tests' streams died with "bound to a different event loop", and
+  the empty reply was scored as dishonesty. `tests/evals/conftest.py` now
+  rebuilds the graph per test. The lesson the suite keeps: **before believing
+  a measured model failure, read the server log for the turn** — the judge
+  cannot tell an empty reply from an evasive one.
+
+- **Companion voice is measured, not asserted.** At temperature 0.4 the model
+  draws a validation opener on a minority of turns even with the class banned;
+  each observed variant gets named in RESPONSE_STYLE ("It sounds like",
+  "It seems like", "That sounds" so far), and the test samples 3 turns
+  requiring 2 — a red reads as a rate with the judge quoted per sample.
+
+Full suite state 2026-08-25: **5/5, two consecutive runs.**
 
 ## What this does not cover yet
 
