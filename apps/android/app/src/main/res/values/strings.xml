@@ -2283,4 +2283,65 @@ not perfection.</string>
          every locale. -->
     <string name="breathe_second_remaining">second remaining</string>
     <string name="breathe_seconds_remaining">seconds remaining</string>
+    <!-- Extraction of the Compose-hardcoded English found by the 2026-08-24 54-route
+         Hindi walk: four screens rendered mixed English/Hindi because these lived as
+         Text(...) literals no gate could see. The coverage ratchet audits values/
+         against values-hi/, and lint HardcodedText only inspects XML layouts, so
+         both stayed green while the check-in sheet was untranslatable.
+         ComposeHardcodedStringTest now guards the class. -->
+    <string name="groundingintro_eyebrow">GROUND · 3 MINUTES</string>
+    <string name="groundingintro_headline">5 things
+you can see.</string>
+    <string name="groundingintro_lede">A calm, guided steadying practice. Pause or stop any time.</string>
+    <string name="groundingintro_sequence">Then four you can feel, three you can hear, two you can smell and one you can taste.</string>
+    <string name="groundingintro_helps_title">This may help when</string>
+    <string name="groundingintro_help_1">Thoughts feel loud</string>
+    <string name="groundingintro_help_2">You feel disconnected</string>
+    <string name="groundingintro_help_3">You need a short reset</string>
+    <string name="groundingintro_fact_time_title">About 3 minutes</string>
+    <string name="groundingintro_fact_time_sub">End early whenever you need.</string>
+    <string name="groundingintro_fact_pace_title">Reads at your pace</string>
+    <string name="groundingintro_fact_pace_sub">You move each step on yourself.</string>
+    <string name="groundingintro_fact_motion_title">Minimal motion</string>
+    <string name="groundingintro_fact_motion_sub">Plain text, works with a screen reader.</string>
+    <string name="groundingintro_start">Start practice</string>
+    <string name="checkindetail_eyebrow">CHECK IN</string>
+    <string name="checkindetail_headline">What is here
+right now?</string>
+    <string name="checkindetail_lede">Choose the closest fit. This does not create a diagnosis or score.</string>
+    <string name="checkindetail_intensity_title">How intense?</string>
+    <string name="checkindetail_intensity_light">Light</string>
+    <string name="checkindetail_intensity_medium">Medium</string>
+    <string name="checkindetail_intensity_strong">Strong</string>
+    <string name="checkindetail_note_label">Add a private note (optional)</string>
+    <string name="checkindetail_note_hint">A few words are enough…</string>
+    <string name="checkindetail_saving">Saving…</string>
+    <string name="checkindetail_save">Save and continue</string>
+    <string name="explore_page_eyebrow">EXPLORE</string>
+    <string name="explore_headline">Find what fits
+this moment.</string>
+    <string name="explore_lede">Find a suitable tool quickly by need,
+format and time.</string>
+    <string name="explore_need_section">Start by need</string>
+    <string name="explore_keep_section">Keep exploring</string>
+    <string name="explore_need_calm_sub">Breathing and
+grounding</string>
+    <string name="explore_need_sleep_sub">Tonight and CBT-I</string>
+    <string name="explore_need_thoughts_title">Thoughts</string>
+    <string name="explore_need_thoughts_sub">Reframe and reflect</string>
+    <string name="explore_need_sound_title">Sound</string>
+    <string name="explore_need_sound_sub">Audio and mixer</string>
+    <string name="explore_mindful_lede">Unscored sensory experiences</string>
+    <string name="explore_programmes_lede">Guided journeys with progress</string>
+    <string name="breathprep_title">Breathing</string>
+    <string name="gratituderef_nav_title">Gratitude</string>
+    <string name="gratituderef_nav_sub">Positive reflection</string>
+    <string name="gratituderef_eyebrow">GRATITUDE REFLECTION</string>
+    <string name="gratituderef_headline">Notice one
+thing—not
+everything.</string>
+    <string name="gratituderef_lede">This is not about forcing positivity. A small neutral or supportive detail is enough.</string>
+    <string name="gratituderef_hint">One thing that made today slightly easier…</string>
+    <string name="biometricgate_title">Confirm screen lock</string>
+    <string name="biometricgate_sub">Use your phone PIN, password, pattern, or biometrics</string>
 </resources>

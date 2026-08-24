@@ -177,8 +177,8 @@ fun PracticeBreathingScreen(onBack: () -> Unit, onUrgent: () -> Unit, onBegin: (
                 Icon(Icons.Outlined.ArrowBack, "Back", tint = Periwinkle, modifier = Modifier.size(23.dp))
             }
             Column(Modifier.weight(1f)) {
-                Text("Breathing", style = MaterialTheme.typography.headlineSmall.copy(fontFamily = serif), color = TextPrimary)
-                Text("Prepare session", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                Text(stringResource(R.string.breathprep_title), style = MaterialTheme.typography.headlineSmall.copy(fontFamily = serif), color = TextPrimary)
+                Text(stringResource(R.string.breathprep_subtitle), style = MaterialTheme.typography.bodySmall, color = TextMuted)
             }
             CircleAction(DangerSoft, onUrgent) {
                 Icon(Icons.Outlined.HealthAndSafety, "Urgent support", tint = Danger, modifier = Modifier.size(23.dp))
@@ -187,14 +187,14 @@ fun PracticeBreathingScreen(onBack: () -> Unit, onUrgent: () -> Unit, onBegin: (
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 26.dp, vertical = 15.dp),
         ) {
-            Text("BREATHING", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = .7.sp), color = Warm)
+            Text(stringResource(R.string.breathprep_eyebrow), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = .7.sp), color = Warm)
             Text(
-                "In for four,\nout for six.", modifier = Modifier.padding(top = 7.dp),
+                stringResource(R.string.breathprep_hero), modifier = Modifier.padding(top = 7.dp),
                 style = MaterialTheme.typography.displayLarge.copy(fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 40.sp, lineHeight = 39.sp),
                 color = TextPrimary,
             )
             Text(
-                "A longer exhale may help settle physical activation. Stop if you feel dizzy or uncomfortable.",
+                stringResource(R.string.breathprep_intro),
                 modifier = Modifier.padding(top = 13.dp, bottom = 16.dp),
                 style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 24.sp), color = TextMuted,
             )
@@ -224,7 +224,7 @@ fun PracticeBreathingScreen(onBack: () -> Unit, onUrgent: () -> Unit, onBegin: (
                     .background(Accent2).clickable(onClick = onBegin),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("Begin 2-minute breathing", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = OnAccent)
+                Text(stringResource(R.string.breathprep_begin), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = OnAccent)
             }
         }
     }
@@ -238,17 +238,17 @@ fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
     var status by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize().background(Night)) {
-        PracticeHeader("Gratitude", "Positive reflection", serif, onBack, onUrgent)
+        PracticeHeader(stringResource(R.string.gratituderef_nav_title), stringResource(R.string.gratituderef_nav_sub), serif, onBack, onUrgent)
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 15.dp),
         ) {
             Text(
-                "GRATITUDE REFLECTION",
+                stringResource(R.string.gratituderef_eyebrow),
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = .7.sp),
                 color = Warm,
             )
             Text(
-                "Notice one\nthing—not\neverything.",
+                stringResource(R.string.gratituderef_headline),
                 modifier = Modifier.padding(top = 7.dp),
                 style = MaterialTheme.typography.displayLarge.copy(
                     fontFamily = serif, fontWeight = FontWeight.Normal, fontSize = 40.sp, lineHeight = 39.sp,
@@ -256,7 +256,7 @@ fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
                 color = TextPrimary,
             )
             Text(
-                "This is not about forcing positivity. A small neutral or supportive detail is enough.",
+                stringResource(R.string.gratituderef_lede),
                 modifier = Modifier.padding(top = 13.dp, bottom = 17.dp),
                 style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 24.sp),
                 color = TextMuted,
@@ -264,7 +264,7 @@ fun GratitudeReflectionScreen(onBack: () -> Unit, onUrgent: () -> Unit) {
             OutlinedTextField(
                 value = reflection,
                 onValueChange = { reflection = it; status = null },
-                placeholder = { Text("One thing that made today slightly easier...", color = TextMuted) },
+                placeholder = { Text(stringResource(R.string.gratituderef_hint), color = TextMuted) },
                 modifier = Modifier.fillMaxWidth().height(78.dp),
                 shape = RoundedCornerShape(18.dp),
                 minLines = 2,

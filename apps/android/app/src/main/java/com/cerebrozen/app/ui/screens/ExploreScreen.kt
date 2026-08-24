@@ -82,10 +82,10 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
                 .padding(horizontal = 22.dp).padding(top = 14.dp, bottom = 112.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("EXPLORE", style = MaterialTheme.typography.labelSmall, color = Warm)
+            Text(stringResource(R.string.explore_page_eyebrow), style = MaterialTheme.typography.labelSmall, color = Warm)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "Find what fits\nthis moment.", modifier = Modifier.weight(1f),
+                    stringResource(R.string.explore_headline), modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.displayLarge.copy(
                         fontFamily = serif, fontWeight = FontWeight.Normal,
                         fontSize = 40.sp, lineHeight = 38.sp,
@@ -95,10 +95,10 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
                     Modifier.size(48.dp).background(FieldFill, CircleShape)
                         .clickable { onOpen("search") },
                     contentAlignment = Alignment.Center,
-                ) { Icon(Icons.Outlined.Search, "Search", tint = Periwinkle, modifier = Modifier.size(23.dp)) }
+                ) { Icon(Icons.Outlined.Search, stringResource(R.string.search_title), tint = Periwinkle, modifier = Modifier.size(23.dp)) }
             }
             Text(
-                "Find a suitable tool quickly by need,\nformat and time.",
+                stringResource(R.string.explore_lede),
                 style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 23.sp), color = TextMuted,
             )
             // Explore is a discovery surface: open the Breath Loops picker and
@@ -106,7 +106,7 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
             // route intentionally starts immediately for explicit reset links.
             ExploreHero { onOpen("breathe/box") }
             Spacer(Modifier.height(15.dp))
-            ExploreSectionTitle("Start by need", serif)
+            ExploreSectionTitle(stringResource(R.string.explore_need_section), serif)
             // height(IntrinsicSize.Max) + fillMaxHeight in NeedCard: the four
             // cards were vertically misaligned (audit I#5) — the two-line
             // subtitle grew one card past the 136dp floor and the SpaceBetween
@@ -114,17 +114,17 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
             // aligned only because both subtitles happened to fit one line, so
             // the bug was invisible until someone edited copy.
             Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                NeedCard(Icons.Outlined.SelfImprovement, "Calm now", "Breathing and\ngrounding", Modifier.weight(1f)) { onOpen("practice-library") }
-                NeedCard(Icons.Outlined.Bedtime, "Sleep", "Tonight and CBT-I", Modifier.weight(1f)) { onOpen("sleep") }
+                NeedCard(Icons.Outlined.SelfImprovement, stringResource(R.string.explore_calm_title), stringResource(R.string.explore_need_calm_sub), Modifier.weight(1f)) { onOpen("practice-library") }
+                NeedCard(Icons.Outlined.Bedtime, stringResource(R.string.explore_sleep_title), stringResource(R.string.explore_need_sleep_sub), Modifier.weight(1f)) { onOpen("sleep") }
             }
             Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                NeedCard(Icons.Outlined.Psychology, "Thoughts", "Reframe and reflect", Modifier.weight(1f)) { onOpen("cbt") }
-                NeedCard(Icons.Outlined.MusicNote, "Sound", "Audio and mixer", Modifier.weight(1f)) { onOpen("sounds") }
+                NeedCard(Icons.Outlined.Psychology, stringResource(R.string.explore_need_thoughts_title), stringResource(R.string.explore_need_thoughts_sub), Modifier.weight(1f)) { onOpen("cbt") }
+                NeedCard(Icons.Outlined.MusicNote, stringResource(R.string.explore_need_sound_title), stringResource(R.string.explore_need_sound_sub), Modifier.weight(1f)) { onOpen("sounds") }
             }
             Spacer(Modifier.height(12.dp))
-            ExploreSectionTitle("Keep exploring", serif)
-            ExploreListCard(Icons.Outlined.Spa, "Mindful activities", "Unscored sensory experiences", Warm) { onOpen("toolkit") }
-            ExploreListCard(Icons.Outlined.CalendarMonth, "Programmes", "Guided journeys with progress", Warm) { onOpen("programs") }
+            ExploreSectionTitle(stringResource(R.string.explore_keep_section), serif)
+            ExploreListCard(Icons.Outlined.Spa, stringResource(R.string.explore_mindful_title), stringResource(R.string.explore_mindful_lede), Warm) { onOpen("toolkit") }
+            ExploreListCard(Icons.Outlined.CalendarMonth, stringResource(R.string.explore_programmes_title), stringResource(R.string.explore_programmes_lede), Warm) { onOpen("programs") }
             // Was "Favourites and downloads · Saved and offline" — three problems in
             // one row. No client implements downloads (the documented reason
             // "available offline"/"download for offline" are banned phrases), there

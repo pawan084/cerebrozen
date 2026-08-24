@@ -1,5 +1,6 @@
 package com.cerebrozen.app.ui.screens
 
+import com.cerebrozen.app.R
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
@@ -31,8 +32,8 @@ internal fun requestScreenLock(activity: FragmentActivity?, onResult: (Boolean) 
         },
     ).authenticate(
         BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Confirm screen lock")
-            .setSubtitle("Use your phone PIN, password, pattern, or biometrics")
+            .setTitle(activity.getString(R.string.biometricgate_title))
+            .setSubtitle(activity.getString(R.string.biometricgate_sub))
             .setAllowedAuthenticators(auths)
             .build(),
     )

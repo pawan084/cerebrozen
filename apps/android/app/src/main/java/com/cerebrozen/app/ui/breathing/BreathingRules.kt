@@ -7,13 +7,10 @@ data class BreathPhase(val type: BreathPhaseType, val seconds: Int) {
 }
 
 enum class BreathPattern(
-    val displayName: String,
-    val description: String,
     val phases: List<BreathPhase>,
     val rounds: Int,
 ) {
     Box(
-        "Box Breathing", "Equal counts to steady attention",
         listOf(
             BreathPhase(BreathPhaseType.Inhale, 4),
             BreathPhase(BreathPhaseType.Hold, 4),
@@ -31,21 +28,18 @@ enum class BreathPattern(
     // Twelve rounds of 4 in / 6 out is 120 seconds: the "two-minute reset"
     // five surfaces promise, measured rather than implied.
     Reset(
-        "Two-minute reset", "In for four, out for six",
         listOf(
             BreathPhase(BreathPhaseType.Inhale, 4),
             BreathPhase(BreathPhaseType.Exhale, 6),
         ), 12,
     ),
     Coherent(
-        "Coherent", "A smooth, balanced breathing rhythm",
         listOf(
             BreathPhase(BreathPhaseType.Inhale, 5),
             BreathPhase(BreathPhaseType.Exhale, 5),
         ), 6,
     ),
     Triangle(
-        "Triangle", "Three even sides: inhale, hold, exhale",
         listOf(
             BreathPhase(BreathPhaseType.Inhale, 3),
             BreathPhase(BreathPhaseType.Hold, 3),

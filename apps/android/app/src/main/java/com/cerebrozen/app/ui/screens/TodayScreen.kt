@@ -1643,26 +1643,26 @@ fun GroundingIntroScreen(
             // plum a shade off the BrandPrimary default (7B376E vs 8A4A78) —
             // so the override was a literal buying nothing.
             FocusCard(pastel = true) {
-                Text("GROUND · 3 MINUTES", style = MaterialTheme.typography.labelSmall, color = Warm)
+                Text(stringResource(R.string.groundingintro_eyebrow), style = MaterialTheme.typography.labelSmall, color = Warm)
                 Text(
-                    "5 things\nyou can see.",
+                    stringResource(R.string.groundingintro_headline),
                     style = MaterialTheme.typography.displayMedium.copy(fontFamily = FontFamily(Font(R.font.newsreader))),
                     color = TextPrimary,
                 )
                 Text(
                     // Not "interruption-tolerant regulation exercise" — clinical
                     // vocabulary on a first-use surface (audit K).
-                    "A calm, guided steadying practice. Pause or stop any time.",
+                    stringResource(R.string.groundingintro_lede),
                     style = MaterialTheme.typography.bodyLarge, color = Periwinkle,
                 )
                 Text(
-                    "Then four you can feel, three you can hear, two you can smell and one you can taste.",
+                    stringResource(R.string.groundingintro_sequence),
                     style = MaterialTheme.typography.bodyMedium, color = TextSoft,
                 )
             }
 
             Text(
-                "This may help when",
+                stringResource(R.string.groundingintro_helps_title),
                 style = MaterialTheme.typography.headlineMedium.copy(fontFamily = FontFamily(Font(R.font.newsreader))),
                 color = TextPrimary,
             )
@@ -1670,9 +1670,9 @@ fun GroundingIntroScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                listOf("Thoughts feel loud", "You feel disconnected", "You need a short reset").forEachIndexed { i, label ->
+                listOf(R.string.groundingintro_help_1, R.string.groundingintro_help_2, R.string.groundingintro_help_3).forEachIndexed { i, label ->
                     Text(
-                        label, style = MaterialTheme.typography.labelMedium,
+                        stringResource(label), style = MaterialTheme.typography.labelMedium,
                         color = if (i == 0) OnPrimary else Periwinkle,
                         modifier = Modifier.clip(RoundedCornerShape(99.dp))
                             .background(if (i == 0) Periwinkle else Periwinkle.copy(alpha = .06f))
@@ -1699,9 +1699,9 @@ fun GroundingIntroScreen(
                     // deleted, because the row's job is to set expectations before
                     // someone commits three minutes.
                     val facts = listOf(
-                        Triple(Icons.Outlined.AccessTime, "About 3 minutes", "End early whenever you need."),
-                        Triple(Icons.Outlined.Headphones, "Reads at your pace", "You move each step on yourself."),
-                        Triple(Icons.Outlined.Visibility, "Minimal motion", "Plain text, works with a screen reader."),
+                        Triple(Icons.Outlined.AccessTime, R.string.groundingintro_fact_time_title, R.string.groundingintro_fact_time_sub),
+                        Triple(Icons.Outlined.Headphones, R.string.groundingintro_fact_pace_title, R.string.groundingintro_fact_pace_sub),
+                        Triple(Icons.Outlined.Visibility, R.string.groundingintro_fact_motion_title, R.string.groundingintro_fact_motion_sub),
                     )
                     facts.forEachIndexed { index, fact ->
                         Row(
@@ -1716,15 +1716,15 @@ fun GroundingIntroScreen(
                                 contentAlignment = Alignment.Center,
                             ) { Icon(fact.first, null, tint = if (index == 0) Ok else Warm, modifier = Modifier.size(20.dp)) }
                             Column(Modifier.weight(1f)) {
-                                Text(fact.second, style = MaterialTheme.typography.titleSmall, color = TextPrimary)
-                                Text(fact.third, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                                Text(stringResource(fact.second), style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+                                Text(stringResource(fact.third), style = MaterialTheme.typography.bodySmall, color = TextMuted)
                             }
                         }
                         if (index < facts.lastIndex) Box(Modifier.fillMaxWidth().height(.7.dp).background(LineStroke))
                     }
                 }
             }
-            ReferenceAction("Start practice", onClick = onStart)
+            ReferenceAction(stringResource(R.string.groundingintro_start), onClick = onStart)
         }
     }
 }
@@ -1762,14 +1762,14 @@ fun CheckInDetailScreen(
                 .padding(horizontal = 28.dp, vertical = 14.dp).padding(bottom = 22.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("CHECK IN", style = MaterialTheme.typography.labelSmall, color = Warm)
+            Text(stringResource(R.string.checkindetail_eyebrow), style = MaterialTheme.typography.labelSmall, color = Warm)
             Text(
-                "What is here\nright now?",
+                stringResource(R.string.checkindetail_headline),
                 style = MaterialTheme.typography.displayMedium.copy(fontFamily = FontFamily(Font(R.font.newsreader))),
                 color = TextPrimary,
             )
             Text(
-                "Choose the closest fit. This does not create a diagnosis or score.",
+                stringResource(R.string.checkindetail_lede),
                 style = MaterialTheme.typography.bodyLarge, color = TextSoft,
             )
             moods.chunked(2).forEach { pair ->
@@ -1806,16 +1806,23 @@ fun CheckInDetailScreen(
                 }
             }
             Text(
-                "How intense?",
+                stringResource(R.string.checkindetail_intensity_title),
                 style = MaterialTheme.typography.headlineMedium.copy(fontFamily = FontFamily(Font(R.font.newsreader))),
                 color = TextPrimary,
                 modifier = Modifier.padding(top = 4.dp),
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("Light", "Medium", "Strong").forEach { value ->
+                // The first element is the WIRE value the server receives; the second is
+                // what the person reads. Localizing the wire value would fork the
+                // taxonomy per locale — same contract as MoodOption.name above.
+                listOf(
+                    "Light" to R.string.checkindetail_intensity_light,
+                    "Medium" to R.string.checkindetail_intensity_medium,
+                    "Strong" to R.string.checkindetail_intensity_strong,
+                ).forEach { (value, labelRes) ->
                     val active = intensity == value
                     Text(
-                        value, style = MaterialTheme.typography.labelMedium,
+                        stringResource(labelRes), style = MaterialTheme.typography.labelMedium,
                         color = if (active) OnPrimary else Periwinkle,
                         modifier = Modifier.clip(RoundedCornerShape(99.dp))
                             .background(if (active) Periwinkle else Periwinkle.copy(alpha = .06f))
@@ -1823,16 +1830,16 @@ fun CheckInDetailScreen(
                     )
                 }
             }
-            Text("Add a private note (optional)", style = MaterialTheme.typography.labelMedium, color = TextMuted)
+            Text(stringResource(R.string.checkindetail_note_label), style = MaterialTheme.typography.labelMedium, color = TextMuted)
             AppTextField(
                 value = note,
                 onValueChange = { note = it },
                 label = "",
                 minLines = 3,
                 maxLines = 5,
-                placeholderText = "A few words are enough…",
+                placeholderText = stringResource(R.string.checkindetail_note_hint),
             )
-            ReferenceAction(if (saving) "Saving…" else "Save and continue", onClick = {
+            ReferenceAction(stringResource(if (saving) R.string.checkindetail_saving else R.string.checkindetail_save), onClick = {
                 if (saving) return@ReferenceAction
                 saving = true
                 saveError = null

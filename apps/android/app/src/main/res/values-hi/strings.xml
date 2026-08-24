@@ -2179,4 +2179,60 @@
     </plurals>
     <string name="breathe_second_remaining">सेकंड बाक़ी</string>
     <string name="breathe_seconds_remaining">सेकंड बाक़ी</string>
+    <!-- Compose-extraction pass (2026-08-24) — see values/. -->
+    <string name="groundingintro_eyebrow">ग्राउंडिंग · 3 मिनट</string>
+    <string name="groundingintro_headline">5 चीज़ें
+जो दिख रही हैं।</string>
+    <string name="groundingintro_lede">एक शांत, निर्देशित थामने वाला अभ्यास। कभी भी रोकें या रुक जाएँ।</string>
+    <string name="groundingintro_sequence">फिर चार जो छू सकें, तीन जो सुन सकें, दो जो सूँघ सकें और एक जो चख सकें।</string>
+    <string name="groundingintro_helps_title">यह तब मदद कर सकता है जब</string>
+    <string name="groundingintro_help_1">विचार शोर करते लगें</string>
+    <string name="groundingintro_help_2">आप कटा हुआ महसूस करें</string>
+    <string name="groundingintro_help_3">एक छोटा रीसेट चाहिए हो</string>
+    <string name="groundingintro_fact_time_title">लगभग 3 मिनट</string>
+    <string name="groundingintro_fact_time_sub">जब चाहें पहले ख़त्म करें।</string>
+    <string name="groundingintro_fact_pace_title">आपकी गति से चलता है</string>
+    <string name="groundingintro_fact_pace_sub">हर चरण आप ख़ुद आगे बढ़ाते हैं।</string>
+    <string name="groundingintro_fact_motion_title">कम से कम हलचल</string>
+    <string name="groundingintro_fact_motion_sub">सादा टेक्स्ट — स्क्रीन रीडर के साथ चलता है।</string>
+    <string name="groundingintro_start">अभ्यास शुरू करें</string>
+    <string name="checkindetail_eyebrow">चेक-इन</string>
+    <string name="checkindetail_headline">अभी इस पल
+क्या मौजूद है?</string>
+    <string name="checkindetail_lede">जो सबसे क़रीब लगे वही चुनें। इससे कोई निदान या स्कोर नहीं बनता।</string>
+    <string name="checkindetail_intensity_title">कितना तीव्र?</string>
+    <string name="checkindetail_intensity_light">हल्का</string>
+    <string name="checkindetail_intensity_medium">मध्यम</string>
+    <string name="checkindetail_intensity_strong">तीव्र</string>
+    <string name="checkindetail_note_label">एक निजी नोट जोड़ें (वैकल्पिक)</string>
+    <string name="checkindetail_note_hint">कुछ शब्द काफ़ी हैं…</string>
+    <string name="checkindetail_saving">सहेजा जा रहा है…</string>
+    <string name="checkindetail_save">सहेजें और आगे बढ़ें</string>
+    <string name="explore_page_eyebrow">एक्सप्लोर</string>
+    <string name="explore_headline">जो इस पल के लिए ठीक हो
+वह खोजें।</string>
+    <string name="explore_lede">ज़रूरत, स्वरूप और समय के हिसाब से
+जल्दी सही साधन खोजें।</string>
+    <string name="explore_need_section">ज़रूरत से शुरू करें</string>
+    <string name="explore_keep_section">और देखें</string>
+    <string name="explore_need_calm_sub">साँस और
+ग्राउंडिंग</string>
+    <string name="explore_need_sleep_sub">आज रात और CBT-I</string>
+    <string name="explore_need_thoughts_title">विचार</string>
+    <string name="explore_need_thoughts_sub">नया नज़रिया और मनन</string>
+    <string name="explore_need_sound_title">आवाज़</string>
+    <string name="explore_need_sound_sub">ऑडियो और मिक्सर</string>
+    <string name="explore_mindful_lede">बिना अंक वाले इंद्रिय अनुभव</string>
+    <string name="explore_programmes_lede">प्रगति के साथ निर्देशित यात्राएँ</string>
+    <string name="breathprep_title">साँस</string>
+    <string name="gratituderef_nav_title">आभार</string>
+    <string name="gratituderef_nav_sub">सकारात्मक मनन</string>
+    <string name="gratituderef_eyebrow">आभार मनन</string>
+    <string name="gratituderef_headline">एक चीज़ पर
+ध्यान दें —
+सब पर नहीं।</string>
+    <string name="gratituderef_lede">यह ज़बरदस्ती सकारात्मक होने की बात नहीं है। एक छोटा सामान्य या सहारा देने वाला ब्योरा काफ़ी है।</string>
+    <string name="gratituderef_hint">एक चीज़ जिसने आज को थोड़ा आसान बनाया…</string>
+    <string name="biometricgate_title">स्क्रीन लॉक की पुष्टि करें</string>
+    <string name="biometricgate_sub">फ़ोन का PIN, पासवर्ड, पैटर्न या बायोमेट्रिक इस्तेमाल करें</string>
 </resources>

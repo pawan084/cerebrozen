@@ -25,7 +25,27 @@ covers both. If it is a different one, rotate it too.
 been tracked. The exposure is the `.example` file, which is exactly the trap
 that kind of file sets: it looks like it cannot hold anything real.
 
-## Found — ~70 English strings are hardcoded in Compose, invisible to every gate (2026-08-24)
+## Done — the Compose-hardcoded English is extracted and gated (2026-08-24, same day)
+
+**Closed the same day.** The raw ~84 count shrank on classification: 36 of the
+heuristic's hits were comments, and of the 48 genuine code sites a documented
+share is by-design English — ConsentNotice.kt's hand-shipped 13-language map,
+`MoodOption.name/note` and `StateOption` wire values, `"literal" -> R.string.x`
+match keys, and `onboardingMoodNote`'s wire-to-wire mapping. Everything
+rendered is now extracted: 48 new keys in `values/` + `values-hi/` (five
+`breathprep_*` keys already existed with the exact copy — that screen had been
+rendering literals PAST its own resources), `BreathPattern.displayName/
+description` deleted outright (zero consumers), and BiometricGate's prompt now
+goes through `activity.getString`. `ComposeHardcodedStringTest` guards the
+class from here on: it scans `ui` sources for quoted multi-word English
+sentences outside comments, with a per-line exemption list that names each
+reason — verified to bite by reintroducing a literal. Device-verified in
+Hindi: check-in sheet, Explore, gratitude and the grounding intro all render
+fully translated. (Two working notes: Kotlin block comments NEST, so a glob
+like ui-slash-star-star in the guard's own KDoc swallowed the file to the
+first star-slash string literal; and a `git checkout --` used to undo a
+deliberately-introduced test bug also wiped the uncommitted extraction in the
+same file — mutate-and-restore needs a file copy, never git, on a dirty tree.)
 
 A full 54-route device walk in Hindi (every screen in the nav graph, driven by
 the `walk_route` debug hook with `--activity-clear-top --activity-single-top` —
