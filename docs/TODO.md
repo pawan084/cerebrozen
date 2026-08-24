@@ -195,6 +195,36 @@ fail if the write never lands — the bug worth catching — and no longer fail
 because the emulator was slower than the assertion. The helper returns the last
 value seen, so the message still says what the server actually believes.
 
+## Done — the offline queue drains with the app dead (Agentic Wave C, 2026-08-24)
+
+WC-190: the Outbox has always survived process death; its DRAIN only ran while
+the app was open, so "saved — it will send itself" was true only if you came
+back. `OutboxSyncWorker` (WorkManager, CONNECTED constraint, KEEP policy,
+exponential backoff) now drains in the background. The seam is
+`Outbox.scheduleSync` — a var the JVM tests leave as a no-op and MainActivity
+points at WorkManager — because the queue's tests must never meet the SDK.
+The worker decides WHEN, never WHAT: ordering, idempotency keys and
+retryability stay in `Outbox.drain`, where the tests pin them.
+
+Proven on the CPH2681, the strong version: check-in saved with the backend
+unreachable → app backgrounded and process KILLED (`am kill`, ps count 0) →
+backend reachable again → WorkManager spawned the process itself and the row
+landed (`POST /moods 201`) with nobody touching the phone. Also learned and
+documented: a FORCE-stop freezes scheduled jobs until the next manual launch
+— platform design, no worker survives it, and `adb shell am force-stop` in a
+test script silently proves nothing.
+
+WC-189: `OutboxFlappingTest` (5 JVM scenarios over the real queue + transport
+seam): flap-queue-flap-drain keeps order and loses nothing; a mid-drain death
+keeps the tail and the retry reuses the enqueue-time keys; a lost RESPONSE
+lands exactly once (the 409 replay is the success case); a relaunch changes
+nothing; and every offline enqueue asks for a background drain.
+
+WC-191: verdict, not change — reminders already use `setInexactRepeating`,
+which is the Doze-correct choice for a "never urgent" nudge, and the drain
+rides WorkManager's maintenance windows rather than requesting a battery
+exemption a wellness app has no business asking for.
+
 ## Done — the Android app was talking to a different product's API (2026-08-24)
 
 A device walk showed the app failing every request: `POST /auth/refresh -> 404`,

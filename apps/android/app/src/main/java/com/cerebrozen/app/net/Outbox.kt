@@ -84,8 +84,17 @@ object Outbox {
         Session.prefPut(QUEUE_KEY, array.toString())
     }
 
+    /** Called after every enqueue. The real app points this at
+     * [OutboxSync.schedule] (MainActivity wires it), so a write queued offline
+     * gets a WorkManager drain when connectivity returns even if the app is
+     * killed first — the seam is a var, not a direct call, because WorkManager
+     * cannot exist in the JVM unit tests that pin this queue's behaviour
+     * (same idiom as [Session.http]). */
+    internal var scheduleSync: () -> Unit = {}
+
     fun enqueue(item: Item): Item {
         write(pending() + item)
+        scheduleSync()
         return item
     }
 

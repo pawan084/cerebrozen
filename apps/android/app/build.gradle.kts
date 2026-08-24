@@ -247,6 +247,14 @@ val coverageExcludes = listOf(
     // FirebaseMessaging instance, which needs the config file above; the
     // token fetch it wraps is behind Push.tokenProvider, which IS covered.
     "com/cerebrozen/app/notify/PushKt*",
+    // The WorkManager bridge for the offline queue's background drain
+    // (WC-190). Same category as the two above: WorkManager cannot be
+    // instantiated on the JVM, and the worker's one real path was proven on
+    // hardware (queued offline, process killed, WorkManager spawned it and
+    // drained — 2026-08-24). Every DECISION — ordering, idempotency keys,
+    // what is retryable, the scheduleSync seam — lives in net/Outbox.kt,
+    // which OutboxTest and OutboxFlappingTest cover.
+    "com/cerebrozen/app/net/OutboxSync*",
 )
 
 // NOT in coverageIncludes (documented here so the omission is deliberate):
@@ -356,6 +364,7 @@ tasks.named("check") { dependsOn(jacocoLogicCoverageVerification) }
 
 dependencies {
     implementation(libs.billing.ktx)
+    implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

@@ -28,6 +28,15 @@ class MainActivity : FragmentActivity() {
         // report — this only makes the failure countable on our side (WC-17).
         com.cerebrozen.app.net.ErrorTracking.install()
         Session.init(applicationContext)
+        // Writes queued offline drain via WorkManager when connectivity returns,
+        // app open or not (WC-190). The seam is a var so the JVM Outbox tests
+        // never meet WorkManager; wiring it here also kicks a drain for anything
+        // still queued from before this process existed.
+        com.cerebrozen.app.net.Outbox.scheduleSync =
+            { com.cerebrozen.app.net.OutboxSync.schedule(applicationContext) }
+        if (com.cerebrozen.app.net.Outbox.count() > 0) {
+            com.cerebrozen.app.net.OutboxSync.schedule(applicationContext)
+        }
         Haptics.init(applicationContext)
         // The nudge's promise: Push.kt attaches the deeplink to this intent;
         // the NavHost consumes it from the bus once signed in.
