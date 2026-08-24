@@ -25,6 +25,49 @@ covers both. If it is a different one, rotate it too.
 been tracked. The exposure is the `.example` file, which is exactly the trap
 that kind of file sets: it looks like it cannot hold anything real.
 
+## Found — ~70 English strings are hardcoded in Compose, invisible to every gate (2026-08-24)
+
+A full 54-route device walk in Hindi (every screen in the nav graph, driven by
+the `walk_route` debug hook with `--activity-clear-top --activity-single-top` —
+a plain `am start` on the running activity delivers nothing and silently
+re-screenshots the same screen 54 times, which is how the first pass failed)
+found four screens rendering mixed English/Hindi where the Hindi file is
+complete: the check-in sheet ("What is here right now?", "How intense?",
+"Light/Medium/Strong"), Explore ("Find what fits this moment.", "Start by
+need", every category card), gratitude ("Notice one thing—not everything.")
+and the grounding intro ("5 things you can see.", the chips).
+
+These are not missing translations. They are string literals in Kotlin —
+`Text("What is here
+right now?")` in TodayScreen.kt — that never touch the
+resource system. **No gate can see them**: `HindiOrthographyTest`'s 100% floor
+audits `values/` against `values-hi/`, and lint's `HardcodedText` check only
+inspects XML layouts, so it reports ZERO against a Compose codebase. The 458
+clean-lint warnings and the green coverage ratchet were both telling the truth
+about the wrong set.
+
+A heuristic sweep (multi-word capitalised literals in `ui/**.kt`, excluding
+`stringResource` lines) counts **~84 across 29 files**, the worst being
+TodayScreen (16), TalkScreen (8), PracticeLibraryScreen (7), ExploreScreen (6),
+OnboardingScreen (6), GoalsScreen (5). A handful are legitimate
+(ConsentNotice.kt's text is picker-driven by design; date-format samples), so
+call it ~70 real. Fixing this is an extraction wave — each literal becomes a
+key + English + Hindi + the ratchet then covers it — and it should come with a
+guard test that greps Compose sources for new multi-word literals, because
+nothing else will.
+
+Everything else the walk confirmed, for the record: 50 of 54 routes are fully
+correct in Hindi — including every guided module (MBCT, CBT-I, imagery, body
+scan, insight reel), the games, builder, wind-down, mixer, trends (numeric
+format strings composing correctly), premium (₹ pricing localised) — and the
+reverted safety screens (crisis, TIPP, crisis grounding) render English by
+design with shared nav chrome in Hindi and nothing blank. Two known-and-logged
+categories showed up where expected: server-supplied content (plan/patterns/
+programme titles) and pre-hold Hindi on safety surfaces (safety plan, human
+support, crisis region — now three more items for the clinical reviewer's
+list). The `breathe_second_remaining` two-string fix and the
+`journal_month_count` Hindi plural were both seen rendering live.
+
 ## Corrected — 88 of those strings should not have shipped (2026-08-24)
 
 A 2026-07-13 note (`android-redesign-state` memory) recorded 123 safety strings
