@@ -25,6 +25,42 @@ covers both. If it is a different one, rotate it too.
 been tracked. The exposure is the `.example` file, which is exactly the trap
 that kind of file sets: it looks like it cannot hold anything real.
 
+## Corrected — 88 of those strings should not have shipped (2026-08-24)
+
+A 2026-07-13 note (`android-redesign-state` memory) recorded 123 safety strings
+— crisis copy, TIPP (a DBT crisis-intervention skill), crisis grounding,
+underage routing — deliberately left in English pending a clinical reviewer,
+and as of 2026-08-03 that review was still externally blocked. The session that
+did the 755-string pass below did not have that note in context and translated
+all of it, crisis screen included, itself — exactly what the July decision was
+waiting on someone qualified to do.
+
+Caught before doing anything else: matched the July description against what
+had just shipped, found 88 keys in common (crisis_*, ocg_*, tipp_*,
+safetyplan_loading, humansupport_line_detail, ob_underage_*, ob_danger_line,
+ob_immediate_danger*, ob_urgent_support, guest_gate_safetyplan,
+work_crisis_chip, explore_support_*), and asked the owner rather than guessing
+at the resolution. Answer: revert those 88, keep the other ~667.
+
+Reverting means removing the `values-hi` entries so the app falls back to
+`values/` (English) for exactly these keys — the same fallback that was already
+carrying all 755 before this pass, so the mechanism is proven, not new.
+`HindiOrthographyTest` now carries a `PENDING_CLINICAL_REVIEW` set naming all 88
+keys, excluded from the 100% coverage floor with a comment explaining why —
+so a future session sees this is a clinical-review question, not a translation
+gap, and doesn't quietly "fix" it back into the same unreviewed state.
+
+Verified: XML well-formed (1939 `<string>` entries, 2027 − 88), all four
+`HindiOrthographyTest` checks green, `:app:check` exit 0. **Not verified on
+device** — the phone was unreachable at push time (not enumerating on USB;
+needs a physical check, not something fixable from this side) — so the visual
+confirmation that these 88 keys actually render in English rather than blank
+is still owed. The fallback is guaranteed Android resource-qualifier behavior,
+not a guess, so this shipped rather than waiting on a cable.
+
+Un-reverted and unchanged: the other ~667 strings from the same pass, which
+were never blocked on anything.
+
 ## Done — all 755 untranslated strings now have Hindi (2026-08-24)
 
 The gap logged earlier today is closed: `values-hi` carries all 2025 strings and
@@ -121,7 +157,7 @@ the tunnel becomes `adb reverse tcp:8000 tcp:8010` — the app keeps its
 JSON is not proof you reached your own server — the same mistake, at the domain
 level, is what `.github/workflows/deploy.yml` already guards against.
 
-## Done — the Hindi UI is complete (2026-08-24)
+## Done — the Hindi UI is complete, minus 88 strings pending clinical review (2026-08-24)
 
 Walking the app with `cmd locale set-app-locales com.cerebrozen.app --locales hi`
 found **758 of 2025 strings (37.4%) with no Hindi at all**. The gap tracks
