@@ -22,6 +22,7 @@ from app.core.database import SessionLocal
 from app.core.ratelimit import limiter
 from app.services import media
 from app.services import digest as digest_service
+from app.services import errors as error_tracking
 from app.services import idempotency as idempotency_service
 from app.services import nudges as nudges_service
 
@@ -31,7 +32,6 @@ logging.basicConfig(
     level=getattr(logging, settings.log_level.upper(), logging.INFO),
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
-from app.services import errors as error_tracking
 
 logger = logging.getLogger("cerebro.main")
 
