@@ -404,7 +404,7 @@ fun BreatheEngine(
                         color = Ink,
                     )
                     Text(
-                        pluralStringResource(R.plurals.breathe_seconds_remaining, count),
+                        stringResource(if (count == 1) R.string.breathe_second_remaining else R.string.breathe_seconds_remaining),
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
                         color = Ink.copy(alpha = 0.72f),
                     )

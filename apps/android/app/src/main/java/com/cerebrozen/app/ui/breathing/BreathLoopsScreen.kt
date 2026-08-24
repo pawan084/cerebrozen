@@ -444,7 +444,7 @@ private fun ActiveSession(state: BreathLoopsCoreState, model: BreathLoopsViewMod
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(state.remainingSeconds.toString(), style = MaterialTheme.typography.displaySmall,
                             color = Ink, fontWeight = FontWeight.Bold)
-                        Text(pluralStringResource(R.plurals.breathe_seconds_remaining, state.remainingSeconds),
+                        Text(stringResource(if (state.remainingSeconds == 1) R.string.breathe_second_remaining else R.string.breathe_seconds_remaining),
                             style = MaterialTheme.typography.labelSmall, color = Ink.copy(alpha = 0.72f))
                     }
                 }

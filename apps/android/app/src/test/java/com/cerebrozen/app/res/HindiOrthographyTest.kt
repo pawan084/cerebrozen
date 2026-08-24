@@ -128,26 +128,31 @@ class HindiOrthographyTest {
     }
 
     /**
-     * Hindi coverage may improve; it may not regress.
+     * Hindi is complete, and stays complete.
      *
      * A device walk on 2026-08-24 found 758 of 2025 strings (37%) with no Hindi
-     * at all, and the gap is not evenly spread — it tracks recency. The oldest
-     * screens are fully translated; the sleep module, Health Connect and the
-     * V3 home hero are largely not, because each shipped its strings into
-     * `values/` and stopped. So the Home tab renders in Hindi with an English
-     * "Start" as its only call to action.
+     * at all. The gap tracked recency rather than importance — the oldest
+     * screens were done, while the sleep module, Health Connect, onboarding,
+     * the crisis screen and every guided module had shipped their strings into
+     * `values/` and stopped. On the Home tab the only call to action rendered
+     * as "Start" inside an otherwise Hindi screen.
      *
-     * Translating the long tail is its own piece of work and is tracked in
-     * docs/TODO.md. What this test does is stop the number getting worse in the
-     * meantime: adding a screen without its Hindi now fails the build, which is
-     * the only reason the gap grew to 37% unnoticed in the first place.
+     * All of them are translated now, so the floor is 100: a new string without
+     * its Hindi fails the build. That is the point. `MissingTranslation` does
+     * not catch this — lint was clean the whole time the app was 37% English —
+     * so this is the only thing standing between the product and a slow relapse
+     * to a half-translated UI.
      *
-     * The floor is a RATCHET, not a target. Raise it when coverage improves —
-     * never lower it to make a build green.
+     * Five strings are legitimately identical to English and are counted as
+     * translated because they are: `app_name` and `talk_companion_name`
+     * (the brand), `auth_email_placeholder` (an example address),
+     * `ground_counter` (5 · 4 · 3 · 2 · 1) and `tipp_title` (an acronym).
+     *
+     * Never lower this floor to make a build green.
      */
     @Test
     fun `hindi coverage does not go backwards`() {
-        val floor = 62.0
+        val floor = 100.0
         val english = strings(en)
         val hindi = strings(hi)
         val covered = english.keys.count { it in hindi }

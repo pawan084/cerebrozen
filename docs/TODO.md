@@ -25,6 +25,54 @@ covers both. If it is a different one, rotate it too.
 been tracked. The exposure is the `.example` file, which is exactly the trap
 that kind of file sets: it looks like it cannot hold anything real.
 
+## Done — all 755 untranslated strings now have Hindi (2026-08-24)
+
+The gap logged earlier today is closed: `values-hi` carries all 2025 strings and
+all 14 plurals, so the app no longer offers Hindi and renders 37% of itself in
+English. The ratchet in `HindiOrthographyTest` is raised from 62% to **100%** —
+a new string without its Hindi now fails the build, which is the only thing
+standing between this and a slow relapse, since `MissingTranslation` stayed
+clean the entire time the app was a third English.
+
+Five strings are deliberately identical to English and counted as translated:
+`app_name` and `talk_companion_name` (the brand), `auth_email_placeholder` (an
+example address), `ground_counter` (5 · 4 · 3 · 2 · 1) and `tipp_title` (an
+acronym). Brand and clinical terms — CereBro, TIPP, MBCT, CBT-I, DBT, AI — stay
+in Latin script throughout; they are names, not words.
+
+Three things the pass turned up that were not translation problems:
+
+- **`breathe_seconds_remaining` could not be a plural.** Its number is drawn as
+  a separate `Text` above the label, so the string carries no formatting
+  argument — and Hindi's `one` bucket matches 0 as well as 1, which makes that
+  an `ImpliedQuantity` lint ERROR with no valid fix in the resource. It is now
+  two plain strings chosen by `count == 1`, which is one rule in every locale.
+  Lint caught this; the same trap is recorded in the Android dev-loop notes.
+- **Four strings arrived with a real newline instead of a literal `
+`.** The
+  escape was eaten in transit, and a raw newline in an Android resource collapses
+  to a space — so `crisis_headline`, `work_title`, `today_greeting_format` and
+  `cbt_compose_format` would have silently lost their line breaks. Caught by
+  diffing the escape against the English source, repaired, and confirmed on
+  device: the crisis headline renders on two lines.
+- **`mg_thought_*` wrap their sentences in straight double quotes in ENGLISH,
+  which Android strips.** A string that starts and ends with `"` has the quotes
+  removed, so those eight sample thoughts render unquoted today, while
+  `mg_sort_prompt` uses curly quotes and renders correctly. The Hindi versions
+  use curly quotes, so Hindi shows the quotation marks and English does not.
+  That divergence is deliberate and the English side is the one that is wrong;
+  it is a one-character-class fix to English copy that was out of scope here.
+
+Verified: `:app:check` exit 0 (lint + both unit-test variants), all four
+`HindiOrthographyTest` checks green over the new strings, and a device walk in
+`hi` across Home, Sleep, You, chat and the crisis screen with no truncation,
+overflow or wrapping failures.
+
+Still open, and untouched by this: **server-supplied content has no localisation
+at all.** Programme and routine titles come from the backend in English only, so
+"Sleep Reset" and "Morning Ritual: Breath and Mindfulness" still sit inside an
+otherwise Hindi Home tab. That is a backend content-model gap.
+
 ## Done — a consent test was racing the write it checks (2026-08-24)
 
 `ConsentFlowE2ETest > the_switch_is_wired_to_the_server_in_both_directions`
@@ -73,7 +121,7 @@ the tunnel becomes `adb reverse tcp:8000 tcp:8010` — the app keeps its
 JSON is not proof you reached your own server — the same mistake, at the domain
 level, is what `.github/workflows/deploy.yml` already guards against.
 
-## Open — the Hindi UI is 37% English (2026-08-24)
+## Done — the Hindi UI is complete (2026-08-24)
 
 Walking the app with `cmd locale set-app-locales com.cerebrozen.app --locales hi`
 found **758 of 2025 strings (37.4%) with no Hindi at all**. The gap tracks

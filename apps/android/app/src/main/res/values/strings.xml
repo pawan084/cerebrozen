@@ -1245,10 +1245,6 @@
     <!-- The number is drawn separately, above this label, so the plural carries
          only the word. Seen on a device 2026-08-15 reading "1 seconds remaining"
          — and every breathing round ends by counting through 1. -->
-    <plurals name="breathe_seconds_remaining">
-        <item quantity="one">second remaining</item>
-        <item quantity="other">seconds remaining</item>
-    </plurals>
     <string name="breathe_color_eyebrow">Follow the glow</string>
     <string name="breathe_color_title">Color breathing</string>
     <string name="breathe_color_intro">Let your breath follow the orb as the glow shifts with each phase.</string>
@@ -2280,4 +2276,11 @@ not perfection.</string>
     <string name="verify_email_sending">Sending…</string>
     <string name="verify_email_sent">Link sent — check your inbox.</string>
     <string name="verify_email_retry">Try again</string>
+    <!-- Not a <plurals>: the number is drawn separately as its own Text, so
+         the label carries no formatting argument — and a plural whose "one"
+         bucket matches 0 as well as 1 (Hindi) is then an ImpliedQuantity
+         error with no valid fix. Chosen by count == 1, which is one rule in
+         every locale. -->
+    <string name="breathe_second_remaining">second remaining</string>
+    <string name="breathe_seconds_remaining">seconds remaining</string>
 </resources>
