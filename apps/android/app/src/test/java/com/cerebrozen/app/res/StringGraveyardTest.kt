@@ -16,7 +16,17 @@ import org.junit.Test
  *
  * This fails. A key with no `R.string.` reference in main/test/androidTest
  * sources and no `@string/` reference in res or the manifest is a corpse, and
- * the build says so by name. Staging keys ahead of a screen that hasn't landed
+ * the build says so by name.
+ *
+ * One boundary this scan cannot see, learned the expensive way: OTHER STACKS
+ * may read this strings.xml as a fixture. The first sweep deleted the retired
+ * tour's keys — correctly, per every rule above — and the WEB's cross-client
+ * copy-parity suite (tests/app/GuidedTour.test.tsx) broke, because it parsed
+ * this file for keys of a feature Android no longer ships. The resolution was
+ * to fix THAT test's premise (parity sources must be features, not files),
+ * not to resurrect dead keys here. Before deleting a swept key, a repo-wide
+ * grep for its name is cheap insurance; a red web suite after a sweep means a
+ * stale fixture, not a wrong sweep. Staging keys ahead of a screen that hasn't landed
  * is the one legitimate exception — stage them WITH the screen in one commit,
  * or add a temporary allowlist entry carrying the commit that will consume it.
  */

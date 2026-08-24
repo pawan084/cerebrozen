@@ -138,54 +138,57 @@ describe("walking through it", () => {
   });
 });
 
-describe("the copy is the same promise on every client", () => {
-  const android = readFileSync(
-    resolve(__dirname, "../../apps/android/app/src/main/res/values/strings.xml"),
-    "utf8",
-  );
+describe("the copy is the same promise on every client that ships a tour", () => {
+  // TWO clients now, not three. Android retired its tour in V2-d ("the
+  // replay-the-tour row left with the tour itself" — Screens.kt), and the
+  // WC-195 string sweep (2026-08-24) removed its orphaned tour_* keys — which
+  // is how this block found out: it was reading Android's strings.xml as a
+  // parity fixture and pinning the web against copy no Android screen could
+  // show. A parity test's sources must be FEATURES, not files: comparing
+  // against a corpse asserts nothing about what any user sees. iOS still
+  // ships its tour, so the word-for-word legs below keep both living clients
+  // honest; if iOS retires it too, this block shrinks to the web's own copy.
   const ios = readFileSync(
     resolve(__dirname, "../../apps/ios/CereBro/Features/Home/GuidedTour.swift"),
     "utf8",
   );
-  const androidString = (name: string) =>
-    android.match(new RegExp(`<string name="${name}">([\\s\\S]*?)</string>`))![1].replace(/\\'/g, "'");
 
   it("shows each stop's title in the same order", async () => {
+    // The web's own stop order, pinned as the fixture of record — captured
+    // from components/GuidedTour.tsx, never remembered.
+    const titles = ["Check in daily", "Your plan adapts", "Talk it through", "Private by default"];
     const user = await tour();
-    for (let i = 1; i <= 4; i++) {
-      expect(screen.getByText(androidString(`tour_stop${i}_title`))).toBeTruthy();
-      if (i < 4) await user.click(screen.getByRole("button", { name: "Next" }));
+    for (let i = 0; i < 4; i++) {
+      expect(screen.getByText(titles[i])).toBeTruthy();
+      if (i < 3) await user.click(screen.getByRole("button", { name: "Next" }));
     }
   });
 
-  it("says the same thing about what it is, word for word, on all three", async () => {
+  it("says the same thing about what it is, word for word, on both", async () => {
     // "It's AI — never a therapist, and always honest about that." This is the
-    // product's central claim about itself. Three clients wording it three ways
-    // is three different promises, and this one is not ours to soften.
+    // product's central claim about itself. Two clients wording it two ways
+    // is two different promises, and this one is not ours to soften.
     const sentence = "It's AI — never a therapist, and always honest about that.";
     const user = await tour();
     await user.click(screen.getByRole("button", { name: "Next" }));
     await user.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByText(new RegExp(sentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")))).toBeTruthy();
-    expect(androidString("tour_stop3_body")).toContain(sentence);
     expect(ios).toContain(sentence);
   });
 
-  it("makes the same privacy promise on all three", async () => {
+  it("makes the same privacy promise on both", async () => {
     const promise = "Nothing is remembered without your say-so.";
     const user = await tour();
     for (let i = 0; i < 3; i++) await user.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByText(new RegExp(promise.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")))).toBeTruthy();
-    expect(androidString("tour_stop4_body")).toContain(promise);
     expect(ios).toContain(promise);
   });
 
-  it("names each client's OWN navigation, which is why the bodies differ", async () => {
-    // Deliberate divergence, asserted so nobody "fixes" it into a lie: Android
-    // sends people to You → Privacy & memory, the web to Account → Privacy.
+  it("names this client's OWN navigation", async () => {
+    // Deliberate divergence, asserted so nobody "fixes" it into a lie: the web
+    // sends people to Account → Privacy; iOS names its own path in its file.
     const user = await tour();
     for (let i = 0; i < 3; i++) await user.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByText(/Account → Privacy/)).toBeTruthy();
-    expect(androidString("tour_stop4_body")).toMatch(/You → Privacy/);
   });
 });
