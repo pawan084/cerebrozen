@@ -96,8 +96,14 @@ Full suite state 2026-08-25: **5/5, two consecutive runs.**
 
 ## What this does not cover yet
 
-- **Multi-turn coherence (WC-142)** — every golden here is single-turn.
-- **Code-switching (WC-143)** — Hindi/Hinglish inputs are unjudged.
 - **Refusal-rate tracking (WC-149)** — a metric, not a test; belongs in
   `services/metrics.py` next to `quiet_users`.
 - **Latency (WC-129)** — time-to-first-token is not asserted anywhere.
+
+Closed 2026-08-25 (`tests/evals/test_conversation_evals.py`): **multi-turn
+coherence (WC-142)** — two turns on one oracle thread, the judge checks the
+second remembers the first; and **code-switching (WC-143)** — the profile
+contract is tested deterministically (Hindi profile + English message must
+come back with Devanagari in it, sampled 3-of-2 because directive adherence
+is a rate), and Hinglish comprehension is judged (understood, never bounced).
+Suite state: **8/8, two consecutive runs.**
