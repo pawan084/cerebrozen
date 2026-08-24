@@ -2344,4 +2344,13 @@ everything.</string>
     <string name="gratituderef_hint">One thing that made today slightly easier…</string>
     <string name="biometricgate_title">Confirm screen lock</string>
     <string name="biometricgate_sub">Use your phone PIN, password, pattern, or biometrics</string>
+    <!-- Oracle tool-call visibility (WC-138/139): the agent announces its tools by name. -->
+    <string name="oracle_tool_generic">your data</string>
+    <string name="oracle_tool_weekly_insights">your weekly insights</string>
+    <string name="oracle_tool_suggest_activity">a matching practice</string>
+    <string name="oracle_tool_log_mood">your mood log</string>
+    <string name="oracle_tool_save_journal">your journal</string>
+    <string name="oracle_tool_log_sleep">your sleep diary</string>
+    <string name="oracle_tool_running">Using %1$s…</string>
+    <string name="oracle_tool_used">Used %1$s</string>
 </resources>

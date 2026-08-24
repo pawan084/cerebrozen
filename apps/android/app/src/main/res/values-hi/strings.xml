@@ -2235,4 +2235,13 @@
     <string name="gratituderef_hint">एक चीज़ जिसने आज को थोड़ा आसान बनाया…</string>
     <string name="biometricgate_title">स्क्रीन लॉक की पुष्टि करें</string>
     <string name="biometricgate_sub">फ़ोन का PIN, पासवर्ड, पैटर्न या बायोमेट्रिक इस्तेमाल करें</string>
+    <!-- Oracle tool-call visibility (WC-138/139). -->
+    <string name="oracle_tool_generic">आपका डेटा</string>
+    <string name="oracle_tool_weekly_insights">आपके हफ़्ते की झलक</string>
+    <string name="oracle_tool_suggest_activity">एक मेल खाता अभ्यास</string>
+    <string name="oracle_tool_log_mood">आपका मूड लॉग</string>
+    <string name="oracle_tool_save_journal">आपका जर्नल</string>
+    <string name="oracle_tool_log_sleep">आपकी नींद की डायरी</string>
+    <string name="oracle_tool_running">%1$s इस्तेमाल हो रहा है…</string>
+    <string name="oracle_tool_used">%1$s इस्तेमाल हुआ</string>
 </resources>

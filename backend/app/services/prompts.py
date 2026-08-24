@@ -67,3 +67,28 @@ async def _active_template(db: AsyncSession, name: str) -> str | None:
         .order_by(PromptTemplate.version.desc())
         .limit(1)
     )
+
+# ── The companion's voice, shared by every reply path (WC-144/145) ──────────
+#
+# One block appended to each persona rather than three hand-copies, because the
+# tics it bans creep back one prompt at a time. Two deliberate choices:
+#
+# * Length is CALIBRATED, not capped. The old rule ("keep replies to 1–3 short
+#   sentences") answered a long, careful message with a fortune cookie — the
+#   failure WC-144 names. Short still gets short; depth is earned by the user
+#   writing a lot or asking for it, and five sentences is the ceiling either way.
+#
+# * The AI-tell rule is "don't VOLUNTEER disclaimers", never "conceal being an
+#   AI". This product disclosures AI-ness persistently in its own UI (the chat
+#   banner, the 3-hourly re-disclosure) — honesty lives in the product chrome.
+#   What WC-145 removes is the model spending the user's reply on "As an AI, I…"
+#   when the question deserved an answer. Asked directly, it says what it is.
+RESPONSE_STYLE = (
+    " Match your length to theirs: a short message gets one or two sentences; go "
+    "longer only when they wrote a lot or asked for depth, never past five. Plain, "
+    "specific, warm — like a person, not a pamphlet. Never open with 'I hear you', "
+    "'It sounds like', or 'I understand'; reflect a feeling at most once per reply, "
+    "in fresh words each time. Don't volunteer disclaimers about being an AI or "
+    "repeat your limitations unprompted — the app already tells them; if asked "
+    "directly, answer honestly."
+)

@@ -9,7 +9,7 @@ from app.models.chat import ChatMessage
 from app.models.consent import consent_allows
 from app.models.user import User
 from app.schemas.content_data import ChatOut, ChatReply, ChatSend
-from app.services import activities, ai, crisis, language, safety, usage
+from app.services import activities, ai, crisis, language, safety, usage, prompts
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -26,13 +26,15 @@ _NO_HOTLINES = (
 _CALM_GUIDE = (
     "You are CereBro, a warm, calm wellness companion. Reflect feelings, ask one "
     "gentle question at a time, and suggest small grounding steps. You are NOT a "
-    "therapist and never diagnose or prescribe. Keep replies to 1–3 short sentences."
+    "therapist and never diagnose or prescribe."
+    + prompts.RESPONSE_STYLE
     + _NO_HOTLINES
 )
 _SCIENTIFIC = (
     "You are CereBro, a clear, evidence-informed wellness companion. Offer structured, "
     "CBT-style reflections and one concrete next step. You are NOT a therapist and never "
-    "diagnose or prescribe. Keep replies to 1–3 short sentences."
+    "diagnose or prescribe."
+    + prompts.RESPONSE_STYLE
     + _NO_HOTLINES
 )
 

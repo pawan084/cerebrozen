@@ -129,6 +129,9 @@ internal data class Msg(
     val widget: ChatWidget? = null,
     /** ISO created_at from the server; "" for bubbles minted locally this session. */
     val createdAt: String = "",
+    /** Label resources for the Oracle tools this reply ran (WC-138): the
+     * member-visible half of the audit trail, on the message it explains. */
+    val tools: List<Int> = emptyList(),
 )
 
 /** The day-separator label slot above message [i]: "Today", "Yesterday", or a
@@ -588,6 +591,10 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         "sleep_checkin" to stringResource(R.string.sleep_cbti_why),
     )
     var streamText by remember { mutableStateOf("") }
+    // The label of the tool the agent is running RIGHT NOW — the answer to why
+    // the stream is quiet. Cleared by the first token: once text is flowing the
+    // stall this line explains is over (WC-139).
+    var toolActivity by remember { mutableStateOf<Int?>(null) }
     var confirmReq by remember { mutableStateOf<Pair<String, String>?>(null) } // threadId → summary
     // W10: only bubbles that arrive AFTER the restored history animate in — the
     // transcript renders settled, new turns rise gently. Int.MAX_VALUE until the
@@ -703,18 +710,26 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         var acc = ""
         var widget: ChatWidget? = null
         var final = ""
+        val toolsUsed = mutableListOf<Int>()
         try {
             Session.sse(path, body) { ev ->
                 when (ev.optString("type")) {
-                    "token" -> { acc += ev.optString("text"); streamText = acc }
+                    "token" -> { acc += ev.optString("text"); streamText = acc; toolActivity = null }
+                    "tool" -> {
+                        val res = oracleToolLabelRes(ev.optString("tool"))
+                        if (res !in toolsUsed) toolsUsed += res
+                        toolActivity = res
+                    }
                     "widget" -> widget = parseWidget(ev.optJSONObject("widget"))
                     "crisis" -> crisis = true
                     "tool_confirm" -> confirmReq = ev.optString("thread_id") to
                         ev.optString("summary").ifBlank { confirmFallback }
                     "done" -> {
                         val t = ev.optString("text").ifBlank { acc }.trim()
-                        if (t.isNotEmpty() || widget != null) messages = messages + Msg("assistant", t, widget)
-                        final = t; acc = ""; widget = null
+                        if (t.isNotEmpty() || widget != null) {
+                            messages = messages + Msg("assistant", t, widget, tools = toolsUsed.toList())
+                        }
+                        final = t; acc = ""; widget = null; toolsUsed.clear()
                     }
                     "error" -> messages = messages + Msg(
                         "assistant",
@@ -725,6 +740,7 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
         } finally {
             // Stream may end paused on a confirm — keep the card, drop the bubble.
             streamText = ""
+            toolActivity = null
         }
         return final
     }
@@ -1501,7 +1517,24 @@ fun TalkScreen(onOpen: (String) -> Unit = {}) {
                     StreamingBubble(streamText)
                 } else if (busy) {
                     val typingCd = stringResource(R.string.talk_typing_cd)
-                    Box(Modifier.semantics { contentDescription = typingCd }) { TypingDots() }
+                    Row(
+                        Modifier.semantics { contentDescription = typingCd },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        TypingDots()
+                        // The agent announced a tool and its answer hasn't started
+                        // streaming: name the work instead of leaving dots to carry
+                        // an unexplained stall (WC-139). Deliberately quiet type —
+                        // this is a status line, not a message.
+                        toolActivity?.let { res ->
+                            Text(
+                                stringResource(R.string.oracle_tool_running, stringResource(res)),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextMuted,
+                            )
+                        }
+                    }
                 }
                 // Structured exercises as first-class offers (REDESIGN §3.3) —
                 // quiet, after the companion's latest reply, never while composing.
@@ -2184,17 +2217,35 @@ private fun ChatBubble(
                 }
                 append(display.substring(cursor))
             }
-            Text(
-                annotated,
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextSoft,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp)
-                    .let { mod ->
-                        if (announce) mod.semantics {
-                            liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
-                        } else mod
-                    },
-            )
+            Column(Modifier.padding(horizontal = 14.dp, vertical = 11.dp)) {
+                Text(
+                    annotated,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSoft,
+                    modifier = Modifier
+                        .let { mod ->
+                            if (announce) mod.semantics {
+                                liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
+                            } else mod
+                        },
+                )
+                // WC-138, the read half: which tools produced this reply, on the
+                // reply itself. The write half already has the confirm card and
+                // GET /oracle/actions; reads were invisible. Quiet on purpose —
+                // provenance, not decoration.
+                if (!user && m.tools.isNotEmpty()) {
+                    // A for-loop, not map{}: stringResource is @Composable and
+                    // lambdas passed to stdlib functions are not composable scope.
+                    val labels = ArrayList<String>(m.tools.size)
+                    for (id in m.tools) labels += stringResource(id)
+                    Text(
+                        stringResource(R.string.oracle_tool_used, labels.joinToString(" · ")),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextMuted,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+            }
         }
     }
 }

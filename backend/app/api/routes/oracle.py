@@ -4,10 +4,17 @@ SSE frames (each `data:` line is a JSON object with a `type`):
   token          {"type":"token","text":"…"}          incremental assistant text
   crisis         {"type":"crisis","resources":{…}}     region-aware crisis hotlines
   widget         {"type":"widget","widget":{…}}        inline activity to render
+  tool           {"type":"tool","tool":"…"}            the agent is running this tool
   tool_confirm   {"type":"tool_confirm","tool":…,"summary":…,"thread_id":…}
   awaiting_confirm                                       stream paused for approval
   done           {"type":"done","text":"…"}            final assistant text
   error          {"type":"error","detail":"…"}
+
+The `tool` frame carries the tool NAME and nothing else — arguments routinely
+quote the user's own words (a journal title, a mood note), and progress display
+does not need them. Write tools follow with `tool_confirm`, which is the frame
+that carries a human summary; `tool` exists so a read tool's latency reads as
+"the agent is checking your week" rather than as a stall (WC-138/139).
 
 Approve/decline a paused write tool via POST /oracle/confirm, which resumes the
 same thread. Falls back with 503 when the agent is disabled; clients then use the
@@ -108,6 +115,16 @@ async def _run(graph_input, thread_id: str, user_id: uuid.UUID, persist_user: st
                     if content and getattr(msg, "type", "") == "AIMessageChunk":
                         parts.append(content)
                         yield _sse({"type": "token", "text": content})
+                elif mode == "updates" and "agent" in chunk:
+                    # The agent node just decided to call tools. Announce each by
+                    # NAME before the ToolNode runs, so its latency renders as
+                    # "checking your week" rather than a dead stream. Names only:
+                    # tool arguments routinely quote the user's own words.
+                    for m in (chunk["agent"] or {}).get("messages", []):
+                        for call in getattr(m, "tool_calls", None) or []:
+                            name = str(call.get("name", "")) if isinstance(call, dict) else str(getattr(call, "name", ""))
+                            if name:
+                                yield _sse({"type": "tool", "tool": name[:64]})
                 elif mode == "updates" and "__interrupt__" in chunk:
                     intr = chunk["__interrupt__"][0]
                     payload = dict(intr.value) if isinstance(intr.value, dict) else {"summary": str(intr.value)}
